@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 005-seed-departments-and-divisions
+      author: codex
+      changes:
+        - insert:
+            tableName: departments
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 1
+              - column:
+                  name: name
+                  value: Масштабування
+              - column:
+                  name: description
+                  value: Департамент розвитку та масштабування процесів.
+        - insert:
+            tableName: divisions
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 1
+              - column:
+                  name: name
+                  value: IT
+              - column:
+                  name: department_id
+                  valueNumeric: 1
+        - insert:
+            tableName: divisions
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 2
+              - column:
+                  name: name
+                  value: Архітектори
+              - column:
+                  name: department_id
+                  valueNumeric: 1
+        - insert:
+            tableName: divisions
+            columns:
+              - column:
+                  name: id
+                  valueNumeric: 3
+              - column:
+                  name: name
+                  value: Аналітики
+              - column:
+                  name: department_id
+                  valueNumeric: 1

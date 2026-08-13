@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Вхід</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-body">
+<main class="auth-shell">
+    <section class="auth-panel">
+        <div class="brand">timeFlows</div>
+        <h1>Вхід</h1>
+
+        <p class="success-message" th:if="${param.registered}">Реєстрація успішна. Увійдіть у систему.</p>
+        <p class="success-message" th:if="${param.logout}">Ви вийшли з системи.</p>
+        <p class="error-message" th:if="${loginError}" th:text="${loginError}"></p>
+
+        <form th:action="@{/api/login}" th:object="${loginRequest}" method="post" class="form-stack">
+            <label>
+                Email
+                <input type="email" th:field="*{email}" autocomplete="username" autofocus>
+                <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+            </label>
+            <label>
+                Пароль
+                <input type="password" th:field="*{password}" autocomplete="current-password">
+                <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+            </label>
+            <button type="submit">Увійти</button>
+        </form>
+
+        <p class="auth-switch">Немає акаунта? <a th:href="@{/api/register}">Зареєструватися</a></p>
+    </section>
+</main>
+</body>
+</html>

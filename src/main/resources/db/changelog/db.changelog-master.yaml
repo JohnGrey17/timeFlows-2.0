@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/changes/001-create-departments-table.yaml
+  - include:
+      file: db/changelog/changes/002-create-divisions-table.yaml
+  - include:
+      file: db/changelog/changes/003-create-users-table.yaml
+  - include:
+      file: db/changelog/changes/004-create-user-roles-table.yaml
+  - include:
+      file: db/changelog/changes/005-seed-departments-and-divisions.yaml
+  - include:
+      file: db/changelog/changes/006-add-user-profile-fields.yaml
+  - include:
+      file: db/changelog/changes/007-create-overtimes-table.yaml
+  - include:
+      file: db/changelog/changes/008-add-user-admin-fields.yaml
+  - include:
+      file: db/changelog/changes/009-add-division-manager.yaml
+  - include:
+      file: db/changelog/changes/010-add-overtime-resubmission-reason.yaml

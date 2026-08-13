@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:content="${_csrf.headerName}">
+    <title>timeFlows | Over time</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/overtime.js}"></script>
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a class="active" th:href="@{/api/overtime}">Over time</a>
+            <a th:href="@{/api/settings}">Налаштування</a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}">Користувачі</a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <h1>Over time</h1>
+            </div>
+            <div class="user-chip"
+                 th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
+                user@vyriy.com
+            </div>
+        </header>
+
+        <div class="calendar-tools-row">
+            <form class="calendar-toolbar" method="get" th:action="@{/api/overtime}">
+                <label>
+                    Місяць
+                    <select name="month">
+                        <option th:each="monthOption : ${months}"
+                                th:value="${monthOption.value()}"
+                                th:selected="${monthOption.value() == selectedMonth.monthValue}"
+                                th:text="${monthOption.label()}"></option>
+                    </select>
+                </label>
+                <label>
+                    Рік
+                    <select name="year">
+                        <option th:each="yearValue : ${years}"
+                                th:value="${yearValue}"
+                                th:selected="${yearValue == selectedMonth.year}"
+                                th:text="${yearValue}"></option>
+                    </select>
+                </label>
+                <button type="submit">Показати</button>
+            </form>
+            <div class="status-legend" aria-label="Статуси overtime">
+                <span><i class="legend-box legend-approved"></i>Погоджено керівником</span>
+                <span><i class="legend-box legend-pending"></i>На розгляді у керівника</span>
+                <span><i class="legend-box legend-rejected"></i>Не погоджено керівником</span>
+            </div>
+        </div>
+
+        <section class="calendar-shell"
+                 th:data-year="${selectedMonth.year}"
+                 th:data-month="${selectedMonth.monthValue}">
+            <div class="calendar-weekdays">
+                <span>Пн</span>
+                <span>Вт</span>
+                <span>Ср</span>
+                <span>Чт</span>
+                <span>Пт</span>
+                <span>Сб</span>
+                <span>Нд</span>
+            </div>
+            <div class="calendar-grid">
+                <button type="button"
+                        class="calendar-day"
+                        th:each="day : ${calendarDays}"
+                        th:classappend="${day.cssClass()}"
+                        th:data-date="${day.date()}"
+                        th:data-id="${day.overtime() != null ? day.overtime().id : ''}"
+                        th:data-hours="${day.overtime() != null ? day.overtime().hours : ''}"
+                        th:data-description="${day.overtime() != null ? day.overtime().description : ''}"
+                        th:data-status="${day.overtime() != null ? day.overtime().status : ''}"
+                        th:data-manager-comment="${day.overtime() != null ? day.overtime().managerComment : ''}">
+                    <span class="day-number" th:text="${day.dayOfMonth()}">1</span>
+                    <span class="add-icon" th:if="${day.currentMonth() && day.overtime() == null}">+</span>
+                    <span class="overtime-chip" th:if="${day.overtime() != null}" th:text="${day.overtime().hours + ' h'}">2 h</span>
+                </button>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div class="modal-backdrop" id="overtimeModal" hidden>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <header class="modal-header">
+            <h2 id="modalTitle">Over time</h2>
+            <button type="button" class="icon-button" data-close-modal aria-label="Закрити">x</button>
+        </header>
+        <p class="status-note" id="statusNote"></p>
+        <form id="overtimeForm" class="form-stack">
+            <input type="hidden" id="overtimeId">
+            <input type="hidden" id="workDate">
+            <label>
+                Дата
+                <input type="text" id="displayDate" disabled>
+            </label>
+            <label>
+                Кількість годин
+                <input type="number" id="hours" min="0.5" step="0.5" required>
+            </label>
+            <label>
+                Опис
+                <textarea id="description" rows="4" required></textarea>
+            </label>
+            <label id="resubmissionGroup" hidden>
+                Чому потрібно погодити повторно
+                <textarea id="resubmissionReason" rows="3"></textarea>
+            </label>
+            <p class="error-message" id="modalError"></p>
+            <div class="modal-actions">
+                <button type="button" class="secondary-button" data-close-modal>Скасувати</button>
+                <button type="button" class="danger-button" id="deleteOvertime">Видалити</button>
+                <button type="button" class="secondary-button" id="resubmitOvertime">Відправити повторно</button>
+                <button type="submit" id="saveOvertime">Зберегти</button>
+            </div>
+        </form>
+    </section>
+</div>
+</body>
+</html>

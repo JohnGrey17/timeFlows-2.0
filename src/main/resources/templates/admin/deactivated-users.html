@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Деактивовані</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a th:href="@{/api/overtime}">Over time</a>
+            <a th:href="@{/api/settings}">Налаштування</a>
+            <a class="active" th:href="@{/api/users}">Користувачі</a>
+            <a th:href="@{/api/overtime/review}">Перевірка overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Admin</p>
+                <h1>Деактивовані користувачі</h1>
+            </div>
+            <a class="link-button" th:href="@{/api/users}">Активні користувачі</a>
+        </header>
+
+        <section class="table-panel">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Користувач</th>
+                    <th>Департамент</th>
+                    <th>Відділ</th>
+                    <th>Причина деактивації</th>
+                    <th>Overtime</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}">
+                    <td>
+                        <strong th:text="${user.email}">email</strong>
+                        <span th:text="${(user.firstName ?: '') + ' ' + (user.lastName ?: '')}">Ім'я Прізвище</span>
+                    </td>
+                    <td th:text="${user.division.department.name}">Department</td>
+                    <td th:text="${user.division.name}">Division</td>
+                    <td th:text="${user.deactivationReason}">Reason</td>
+                    <td><a th:href="@{/api/overtime/review(mode='employee',divisionId=${user.division.id},userId=${user.id})}">Календар</a></td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

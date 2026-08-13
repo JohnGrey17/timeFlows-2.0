@@ -1,0 +1,20 @@
+databaseChangeLog:
+  - changeSet:
+      id: 008-add-user-admin-fields
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: salary
+                  type: DECIMAL(12,2)
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+              - column:
+                  name: deactivation_reason
+                  type: VARCHAR(1000)

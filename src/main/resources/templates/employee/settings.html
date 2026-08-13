@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Налаштування</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a th:href="@{/api/overtime}">Over time</a>
+            <a class="active" th:href="@{/api/settings}">Налаштування</a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}">Користувачі</a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <h1>Налаштування</h1>
+            </div>
+            <div class="user-chip"
+                 th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
+                user@vyriy.com
+            </div>
+        </header>
+
+        <section class="settings-grid">
+            <article class="settings-panel">
+                <h2>Профіль</h2>
+                <p class="success-message" th:if="${param.profileUpdated}">Профіль оновлено.</p>
+                <form th:action="@{/api/settings/profile}" th:object="${profileRequest}" method="post" class="form-stack">
+                    <label>
+                        Ім'я
+                        <input type="text" th:field="*{firstName}">
+                        <span class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></span>
+                    </label>
+                    <label>
+                        Прізвище
+                        <input type="text" th:field="*{lastName}">
+                        <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
+                    </label>
+                    <button type="submit">Зберегти</button>
+                </form>
+            </article>
+
+            <article class="settings-panel">
+                <h2>Пароль</h2>
+                <p class="success-message" th:if="${param.passwordUpdated}">Пароль оновлено.</p>
+                <p class="error-message" th:if="${passwordError}" th:text="${passwordError}"></p>
+                <form th:action="@{/api/settings/password}" th:object="${passwordChangeRequest}" method="post" class="form-stack">
+                    <label>
+                        Поточний пароль
+                        <input type="password" th:field="*{currentPassword}" autocomplete="current-password">
+                        <span class="field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></span>
+                    </label>
+                    <label>
+                        Новий пароль
+                        <input type="password" th:field="*{newPassword}" autocomplete="new-password">
+                        <span class="field-error" th:if="${#fields.hasErrors('newPassword')}" th:errors="*{newPassword}"></span>
+                    </label>
+                    <label>
+                        Підтвердження
+                        <input type="password" th:field="*{confirmPassword}" autocomplete="new-password">
+                        <span class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></span>
+                    </label>
+                    <button type="submit">Оновити пароль</button>
+                </form>
+            </article>
+        </section>
+    </main>
+</div>
+</body>
+</html>

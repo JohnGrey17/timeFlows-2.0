@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Реєстрація</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="auth-body">
+<main class="auth-shell">
+    <section class="auth-panel">
+        <div class="brand">timeFlows</div>
+        <h1>Реєстрація</h1>
+
+        <p class="error-message" th:if="${registerError}" th:text="${registerError}"></p>
+
+        <form th:action="@{/api/register}" th:object="${registerRequest}" method="post" class="form-stack">
+            <label>
+                Ім'я
+                <input type="text" th:field="*{firstName}" autocomplete="given-name" autofocus>
+                <span class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></span>
+            </label>
+            <label>
+                Прізвище
+                <input type="text" th:field="*{lastName}" autocomplete="family-name">
+                <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
+            </label>
+            <label>
+                Email
+                <input type="email" th:field="*{email}" autocomplete="email">
+                <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+            </label>
+            <label>
+                Пароль
+                <input type="password" th:field="*{password}" autocomplete="new-password">
+                <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+            </label>
+            <label>
+                Відділ
+                <select th:field="*{divisionId}">
+                    <option value="">Оберіть відділ</option>
+                    <option th:each="division : ${divisions}"
+                            th:value="${division.id}"
+                            th:text="${division.department.name + ' / ' + division.name}"></option>
+                </select>
+                <span class="field-error" th:if="${#fields.hasErrors('divisionId')}" th:errors="*{divisionId}"></span>
+            </label>
+            <button type="submit">Створити акаунт</button>
+        </form>
+
+        <p class="auth-switch">Вже маєте акаунт? <a th:href="@{/api/login}">Увійти</a></p>
+    </section>
+</main>
+</body>
+</html>

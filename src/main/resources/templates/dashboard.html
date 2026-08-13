@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Dashboard</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a class="active" th:href="@{/api/dashboard}">Загальна сторінка</a>
+            <a href="#">Налаштування</a>
+            <a href="#">Внести overtime</a>
+            <a href="#">Історія overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Організаційна структура</p>
+                <h1>Загальна сторінка</h1>
+            </div>
+            <div class="user-chip" sec:authentication="name">user</div>
+        </header>
+
+        <section class="summary-grid">
+            <article>
+                <span>Департаменти</span>
+                <strong th:text="${#lists.size(departments)}">0</strong>
+            </article>
+            <article>
+                <span>Статус</span>
+                <strong>Активно</strong>
+            </article>
+        </section>
+
+        <section class="organization-list">
+            <div class="section-title">
+                <h2>Департаменти та відділи</h2>
+            </div>
+
+            <article class="department-block" th:each="department : ${departments}">
+                <header>
+                    <div>
+                        <h3 th:text="${department.name}">Департамент</h3>
+                        <p th:text="${department.description}">Опис департаменту</p>
+                    </div>
+                    <span th:text="${#sets.size(department.divisions)} + ' відділи'">0 відділи</span>
+                </header>
+
+                <div class="division-grid">
+                    <div class="division-card" th:each="division : ${department.divisions}">
+                        <div class="division-header">
+                            <h4 th:text="${division.name}">Відділ</h4>
+                            <span th:text="${#sets.size(division.users)} + ' користувачі'">0 користувачі</span>
+                        </div>
+                        <ul class="employee-list">
+                            <li th:each="user : ${division.users}">
+                                <div>
+                                    <strong th:text="${user.email}">email</strong>
+                                    <span th:text="${(user.firstName ?: '') + ' ' + (user.lastName ?: '')}">Ім'я Прізвище</span>
+                                </div>
+                                <a th:href="'mailto:' + ${user.email}" th:text="${user.email}">email</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+</body>
+</html>

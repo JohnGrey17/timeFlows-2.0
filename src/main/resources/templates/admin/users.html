@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Користувачі</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a th:href="@{/api/overtime}">Over time</a>
+            <a th:href="@{/api/settings}">Налаштування</a>
+            <a class="active" th:href="@{/api/users}">Користувачі</a>
+            <a th:href="@{/api/overtime/review}">Перевірка overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow" th:text="${#authorization.expression('hasRole(''ADMIN'')') ? 'Admin' : 'Manager'}">Admin</p>
+                <h1>Користувачі</h1>
+            </div>
+            <div class="user-chip"
+                 th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
+                user@vyriy.com
+            </div>
+        </header>
+
+        <div class="toolbar-split">
+            <form class="calendar-toolbar" method="get" th:action="@{/api/users}">
+                <label>
+                    Відділ
+                    <select name="divisionId">
+                        <option value="" sec:authorize="hasRole('ADMIN')">Всі відділи</option>
+                        <option th:each="division : ${divisions}"
+                                th:value="${division.id}"
+                                th:selected="${division.id == selectedDivisionId}"
+                                th:text="${division.department.name + ' / ' + division.name}"></option>
+                    </select>
+                </label>
+                <button type="submit">Показати</button>
+            </form>
+            <a class="link-button" sec:authorize="hasRole('ADMIN')" th:href="@{/api/users/deactivated}">Деактивовані користувачі</a>
+        </div>
+
+        <section class="table-panel">
+            <table class="data-table">
+                <thead>
+                <tr>
+                    <th>Користувач</th>
+                    <th>Відділ</th>
+                    <th>Ролі</th>
+                    <th>ЗП</th>
+                    <th>Дії</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}">
+                    <td>
+                        <strong th:text="${user.email}">email</strong>
+                        <span th:text="${(user.firstName ?: '') + ' ' + (user.lastName ?: '')}">Ім'я Прізвище</span>
+                    </td>
+                    <td th:text="${user.division.department.name + ' / ' + user.division.name}">Department / Division</td>
+                    <td>
+                        <span th:each="role, iter : ${user.roles}" th:text="${role + (iter.last ? '' : ', ')}">ROLE</span>
+                    </td>
+                    <td>
+                        <form th:action="@{/api/users/{id}/salary(id=${user.id})}" method="post" class="inline-form">
+                            <input type="number" name="salary" min="0" step="0.01" th:value="${user.salary}">
+                            <button type="submit">OK</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form sec:authorize="hasRole('ADMIN')"
+                              th:action="@{/api/divisions/{divisionId}/manager(divisionId=${user.division.id})}"
+                              method="post"
+                              class="inline-form">
+                            <input type="hidden" name="userId" th:value="${user.id}">
+                            <button type="submit">Керівник</button>
+                        </form>
+                        <form sec:authorize="hasRole('ADMIN')"
+                              th:action="@{/api/users/{id}/deactivate(id=${user.id})}"
+                              method="post"
+                              class="inline-form">
+                            <input type="text" name="reason" placeholder="Причина" required>
+                            <button type="submit" class="danger-button">Деактивувати</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

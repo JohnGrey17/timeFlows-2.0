@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Overtime review</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a th:href="@{/api/overtime}">Over time</a>
+            <a th:href="@{/api/settings}">Налаштування</a>
+            <a th:href="@{/api/users}">Користувачі</a>
+            <a class="active" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form">
+            <button type="submit">Вийти</button>
+        </form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Review</p>
+                <h1>Overtime відділу</h1>
+            </div>
+            <div class="user-chip"
+                 th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
+                user@vyriy.com
+            </div>
+        </header>
+
+        <div class="department-context" th:if="${selectedDivision != null}">
+            <strong th:text="${selectedDivision.department.name + ' / ' + selectedDivision.name}">Division</strong>
+            <span th:text="${selectedDivision.manager != null ? 'Керівник: ' + selectedDivision.manager.email : 'Керівник не призначений'}">Manager</span>
+        </div>
+
+        <form class="review-filters" method="get" th:action="@{/api/overtime/review}">
+            <div class="segmented-control">
+                <label><input type="radio" name="mode" value="employee" th:checked="${mode == 'employee'}"> Співробітник</label>
+                <label><input type="radio" name="mode" value="division" th:checked="${mode != 'employee'}"> Відділ</label>
+            </div>
+            <select name="divisionId">
+                <option th:each="division : ${divisions}"
+                        th:value="${division.id}"
+                        th:selected="${division.id == selectedDivisionId}"
+                        th:text="${division.department.name + ' / ' + division.name}"></option>
+            </select>
+            <select name="userId">
+                <option th:each="user : ${users}"
+                        th:value="${user.id}"
+                        th:selected="${user.id == selectedUserId}"
+                        th:text="${user.email}"></option>
+            </select>
+            <select name="month">
+                <option th:each="monthOption : ${months}"
+                        th:value="${monthOption.value()}"
+                        th:selected="${monthOption.value() == selectedMonth.monthValue}"
+                        th:text="${monthOption.label()}"></option>
+            </select>
+            <select name="year">
+                <option th:each="yearValue : ${years}" th:value="${yearValue}" th:selected="${yearValue == selectedMonth.year}" th:text="${yearValue}"></option>
+            </select>
+            <button type="submit">Показати</button>
+        </form>
+
+        <section th:if="${mode == 'employee'}" class="calendar-shell">
+            <div class="calendar-weekdays">
+                <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
+            </div>
+            <div class="calendar-grid">
+                <div class="calendar-day"
+                     th:each="day : ${calendarDays}"
+                     th:classappend="${day.cssClass()}"
+                     th:data-info="${day.overtime() != null ? ('Дата: ' + day.overtime().workDate + '\nГодини: ' + day.overtime().hours + '\nОпис: ' + day.overtime().description + '\nСтатус: ' + day.overtime().status + (day.overtime().managerComment != null ? '\nКоментар: ' + day.overtime().managerComment : '')) : ''}"
+                     onclick="this.dataset.info && alert(this.dataset.info)">
+                    <span class="day-number" th:text="${day.dayOfMonth()}">1</span>
+                    <span class="overtime-chip" th:if="${day.overtime() != null}" th:text="${day.overtime().hours + ' h'}">2 h</span>
+                    <form th:if="${day.overtime() != null && day.overtime().status.name() == 'PENDING'}" method="post" class="review-actions">
+                        <input type="hidden" name="overtimeId" th:value="${day.overtime().id}">
+                        <input type="text" name="comment" placeholder="Коментар">
+                        <button type="submit" th:formaction="@{/api/overtime/review/approve}">OK</button>
+                        <button type="submit" class="danger-button" th:formaction="@{/api/overtime/review/reject}">No</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <section th:if="${mode != 'employee'}" class="table-panel overtime-matrix-wrap">
+            <table class="data-table overtime-matrix">
+                <thead>
+                <tr>
+                    <th>Користувач</th>
+                    <th th:each="day : ${#numbers.sequence(1, divisionDays)}" th:text="${day}">1</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="row : ${divisionRows}">
+                    <td>
+                        <strong th:text="${row.user().email}">user@vyriy.com</strong>
+                        <span th:text="${(row.user().firstName ?: '') + ' ' + (row.user().lastName ?: '')}">Ім'я Прізвище</span>
+                    </td>
+                    <td th:each="day : ${row.days()}"
+                        th:class="${day.cssClass()}"
+                        th:data-info="${day.overtime() != null ? ('Користувач: ' + row.user().email + '\nДата: ' + day.overtime().workDate + '\nГодини: ' + day.overtime().hours + '\nОпис: ' + day.overtime().description + '\nСтатус: ' + day.overtime().status + (day.overtime().managerComment != null ? '\nКоментар: ' + day.overtime().managerComment : '')) : ''}"
+                        onclick="this.dataset.info && alert(this.dataset.info)">
+                        <span th:if="${day.overtime() != null}" th:text="${day.overtime().hours + 'h'}">2h</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

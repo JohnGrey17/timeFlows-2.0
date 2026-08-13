@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 009-add-division-manager
+      author: codex
+      changes:
+        - addColumn:
+            tableName: divisions
+            columns:
+              - column:
+                  name: manager_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: divisions
+            baseColumnNames: manager_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_divisions_manager
+        - addUniqueConstraint:
+            tableName: divisions
+            columnNames: manager_id
+            constraintName: uk_division_manager

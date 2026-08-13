@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 010-add-overtime-resubmission-reason
+      author: codex
+      changes:
+        - addColumn:
+            tableName: overtimes
+            columns:
+              - column:
+                  name: resubmission_reason
+                  type: VARCHAR(1000)
