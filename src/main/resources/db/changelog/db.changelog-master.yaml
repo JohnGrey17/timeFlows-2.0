@@ -19,3 +19,9 @@ databaseChangeLog:
       file: db/changelog/changes/009-add-division-manager.yaml
   - include:
       file: db/changelog/changes/010-add-overtime-resubmission-reason.yaml
+  - include:
+      file: db/changelog/changes/012-create-bonuses-table.yaml
+  - include:
+      file: db/changelog/changes/013-add-bonus-categories.yaml
+  - include:
+      file: db/changelog/changes/014-reset-organization-sequences.yaml

@@ -14,6 +14,8 @@ public interface OvertimeService {
 
     List<Overtime> findDivisionMonth(Long divisionId, YearMonth month);
 
+    List<Overtime> findDepartmentMonth(Long departmentId, YearMonth month);
+
     Overtime findByIdForUser(Long id, String userEmail);
 
     Overtime findById(Long id);

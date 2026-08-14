@@ -4,17 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>timeFlows | Налаштування</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app-shell.js}"></script>
 </head>
 <body class="app-body">
 <div class="app-layout">
     <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
-            <a th:href="@{/api/overtime}">Over time</a>
-            <a class="active" th:href="@{/api/settings}">Налаштування</a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}">Користувачі</a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+            <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a sec:authorize="hasRole('ADMIN')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a class="active" th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">
             <button type="submit">Вийти</button>

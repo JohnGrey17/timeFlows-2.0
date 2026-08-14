@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Comparator;
 
 @Controller
 public class UsersPageController {
@@ -37,20 +38,38 @@ public class UsersPageController {
 
     @GetMapping("/api/users")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public String users(@RequestParam(required = false) Long divisionId, Authentication authentication, Model model) {
+    public String users(@RequestParam(required = false) Long departmentId,
+                        @RequestParam(required = false) Long divisionId,
+                        @RequestParam(defaultValue = "department") String groupBy,
+                        Authentication authentication, Model model) {
         User currentUser = userService.findByEmail(authentication.getName());
         boolean admin = currentUser.getRoles().contains(Role.ADMIN);
+        Long effectiveDepartmentId = admin ? departmentId : currentUser.getDivision().getDepartment().getId();
         Long effectiveDivisionId = admin ? divisionId : currentUser.getDivision().getId();
-        List<User> users = effectiveDivisionId == null
-                ? userService.findActiveUsers()
-                : userService.findActiveUsersByDivision(effectiveDivisionId);
+        List<User> users = effectiveDivisionId != null
+                ? userService.findActiveUsersByDivision(effectiveDivisionId)
+                : effectiveDepartmentId != null
+                ? userService.findActiveUsersByDepartment(effectiveDepartmentId)
+                : userService.findActiveUsers();
+        groupBy = "role".equals(groupBy) ? "role" : "department";
+        Comparator<User> byName = Comparator
+                .comparing((User user) -> user.getLastName() == null ? "" : user.getLastName(), String.CASE_INSENSITIVE_ORDER)
+                .thenComparing(user -> user.getFirstName() == null ? "" : user.getFirstName(), String.CASE_INSENSITIVE_ORDER);
+        Comparator<User> comparator = "role".equals(groupBy)
+                ? Comparator.comparingInt(this::roleRank).thenComparing(byName)
+                : Comparator.comparing((User user) -> user.getDivision().getName(), String.CASE_INSENSITIVE_ORDER).thenComparing(byName);
+        users = users.stream().sorted(comparator).toList();
 
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("users", users);
         model.addAttribute("departments", admin ? departmentService.findAll() : List.of(currentUser.getDivision().getDepartment()));
-        model.addAttribute("divisions", admin ? divisionService.findAll() : List.of(currentUser.getDivision()));
+        model.addAttribute("divisions", admin
+                ? (effectiveDepartmentId == null ? List.of() : divisionService.findByDepartment(effectiveDepartmentId))
+                : List.of(currentUser.getDivision()));
+        model.addAttribute("selectedDepartmentId", effectiveDepartmentId);
         model.addAttribute("selectedDivisionId", effectiveDivisionId);
         model.addAttribute("activePage", "users");
+        model.addAttribute("groupBy", groupBy);
         return "admin/users";
     }
 
@@ -65,24 +84,36 @@ public class UsersPageController {
 
     @PostMapping("/api/users/{id}/salary")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public String updateSalary(@PathVariable Long id, @RequestParam BigDecimal salary, Authentication authentication) {
+    public String updateSalary(@PathVariable Long id, @RequestParam BigDecimal salary,
+                               @RequestParam(required = false) Long departmentId,
+                               @RequestParam(required = false) Long divisionId,
+                               @RequestParam(defaultValue = "department") String groupBy,
+                               @RequestParam(required = false) String returnTo,
+                               Authentication authentication) {
         assertCanManage(id, authentication);
         userService.updateSalary(id, salary);
-        return "redirect:/api/users";
+        if ("summary".equals(returnTo)) return "redirect:/api/overtime/review?mode=division&view=summary";
+        return "review".equals(returnTo) ? "redirect:/api/overtime/review?mode=division" : usersRedirect(departmentId, divisionId, groupBy);
     }
 
     @PostMapping("/api/users/{id}/deactivate")
-    @PreAuthorize("hasRole('ADMIN')")
-    public String deactivate(@PathVariable Long id, @RequestParam String reason) {
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public String deactivate(@PathVariable Long id, @RequestParam String reason, Authentication authentication,
+                             @RequestParam(required = false) Long departmentId,
+                             @RequestParam(required = false) Long divisionId,
+                             @RequestParam(defaultValue = "department") String groupBy) {
+        assertCanManage(id, authentication);
         userService.deactivate(id, reason);
-        return "redirect:/api/users";
+        return usersRedirect(departmentId, divisionId, groupBy);
     }
 
     @PostMapping("/api/divisions/{divisionId}/manager")
     @PreAuthorize("hasRole('ADMIN')")
-    public String assignManager(@PathVariable Long divisionId, @RequestParam Long userId) {
+    public String assignManager(@PathVariable Long divisionId, @RequestParam Long userId,
+                                @RequestParam(required = false) Long departmentId,
+                                @RequestParam(defaultValue = "department") String groupBy) {
         userService.assignDivisionManager(divisionId, userId);
-        return "redirect:/api/users?divisionId=" + divisionId;
+        return usersRedirect(departmentId, divisionId, groupBy);
     }
 
     private void assertCanManage(Long userId, Authentication authentication) {
@@ -94,5 +125,20 @@ public class UsersPageController {
         if (!targetUser.getDivision().getId().equals(currentUser.getDivision().getId())) {
             throw new UserException("Керівник може редагувати тільки користувачів свого відділу");
         }
+    }
+
+    private String usersRedirect(Long departmentId, Long divisionId, String groupBy) {
+        StringBuilder redirect = new StringBuilder("redirect:/api/users?");
+        if (departmentId != null) redirect.append("departmentId=").append(departmentId).append('&');
+        if (divisionId != null) redirect.append("divisionId=").append(divisionId);
+        if (redirect.charAt(redirect.length() - 1) != '?') redirect.append('&');
+        redirect.append("groupBy=").append("role".equals(groupBy) ? "role" : "department");
+        return redirect.toString();
+    }
+
+    private int roleRank(User user) {
+        if (user.getRoles().contains(Role.ADMIN)) return 0;
+        if (user.getRoles().contains(Role.MANAGER)) return 1;
+        return 2;
     }
 }

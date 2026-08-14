@@ -33,6 +33,13 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     @Transactional
     public Department create(Department department) {
+        if (department.getName() == null || department.getName().isBlank()) {
+            throw new DepartmentException("Назва департаменту обов'язкова");
+        }
+        department.setName(department.getName().trim());
+        if (departmentRepository.existsByNameIgnoreCase(department.getName())) {
+            throw new DepartmentException("Департамент з такою назвою вже існує");
+        }
         return departmentRepository.save(department);
     }
 

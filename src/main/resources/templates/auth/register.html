@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>timeFlows | Реєстрація</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/organization-filters.js}"></script>
 </head>
 <body class="auth-body">
 <main class="auth-shell">
@@ -36,12 +38,20 @@
                 <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
             </label>
             <label>
-                Відділ
-                <select th:field="*{divisionId}">
-                    <option value="">Оберіть відділ</option>
+                Департамент
+                <select id="departmentFilter" data-organization-department>
+                    <option value="">Оберіть департамент</option>
+                    <option th:each="department : ${departments}" th:value="${department.id}" th:text="${department.name}"></option>
+                </select>
+            </label>
+            <label>
+                Підвідділ
+                <select th:field="*{divisionId}" data-organization-division>
+                    <option value="">Оберіть підвідділ</option>
                     <option th:each="division : ${divisions}"
                             th:value="${division.id}"
-                            th:text="${division.department.name + ' / ' + division.name}"></option>
+                            th:data-department-id="${division.department.id}"
+                            th:text="${division.name}"></option>
                 </select>
                 <span class="field-error" th:if="${#fields.hasErrors('divisionId')}" th:errors="*{divisionId}"></span>
             </label>

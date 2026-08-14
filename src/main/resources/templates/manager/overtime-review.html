@@ -1,20 +1,25 @@
 <!DOCTYPE html>
-<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>timeFlows | Overtime review</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app-shell.js}"></script><script defer th:src="@{/js/organization-filters.js}"></script><script defer th:src="@{/js/overtime-review.js}"></script>
 </head>
 <body class="app-body">
 <div class="app-layout">
     <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
-            <a th:href="@{/api/overtime}">Over time</a>
-            <a th:href="@{/api/settings}">Налаштування</a>
-            <a th:href="@{/api/users}">Користувачі</a>
-            <a class="active" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+            <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+            <a class="active" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
+            <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a sec:authorize="hasRole('ADMIN')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">
             <button type="submit">Вийти</button>
@@ -25,7 +30,7 @@
         <header class="topbar">
             <div>
                 <p class="eyebrow">Review</p>
-                <h1>Overtime відділу</h1>
+                <div class="section-title-with-help"><h1>Перепрацювання відділу</h1><span class="help-tip" tabindex="0" data-tooltip="Тут можна переглядати перепрацювання працівників вибраного відділу, відкривати деталі, погоджувати або відхиляти запити та працювати з місячними бонусами.">?</span></div>
             </div>
             <div class="user-chip"
                  th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
@@ -35,25 +40,26 @@
 
         <div class="department-context" th:if="${selectedDivision != null}">
             <strong th:text="${selectedDivision.department.name + ' / ' + selectedDivision.name}">Division</strong>
-            <span th:text="${selectedDivision.manager != null ? 'Керівник: ' + selectedDivision.manager.email : 'Керівник не призначений'}">Manager</span>
+            <span th:text="${selectedDivision.manager != null ? 'Керівник: ' + (selectedDivision.manager.lastName ?: '') + ' ' + (selectedDivision.manager.firstName ?: '') + ' — ' + selectedDivision.manager.email : 'Керівник не призначений'}">Manager</span>
         </div>
 
+        <div class="review-view-switch" role="group" aria-label="Режим перегляду">
+            <a th:classappend="${viewMode == 'matrix'} ? ' active'" th:href="@{/api/overtime/review(departmentId=${selectedDepartmentId},divisionId=${selectedDivisionId},month=${selectedMonth.monthValue},year=${selectedMonth.year},view='matrix')}">Календар перепрацювань</a>
+            <a th:classappend="${viewMode == 'summary'} ? ' active'" th:href="@{/api/overtime/review(departmentId=${selectedDepartmentId},divisionId=${selectedDivisionId},month=${selectedMonth.monthValue},year=${selectedMonth.year},view='summary')}">Фінансовий підсумок</a>
+        </div>
         <form class="review-filters" method="get" th:action="@{/api/overtime/review}">
-            <div class="segmented-control">
-                <label><input type="radio" name="mode" value="employee" th:checked="${mode == 'employee'}"> Співробітник</label>
-                <label><input type="radio" name="mode" value="division" th:checked="${mode != 'employee'}"> Відділ</label>
-            </div>
-            <select name="divisionId">
+            <input type="hidden" name="mode" value="division">
+            <input type="hidden" name="view" th:value="${viewMode}">
+            <select name="departmentId" data-organization-department data-auto-submit>
+                <option th:each="department:${departments}" th:value="${department.id}" th:selected="${department.id == selectedDepartmentId}" th:text="${department.name}"></option>
+            </select>
+            <select name="divisionId" data-organization-division>
+                <option value="">Всі підвідділи</option>
                 <option th:each="division : ${divisions}"
                         th:value="${division.id}"
+                        th:data-department-id="${division.department.id}"
                         th:selected="${division.id == selectedDivisionId}"
                         th:text="${division.department.name + ' / ' + division.name}"></option>
-            </select>
-            <select name="userId">
-                <option th:each="user : ${users}"
-                        th:value="${user.id}"
-                        th:selected="${user.id == selectedUserId}"
-                        th:text="${user.email}"></option>
             </select>
             <select name="month">
                 <option th:each="monthOption : ${months}"
@@ -72,47 +78,64 @@
                 <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
             </div>
             <div class="calendar-grid">
-                <div class="calendar-day"
+                    <div class="calendar-day overtime-info-trigger"
                      th:each="day : ${calendarDays}"
                      th:classappend="${day.cssClass()}"
                      th:data-info="${day.overtime() != null ? ('Дата: ' + day.overtime().workDate + '\nГодини: ' + day.overtime().hours + '\nОпис: ' + day.overtime().description + '\nСтатус: ' + day.overtime().status + (day.overtime().managerComment != null ? '\nКоментар: ' + day.overtime().managerComment : '')) : ''}"
-                     onclick="this.dataset.info && alert(this.dataset.info)">
+                     th:data-overtime-id="${day.overtime() != null ? day.overtime().id : ''}" th:data-user="${selectedUserDisplay}" th:data-date="${day.date()}" th:data-hours="${day.overtime() != null ? day.overtime().hours : ''}" th:data-description="${day.overtime() != null ? day.overtime().description : ''}" th:data-status="${day.overtime() != null ? day.overtime().status : ''}" th:data-comment="${day.overtime() != null ? day.overtime().managerComment : ''}" th:data-resubmission-reason="${day.overtime() != null ? day.overtime().resubmissionReason : ''}">
                     <span class="day-number" th:text="${day.dayOfMonth()}">1</span>
                     <span class="overtime-chip" th:if="${day.overtime() != null}" th:text="${day.overtime().hours + ' h'}">2 h</span>
-                    <form th:if="${day.overtime() != null && day.overtime().status.name() == 'PENDING'}" method="post" class="review-actions">
-                        <input type="hidden" name="overtimeId" th:value="${day.overtime().id}">
-                        <input type="text" name="comment" placeholder="Коментар">
-                        <button type="submit" th:formaction="@{/api/overtime/review/approve}">OK</button>
-                        <button type="submit" class="danger-button" th:formaction="@{/api/overtime/review/reject}">No</button>
-                    </form>
                 </div>
             </div>
         </section>
 
-        <section th:if="${mode != 'employee'}" class="table-panel overtime-matrix-wrap">
+        <div class="review-legend" th:if="${viewMode == 'matrix'}"><span><i class="legend-box legend-approved"></i> Погоджено керівником</span><span><i class="legend-box legend-pending"></i> На розгляді у керівника</span><span><i class="legend-box legend-rejected"></i> Не погоджено керівником</span></div>
+        <section th:if="${viewMode == 'summary'}" class="table-panel financial-summary-wrap">
+            <table class="data-table financial-summary-table">
+                <thead><tr class="financial-group-row"><th rowspan="2">Співробітник</th><th class="bonus-category-group" th:colspan="${#lists.size(categories)}">Категорії бонусів</th><th rowspan="2">Базова ставка</th><th rowspan="2">Сума перепрацювань</th><th rowspan="2">Сума до сплати</th></tr><tr class="financial-category-row"><th th:each="category:${categories}" th:text="${category.name}">Категорія</th></tr></thead>
+                <tbody><tr th:each="row:${divisionRows}">
+                    <td><strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong></td>
+                    <td th:each="category:${categories}"><button type="button" class="summary-amount-button" th:data-summary-modal="${'categorySummary-'+row.user().id+'-'+category.id}" th:text="${categoryTotalsByUser.get(row.user().id).get(category.id)}">0</button></td>
+                    <td><span th:unless="${admin}" th:text="${row.baseSalary()}">0</span><form th:if="${admin}" class="summary-salary-form" method="post" th:action="@{/api/users/{id}/salary(id=${row.user().id})}"><input type="hidden" name="returnTo" value="summary"><input type="number" name="salary" min="0" step="0.01" th:value="${row.baseSalary()}" required><button type="submit">Зберегти</button></form></td>
+                    <td><button type="button" class="summary-amount-button" th:data-summary-modal="${'overtimeSummary-'+row.user().id}" th:text="${row.overtimeAmount()}">0</button></td>
+                    <td class="total-payment" th:text="${row.totalPayment()}">0</td>
+                </tr></tbody>
+            </table>
+            <th:block th:each="row:${divisionRows}">
+                <div class="modal-backdrop summary-detail-modal" th:each="category:${categories}" th:id="${'categorySummary-'+row.user().id+'-'+category.id}" hidden><section class="modal-panel"><div class="modal-header"><div><h2 th:text="${category.name}">Категорія бонусів</h2><p th:text="${(row.user().firstName ?: '')+' '+(row.user().lastName ?: '')}">Співробітник</p></div><button type="button" data-summary-close>×</button></div><form th:if="${admin}" class="summary-bonus-create" method="post" th:action="@{/api/bonuses}"><input type="hidden" name="returnTo" value="summary"><input type="hidden" name="userId" th:value="${row.user().id}"><input type="hidden" name="categoryId" th:value="${category.id}"><input type="number" name="amount" min="0.01" step="0.01" required placeholder="Сума бонусу"><input name="description" maxlength="1000" placeholder="Додатковий опис"><button type="submit">Додати бонус</button></form><div class="summary-detail-list"><article th:each="bonus:${bonusesByUser.get(row.user().id)}" th:if="${bonus.category.id == category.id && bonus.status.name() == 'APPROVED'}"><div class="summary-bonus-info"><strong th:text="${bonus.amount}">0</strong><span th:text="${bonus.description ?: 'Без додаткового опису'}">Опис</span></div><small th:text="${#temporals.format(bonus.createdAt,'dd.MM.yyyy')}">Дата</small><div th:if="${admin}" class="summary-bonus-admin"><form method="post" th:action="@{/api/bonuses/{id}/update(id=${bonus.id})}"><input type="hidden" name="returnTo" value="summary"><input type="hidden" name="categoryId" th:value="${category.id}"><input type="number" name="amount" min="0.01" step="0.01" th:value="${bonus.amount}" required><input name="description" th:value="${bonus.description}" maxlength="1000" placeholder="Опис"><button type="submit">Зберегти</button></form><form method="post" th:action="@{/api/bonuses/{id}/delete(id=${bonus.id})}"><input type="hidden" name="returnTo" value="summary"><button type="submit" class="danger-button">Видалити</button></form></div></article><p th:if="${categoryTotalsByUser.get(row.user().id).get(category.id).signum() == 0}">Погоджених бонусів у цій категорії за вибраний місяць немає.</p></div></section></div>
+                <div class="modal-backdrop summary-detail-modal" th:id="${'overtimeSummary-'+row.user().id}" hidden><section class="modal-panel"><div class="modal-header"><div><h2>Перепрацювання, що увійшли до суми</h2><p th:text="${(row.user().firstName ?: '')+' '+(row.user().lastName ?: '')}">Співробітник</p></div><button type="button" data-summary-close>×</button></div><div class="summary-detail-list"><article th:each="detail:${row.overtimeDetails()}"><div><strong th:text="${detail.amount()}">0</strong><span th:text="${detail.description()}">Опис</span></div><small th:text="${#temporals.format(detail.date(),'dd.MM.yyyy')+' · '+detail.hours()+' год'}">Дата</small></article><p th:if="${#lists.isEmpty(row.overtimeDetails())}">Погоджених перепрацювань за вибраний місяць немає.</p></div></section></div>
+            </th:block>
+        </section>
+        <section th:if="${viewMode == 'matrix'}" class="table-panel overtime-matrix-wrap">
             <table class="data-table overtime-matrix">
                 <thead>
                 <tr>
                     <th>Користувач</th>
-                    <th th:each="day : ${#numbers.sequence(1, divisionDays)}" th:text="${day}">1</th>
+                    <th th:each="header : ${dayHeaders}"><span th:text="${header.day()}">1</span><small class="weekday-label" th:text="${header.weekday()}">пн</small></th>
+                    <th class="bonus-column">Бонуси</th>
+                    <th class="payment-column">Базова ставка</th><th class="payment-column">Години перепрацювань</th><th class="payment-column">Сума перепрацювань</th><th class="payment-column">Сума до сплати</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr th:each="row : ${divisionRows}">
                     <td>
-                        <strong th:text="${row.user().email}">user@vyriy.com</strong>
-                        <span th:text="${(row.user().firstName ?: '') + ' ' + (row.user().lastName ?: '')}">Ім'я Прізвище</span>
+                        <strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong>
                     </td>
-                    <td th:each="day : ${row.days()}"
-                        th:class="${day.cssClass()}"
+                    <td th:each="day : ${row.days()}" class="overtime-info-trigger"
+                        th:classappend="${day.cssClass()}"
                         th:data-info="${day.overtime() != null ? ('Користувач: ' + row.user().email + '\nДата: ' + day.overtime().workDate + '\nГодини: ' + day.overtime().hours + '\nОпис: ' + day.overtime().description + '\nСтатус: ' + day.overtime().status + (day.overtime().managerComment != null ? '\nКоментар: ' + day.overtime().managerComment : '')) : ''}"
-                        onclick="this.dataset.info && alert(this.dataset.info)">
+                        th:data-overtime-id="${day.overtime() != null ? day.overtime().id : ''}" th:data-user="${(row.user().lastName ?: '') + ' ' + (row.user().firstName ?: '') + ' — ' + row.user().email}" th:data-date="${day.date()}" th:data-hours="${day.overtime() != null ? day.overtime().hours : ''}" th:data-description="${day.overtime() != null ? day.overtime().description : ''}" th:data-status="${day.overtime() != null ? day.overtime().status : ''}" th:data-comment="${day.overtime() != null ? day.overtime().managerComment : ''}" th:data-resubmission-reason="${day.overtime() != null ? day.overtime().resubmissionReason : ''}">
                         <span th:if="${day.overtime() != null}" th:text="${day.overtime().hours + 'h'}">2h</span>
                     </td>
+                    <td class="bonus-column"><button type="button" class="bonus-total-button" th:data-bonus-modal="${'bonusModal-'+row.user().id}" th:data-user-id="${row.user().id}" th:data-open="${openBonusUserId==row.user().id}" th:data-salary="${row.baseSalary()}"><span th:text="${row.bonusTotal()}">0</span><span class="pending-badge" th:if="${pendingBonusCounts.get(row.user().id)!=null && pendingBonusCounts.get(row.user().id)>0}" th:text="${pendingBonusCounts.get(row.user().id)}">1</span></button></td>
+                    <td class="payment-column"><form class="salary-cell-form" method="post" th:action="@{/api/users/{id}/salary(id=${row.user().id})}"><input type="hidden" name="returnTo" value="review"><input type="number" name="salary" min="0" step="0.01" th:value="${row.baseSalary()}" required aria-label="Базова ставка"><button type="submit">OK</button></form></td><td class="payment-column" th:text="${row.overtimeHours()}">0</td><td class="payment-column" th:text="${row.overtimeAmount()}">0</td><td class="payment-column total-payment" th:text="${row.totalPayment()}">0</td>
                 </tr>
                 </tbody>
             </table>
         </section>
+        <section th:if="${mode == 'employee'}" class="settings-panel employee-bonuses"><h2>Бонуси за вибраний місяць</h2><p th:if="${#lists.isEmpty(employeeBonuses)}">Бонусів немає.</p><div class="bonus-item" th:each="bonus:${employeeBonuses}"><strong th:text="${bonus.amount}"></strong><span th:text="${bonus.description}"></span><small th:text="${#temporals.format(bonus.createdAt,'dd.MM.yyyy HH:mm')+' · '+bonus.status}"></small></div></section>
+        <div class="modal-backdrop" id="reviewOvertimeModal" hidden><section class="modal-panel info-modal"><div class="modal-header"><h2>Інформація про overtime</h2><button type="button" data-review-close>×</button></div><dl class="overtime-details"><dt>Користувач</dt><dd data-info-user></dd><dt>Дата</dt><dd data-info-date></dd><dt>Години</dt><dd data-info-hours></dd><dt>Опис</dt><dd data-info-description></dd><dt>Статус</dt><dd data-info-status></dd><dt>Коментар керівника</dt><dd data-info-comment></dd></dl><div class="modal-review-actions" data-review-actions hidden><form method="post" th:action="@{/api/overtime/review/approve}"><input type="hidden" name="overtimeId" data-decision-overtime-id><input name="comment" maxlength="1000" placeholder="Коментар до погодження (необов’язково)"><button type="submit">Погодити</button></form><form method="post" th:action="@{/api/overtime/review/reject}"><input type="hidden" name="overtimeId" data-decision-overtime-id><input name="comment" maxlength="1000" required placeholder="Причина відхилення"><button type="submit" class="danger-button">Відхилити</button></form></div></section></div>
+        <div class="modal-backdrop bonus-review-modal" th:each="row:${divisionRows}" th:id="${'bonusModal-'+row.user().id}" hidden><section class="modal-panel bonus-modal-panel"><div class="modal-header"><div><h2>Бонуси співробітника</h2><p th:text="${(row.user().lastName ?: '')+' '+(row.user().firstName ?: '')+' — '+row.user().email}"></p></div><button type="button" data-bonus-close>×</button></div><p class="bonus-modal-total">Загальна сума погоджених бонусів: <strong th:text="${row.bonusTotal()}">0</strong></p><form method="post" th:action="@{/api/bonuses}" class="bonus-create-inline"><input type="hidden" name="returnTo" value="review"><input type="hidden" name="userId" th:value="${row.user().id}"><input type="number" name="amount" min="0.01" step="0.01" required placeholder="Сума"><input name="description" required maxlength="1000" placeholder="Опис бонусу"><button type="submit">Створити</button></form><div class="bonus-modal-list"><p th:if="${#lists.isEmpty(bonusesByUser.get(row.user().id))}">Бонусів за цей місяць немає.</p><article class="bonus-modal-item" th:each="bonus:${bonusesByUser.get(row.user().id)}"><div><strong th:text="${bonus.amount}"></strong><span th:text="${bonus.description}"></span><small th:text="${#temporals.format(bonus.createdAt,'dd.MM.yyyy HH:mm')+' · '+bonus.status}"></small></div><form th:if="${admin || bonus.status.name()=='PENDING'}" method="post" th:action="@{/api/bonuses/{id}/update(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input type="number" name="amount" min="0.01" step="0.01" th:value="${bonus.amount}" required><input name="description" th:value="${bonus.description}" required><button>Зберегти</button></form><div class="bonus-item-actions"><form th:if="${bonus.status.name()=='PENDING'}" method="post" th:action="@{/api/bonuses/{id}/approve(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" placeholder="Коментар"><button>Погодити</button></form><form th:if="${bonus.status.name()=='PENDING'}" method="post" th:action="@{/api/bonuses/{id}/reject(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" required placeholder="Причина"><button class="danger-button">Відхилити</button></form><form th:if="${admin || bonus.status.name()=='PENDING'}" method="post" th:action="@{/api/bonuses/{id}/delete(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><button class="danger-button">Видалити</button></form></div></article></div></section></div>
     </main>
 </div>
 </body>

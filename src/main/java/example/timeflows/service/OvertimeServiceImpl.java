@@ -5,6 +5,7 @@ import example.timeflows.exception.OvertimeException;
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
 import example.timeflows.model.User;
+import example.timeflows.model.Role;
 import example.timeflows.repository.OvertimeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,13 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Overtime> findDepartmentMonth(Long departmentId, YearMonth month) {
+        return overtimeRepository.findByUserDivisionDepartmentIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(
+                departmentId, month.atDay(1), month.atEndOfMonth());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Overtime findByIdForUser(Long id, String userEmail) {
         return overtimeRepository.findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new OvertimeException("Overtime з id " + id + " не знайдено"));
@@ -96,7 +104,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional
     public Overtime update(String userEmail, Long id, OvertimeRequest request) {
         Overtime overtime = findByIdForUser(id, userEmail);
-        assertPending(overtime);
+        assertOwnerCanChange(userEmail, overtime);
         validateHours(request);
         overtimeRepository.findByUserEmailAndWorkDate(userEmail, request.getWorkDate())
                 .filter(existing -> !existing.getId().equals(id))
@@ -115,7 +123,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional
     public void delete(String userEmail, Long id) {
         Overtime overtime = findByIdForUser(id, userEmail);
-        assertPending(overtime);
+        assertOwnerCanChange(userEmail, overtime);
         overtimeRepository.delete(overtime);
     }
 
@@ -153,6 +161,9 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Override
     @Transactional
     public Overtime reject(Long id, String managerComment) {
+        if (managerComment == null || managerComment.isBlank()) {
+            throw new OvertimeException("Причина відхилення є обов'язковою");
+        }
         Overtime overtime = findById(id);
         assertAwaitingDecision(overtime);
         overtime.setStatus(OvertimeStatus.REJECTED);
@@ -176,6 +187,15 @@ public class OvertimeServiceImpl implements OvertimeService {
     private void assertPending(Overtime overtime) {
         if (overtime.getStatus() != OvertimeStatus.PENDING) {
             throw new OvertimeException("Погоджений або відхилений overtime не можна змінювати");
+        }
+    }
+
+    private void assertOwnerCanChange(String userEmail, Overtime overtime) {
+        if (overtime.getStatus() == OvertimeStatus.PENDING) return;
+        User user = userService.findByEmail(userEmail);
+        boolean privileged = user.getRoles().contains(Role.ADMIN) || user.getRoles().contains(Role.MANAGER);
+        if (!privileged || !YearMonth.from(overtime.getWorkDate()).equals(YearMonth.now())) {
+            throw new OvertimeException("Змінювати або видаляти завершений overtime може лише адміністратор чи керівник у поточному місяці");
         }
     }
 

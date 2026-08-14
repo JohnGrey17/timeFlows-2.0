@@ -39,10 +39,9 @@ public class SecurityConfig {
                                 "/api/login",
                                 "/api/register",
                                 "/css/**",
-                                "/h2-console/**",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html"
+                                "/js/**",
+                                "/images/**",
+                                "/favicon.ico"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

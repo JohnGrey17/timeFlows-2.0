@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: 013-add-bonus-categories
+      author: codex
+      changes:
+        - createTable:
+            tableName: bonus_categories
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints: { primaryKey: true, nullable: false }
+              - column:
+                  name: name
+                  type: VARCHAR(255)
+                  constraints: { nullable: false, unique: true }
+        - sql:
+            sql: "INSERT INTO bonus_categories (name) VALUES ('Щомісячний бонус для ПМ'), ('Перепрацювання'), ('Квартальний бонус'), ('Додатково погоджений бонус'), ('Відшкодування бензину')"
+        - addColumn:
+            tableName: bonuses
+            columns:
+              - column: { name: category_id, type: BIGINT }
+        - sql:
+            sql: "UPDATE bonuses SET category_id = (SELECT MIN(id) FROM bonus_categories) WHERE category_id IS NULL"
+        - addNotNullConstraint: { tableName: bonuses, columnName: category_id, columnDataType: BIGINT }
+        - addForeignKeyConstraint:
+            baseTableName: bonuses
+            baseColumnNames: category_id
+            referencedTableName: bonus_categories
+            referencedColumnNames: id
+            constraintName: fk_bonus_category

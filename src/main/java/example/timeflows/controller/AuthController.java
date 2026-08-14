@@ -34,6 +34,7 @@ public class AuthController {
     private final JwtService jwtService;
     private final UserService userService;
     private final DivisionService divisionService;
+    private final example.timeflows.service.DepartmentService departmentService;
     private final Duration jwtExpiration;
 
     public AuthController(
@@ -41,12 +42,14 @@ public class AuthController {
             JwtService jwtService,
             UserService userService,
             DivisionService divisionService,
+            example.timeflows.service.DepartmentService departmentService,
             @Value("${timeflows.jwt.expiration}") Duration jwtExpiration
     ) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userService = userService;
         this.divisionService = divisionService;
+        this.departmentService = departmentService;
         this.jwtExpiration = jwtExpiration;
     }
 
@@ -83,6 +86,7 @@ public class AuthController {
     @GetMapping("/api/register")
     public String registerPage(Model model) {
         model.addAttribute("registerRequest", new RegisterRequest());
+        model.addAttribute("departments", departmentService.findAll());
         model.addAttribute("divisions", divisionService.findAll());
         return "auth/register";
     }
@@ -95,6 +99,7 @@ public class AuthController {
     ) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("divisions", divisionService.findAll());
+            model.addAttribute("departments", departmentService.findAll());
             return "auth/register";
         }
 
@@ -103,6 +108,7 @@ public class AuthController {
             return "redirect:/api/login?registered";
         } catch (UserException exception) {
             model.addAttribute("divisions", divisionService.findAll());
+            model.addAttribute("departments", departmentService.findAll());
             model.addAttribute("registerError", exception.getMessage());
             return "auth/register";
         }

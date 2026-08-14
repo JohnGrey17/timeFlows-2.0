@@ -61,6 +61,8 @@ public class EmployeePageController {
         model.addAttribute("years", IntStream.rangeClosed(YearMonth.now().getYear() - 3, YearMonth.now().getYear() + 2).boxed().toList());
         model.addAttribute("activePage", "overtime");
         model.addAttribute("currentUser", currentUser);
+        model.addAttribute("privilegedCurrentMonth", selectedMonth.equals(YearMonth.now()) &&
+                (currentUser.getRoles().contains(example.timeflows.model.Role.ADMIN) || currentUser.getRoles().contains(example.timeflows.model.Role.MANAGER)));
         return "employee/overtime";
     }
 

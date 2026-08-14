@@ -5,19 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="_csrf" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:content="${_csrf.headerName}">
-    <title>timeFlows | Over time</title>
+    <title>timeFlows | Перепрацювання</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/overtime.js}"></script>
+    <script defer th:src="@{/js/app-shell.js}"></script>
 </head>
 <body class="app-body">
 <div class="app-layout">
     <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
-            <a class="active" th:href="@{/api/overtime}">Over time</a>
-            <a th:href="@{/api/settings}">Налаштування</a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}">Користувачі</a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}">Перевірка overtime</a>
+            <a class="active" th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a sec:authorize="hasRole('ADMIN')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">
             <button type="submit">Вийти</button>
@@ -27,7 +32,7 @@
     <main class="content">
         <header class="topbar">
             <div>
-                <h1>Over time</h1>
+                <h1>Перепрацювання</h1>
             </div>
             <div class="user-chip"
                  th:text="${(currentUser.firstName != null || currentUser.lastName != null) ? ((currentUser.firstName ?: '') + ' ' + (currentUser.lastName ?: '')) : currentUser.email}">
@@ -57,7 +62,7 @@
                 </label>
                 <button type="submit">Показати</button>
             </form>
-            <div class="status-legend" aria-label="Статуси overtime">
+            <div class="status-legend" aria-label="Статуси перепрацювань">
                 <span><i class="legend-box legend-approved"></i>Погоджено керівником</span>
                 <span><i class="legend-box legend-pending"></i>На розгляді у керівника</span>
                 <span><i class="legend-box legend-rejected"></i>Не погоджено керівником</span>
@@ -96,10 +101,10 @@
     </main>
 </div>
 
-<div class="modal-backdrop" id="overtimeModal" hidden>
+<div class="modal-backdrop" id="overtimeModal" th:data-privileged-current-month="${privilegedCurrentMonth}" hidden>
     <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <header class="modal-header">
-            <h2 id="modalTitle">Over time</h2>
+            <h2 id="modalTitle">Перепрацювання</h2>
             <button type="button" class="icon-button" data-close-modal aria-label="Закрити">x</button>
         </header>
         <p class="status-note" id="statusNote"></p>

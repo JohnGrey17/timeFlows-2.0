@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
+    boolean existsByNameIgnoreCase(String name);
+
     @EntityGraph(attributePaths = {"divisions", "divisions.department", "divisions.manager", "divisions.users", "divisions.users.roles"})
     List<Department> findAllByOrderByNameAsc();
 

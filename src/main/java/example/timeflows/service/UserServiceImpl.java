@@ -79,6 +79,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<User> findActiveUsersByDepartment(Long departmentId) {
+        return userRepository.findByDivisionDepartmentIdAndActiveTrueOrderByEmailAsc(departmentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public User findById(Long id) {
         return userRepository.findWithDivisionById(id)
                 .orElseThrow(() -> new UserException("Користувача з id " + id + " не знайдено"));

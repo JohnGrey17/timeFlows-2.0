@@ -77,7 +77,8 @@ function openOvertimeModal(day) {
 
     const status = day.dataset.status;
     const rejected = status === "REJECTED";
-    const locked = status === "APPROVED" || rejected;
+    const privilegedCurrentMonth = modal.dataset.privilegedCurrentMonth === "true";
+    const locked = (status === "APPROVED" || rejected) && !privilegedCurrentMonth;
 
     overtimeId.value = day.dataset.id || "";
     workDate.value = day.dataset.date;
@@ -92,8 +93,8 @@ function openOvertimeModal(day) {
     description.disabled = locked && !rejected;
     saveButton.hidden = locked;
     deleteButton.hidden = locked || !overtimeId.value;
-    resubmitButton.hidden = !rejected;
-    resubmissionGroup.hidden = !rejected;
+    resubmitButton.hidden = !rejected || privilegedCurrentMonth;
+    resubmissionGroup.hidden = !rejected || privilegedCurrentMonth;
     modal.hidden = false;
 }
 

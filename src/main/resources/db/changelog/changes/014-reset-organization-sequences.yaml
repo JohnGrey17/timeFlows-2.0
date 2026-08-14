@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - changeSet:
+      id: 014-reset-organization-sequences
+      author: codex
+      comment: Explicit seed identifiers must not collide with subsequent generated identifiers.
+      changes:
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE departments ALTER COLUMN id RESTART WITH 2
+        - sql:
+            dbms: h2
+            sql: ALTER TABLE divisions ALTER COLUMN id RESTART WITH 4

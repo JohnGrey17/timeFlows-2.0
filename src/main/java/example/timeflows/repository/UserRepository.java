@@ -27,8 +27,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @EntityGraph(attributePaths = {"division", "division.department", "roles"})
     List<User> findByActiveFalseOrderByEmailAsc();
 
-    @EntityGraph(attributePaths = {"division", "division.department", "roles"})
+    @EntityGraph(attributePaths = {"division", "division.department", "division.manager", "roles"})
     List<User> findByDivisionIdAndActiveTrueOrderByEmailAsc(Long divisionId);
+
+    @EntityGraph(attributePaths = {"division", "division.department", "division.manager", "roles"})
+    List<User> findByDivisionDepartmentIdAndActiveTrueOrderByEmailAsc(Long departmentId);
 
     boolean existsByUsername(String username);
 

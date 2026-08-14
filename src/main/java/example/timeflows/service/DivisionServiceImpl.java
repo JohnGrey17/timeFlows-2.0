@@ -30,6 +30,12 @@ public class DivisionServiceImpl implements DivisionService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Division> findByDepartment(Long departmentId) {
+        return divisionRepository.findByDepartmentIdOrderByNameAsc(departmentId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Division findById(Long id) {
         return divisionRepository.findWithDepartmentAndUsersById(id)
                 .orElseThrow(() -> new DivisionException("Відділ з id " + id + " не знайдено"));
@@ -38,6 +44,13 @@ public class DivisionServiceImpl implements DivisionService {
     @Override
     @Transactional
     public Division create(Division division, Long departmentId) {
+        if (division.getName() == null || division.getName().isBlank()) {
+            throw new DivisionException("Назва підвідділу обов'язкова");
+        }
+        division.setName(division.getName().trim());
+        if (divisionRepository.existsByDepartmentIdAndNameIgnoreCase(departmentId, division.getName())) {
+            throw new DivisionException("Підвідділ з такою назвою вже існує у вибраному департаменті");
+        }
         division.setDepartment(findDepartment(departmentId));
         return divisionRepository.save(division);
     }

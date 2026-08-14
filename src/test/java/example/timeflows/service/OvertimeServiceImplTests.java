@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +70,14 @@ class OvertimeServiceImplTests {
                 .isInstanceOf(OvertimeException.class)
                 .hasMessage("Рішення можна прийняти тільки для overtime, що очікує погодження");
         verify(overtimeRepository, never()).save(overtime);
+    }
+
+    @Test
+    void rejectRequiresReason() {
+        assertThatThrownBy(() -> overtimeService.reject(1L, "  "))
+                .isInstanceOf(example.timeflows.exception.OvertimeException.class)
+                .hasMessageContaining("Причина відхилення");
+        verifyNoInteractions(overtimeRepository);
     }
 
     @Test

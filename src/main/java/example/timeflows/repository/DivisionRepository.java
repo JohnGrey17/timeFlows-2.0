@@ -9,8 +9,13 @@ import java.util.Optional;
 
 public interface DivisionRepository extends JpaRepository<Division, Long> {
 
+    boolean existsByDepartmentIdAndNameIgnoreCase(Long departmentId, String name);
+
     @EntityGraph(attributePaths = {"department"})
     List<Division> findAllByOrderByNameAsc();
+
+    @EntityGraph(attributePaths = {"department", "manager"})
+    List<Division> findByDepartmentIdOrderByNameAsc(Long departmentId);
 
     @EntityGraph(attributePaths = {"department", "manager", "users", "users.roles"})
     Optional<Division> findWithDepartmentAndUsersById(Long id);

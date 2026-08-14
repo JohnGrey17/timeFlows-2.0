@@ -89,6 +89,140 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void adminCanOpenOrganizationManagement() throws Exception {
+        mockMvc.perform(get("/api/organization")
+                        .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Керування відділами")));
+    }
+
+    @Test
+    void employeeCannotOpenOrganizationManagement() throws Exception {
+        mockMvc.perform(get("/api/organization")
+                        .with(user("employee@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void registrationContainsDepartmentAndDivisionSelectors() throws Exception {
+        mockMvc.perform(get("/api/register"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-organization-department")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("data-organization-division")));
+    }
+
+    @Test
+    void adminCanFilterUsersByDepartmentWithoutDivision() throws Exception {
+        mockMvc.perform(get("/api/users")
+                        .param("departmentId", "1")
+                        .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("andrii.employee@vyriy.com")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("petro.employee@vyriy.com")));
+    }
+
+    @Test
+    void overtimeReviewSupportsDepartmentLevelView() throws Exception {
+        mockMvc.perform(get("/api/overtime/review")
+                        .param("departmentId", "1")
+                        .param("mode", "division")
+                        .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("reviewOvertimeModal")));
+    }
+
+    @Test
+    void adminNavigationUsesRequestedOrderAndThreeStatusLegendItems() throws Exception {
+        String html = mockMvc.perform(get("/api/overtime")
+                        .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("Мої перепрацювання")).isLessThan(html.indexOf("Перевірка перепрацювань"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("Перевірка перепрацювань")).isLessThan(html.indexOf("Користувачі"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("Користувачі")).isLessThan(html.indexOf("Керування Відділами"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("Керування Відділами")).isLessThan(html.indexOf("Налаштування"));
+        org.assertj.core.api.Assertions.assertThat(html.split("legend-box", -1).length - 1)
+                .isEqualTo(3);
+    }
+
+    @Test
+    void employeeCannotOpenBonusesButManagerCan() throws Exception {
+        mockMvc.perform(get("/api/bonuses").with(user("employee@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/bonuses").with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void overtimeMatrixShowsWeekdaysAndBonusColumn() throws Exception {
+        mockMvc.perform(get("/api/overtime/review")
+                        .param("departmentId", "1").param("divisionId", "1").param("mode", "division")
+                        .param("year", "2026").param("month", "8")
+                        .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("weekday-label")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Бонуси")));
+    }
+
+    @Test
+    void overtimeReviewFinancialSummaryRendersDynamicCategoryColumnsAndDetails() throws Exception {
+        mockMvc.perform(get("/api/overtime/review")
+                        .param("departmentId", "1").param("divisionId", "1")
+                        .param("view", "summary").param("year", "2026").param("month", "8")
+                        .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("financial-summary-table")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("categorySummary-")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("overtimeSummary-")));
+    }
+
+    @Test
+    void financialSummaryIsReadOnlyForManagerAndEditableForAdmin() throws Exception {
+        String managerHtml = mockMvc.perform(get("/api/overtime/review")
+                        .param("view", "summary")
+                        .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(managerHtml)
+                .contains("financial-summary-table")
+                .doesNotContain("summary-salary-form", "summary-bonus-create");
+
+        String adminHtml = mockMvc.perform(get("/api/overtime/review")
+                        .param("departmentId", "1").param("divisionId", "1").param("view", "summary")
+                        .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(adminHtml)
+                .contains("summary-salary-form", "summary-bonus-create");
+    }
+
+    @Test
+    void anonymousAccessIsLimitedToAuthenticationAndAssets() throws Exception {
+        mockMvc.perform(get("/api/login")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/register")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/bonuses")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/h2-console")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/swagger-ui.html")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminBonusPageHasOrganizationAndStatusFilters() throws Exception {
+        mockMvc.perform(get("/api/bonuses").with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"departmentId\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"divisionId\"")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"status\"")));
+    }
+
+    @Test
+    void managerBonusPageIsRestrictedToOwnDivision() throws Exception {
+        String html = mockMvc.perform(get("/api/bonuses")
+                        .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        org.assertj.core.api.Assertions.assertThat(html).contains("andrii.employee@vyriy.com", "maria.employee@vyriy.com");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("petro.employee@vyriy.com");
+    }
+
+    @Test
     void resubmissionWithoutReasonFailsValidation() throws Exception {
         mockMvc.perform(post("/api/overtimes/1/resubmit")
                         .with(user("employee@vyriy.com").roles("EMPLOYEE"))

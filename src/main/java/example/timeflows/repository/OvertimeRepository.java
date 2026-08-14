@@ -17,6 +17,9 @@ public interface OvertimeRepository extends JpaRepository<Overtime, Long> {
     List<Overtime> findByUserDivisionIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(Long divisionId, LocalDate from, LocalDate to);
 
     @EntityGraph(attributePaths = {"user", "user.roles", "user.division", "user.division.department"})
+    List<Overtime> findByUserDivisionDepartmentIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(Long departmentId, LocalDate from, LocalDate to);
+
+    @EntityGraph(attributePaths = {"user", "user.roles", "user.division", "user.division.department"})
     List<Overtime> findByUserIdAndWorkDateBetweenOrderByWorkDateAsc(Long userId, LocalDate from, LocalDate to);
 
     @EntityGraph(attributePaths = {"user", "user.roles", "user.division", "user.division.department"})

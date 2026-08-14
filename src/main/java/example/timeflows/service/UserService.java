@@ -22,6 +22,8 @@ public interface UserService {
 
     List<User> findActiveUsersByDivision(Long divisionId);
 
+    List<User> findActiveUsersByDepartment(Long departmentId);
+
     User create(User user, Long divisionId);
 
     User update(Long id, User user, Long divisionId);
