@@ -1,15 +1,14 @@
 package example.timeflows.controller.dto;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.groups.Default;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDate;
 import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class OvertimeRequestValidationTests {
 
@@ -27,11 +26,8 @@ class OvertimeRequestValidationTests {
         OvertimeRequest request = validRequest();
         request.setResubmissionReason("   ");
 
-        Set<ConstraintViolation<OvertimeRequest>> violations = validator.validate(
-                request,
-                Default.class,
-                OvertimeRequest.Resubmission.class
-        );
+        Set<ConstraintViolation<OvertimeRequest>> violations =
+                validator.validate(request, Default.class, OvertimeRequest.Resubmission.class);
 
         assertThat(violations)
                 .extracting(ConstraintViolation::getMessage)

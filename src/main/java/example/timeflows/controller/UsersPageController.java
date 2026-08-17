@@ -1,11 +1,14 @@
 package example.timeflows.controller;
 
-import example.timeflows.exception.UserException;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
 import example.timeflows.service.DepartmentService;
 import example.timeflows.service.DivisionService;
+import example.timeflows.service.ManagementAccessService;
 import example.timeflows.service.UserService;
+import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -15,57 +18,75 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Comparator;
-
 @Controller
 public class UsersPageController {
 
     private final UserService userService;
     private final DepartmentService departmentService;
     private final DivisionService divisionService;
+    private final ManagementAccessService accessService;
 
     public UsersPageController(
             UserService userService,
             DepartmentService departmentService,
-            DivisionService divisionService
-    ) {
+            DivisionService divisionService,
+            ManagementAccessService accessService) {
         this.userService = userService;
         this.departmentService = departmentService;
         this.divisionService = divisionService;
+        this.accessService = accessService;
     }
 
     @GetMapping("/api/users")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public String users(@RequestParam(required = false) Long departmentId,
-                        @RequestParam(required = false) Long divisionId,
-                        @RequestParam(defaultValue = "department") String groupBy,
-                        Authentication authentication, Model model) {
+    public String users(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(defaultValue = "department") String groupBy,
+            Authentication authentication,
+            Model model) {
         User currentUser = userService.findByEmail(authentication.getName());
         boolean admin = currentUser.getRoles().contains(Role.ADMIN);
-        Long effectiveDepartmentId = admin ? departmentId : currentUser.getDivision().getDepartment().getId();
+        Long effectiveDepartmentId =
+                admin ? departmentId : currentUser.getDivision().getDepartment().getId();
         Long effectiveDivisionId = admin ? divisionId : currentUser.getDivision().getId();
-        List<User> users = effectiveDivisionId != null
-                ? userService.findActiveUsersByDivision(effectiveDivisionId)
-                : effectiveDepartmentId != null
-                ? userService.findActiveUsersByDepartment(effectiveDepartmentId)
-                : userService.findActiveUsers();
+        List<User> users =
+                effectiveDivisionId != null
+                        ? userService.findActiveUsersByDivision(effectiveDivisionId)
+                        : effectiveDepartmentId != null
+                                ? userService.findActiveUsersByDepartment(effectiveDepartmentId)
+                                : userService.findActiveUsers();
         groupBy = "role".equals(groupBy) ? "role" : "department";
-        Comparator<User> byName = Comparator
-                .comparing((User user) -> user.getLastName() == null ? "" : user.getLastName(), String.CASE_INSENSITIVE_ORDER)
-                .thenComparing(user -> user.getFirstName() == null ? "" : user.getFirstName(), String.CASE_INSENSITIVE_ORDER);
-        Comparator<User> comparator = "role".equals(groupBy)
-                ? Comparator.comparingInt(this::roleRank).thenComparing(byName)
-                : Comparator.comparing((User user) -> user.getDivision().getName(), String.CASE_INSENSITIVE_ORDER).thenComparing(byName);
+        Comparator<User> byName =
+                Comparator.comparing(
+                                (User user) -> user.getLastName() == null ? "" : user.getLastName(),
+                                String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(
+                                user -> user.getFirstName() == null ? "" : user.getFirstName(),
+                                String.CASE_INSENSITIVE_ORDER);
+        Comparator<User> comparator =
+                "role".equals(groupBy)
+                        ? Comparator.comparingInt(this::roleRank).thenComparing(byName)
+                        : Comparator.comparing(
+                                        (User user) -> user.getDivision().getName(),
+                                        String.CASE_INSENSITIVE_ORDER)
+                                .thenComparing(byName);
         users = users.stream().sorted(comparator).toList();
 
         model.addAttribute("currentUser", currentUser);
         model.addAttribute("users", users);
-        model.addAttribute("departments", admin ? departmentService.findAll() : List.of(currentUser.getDivision().getDepartment()));
-        model.addAttribute("divisions", admin
-                ? (effectiveDepartmentId == null ? List.of() : divisionService.findByDepartment(effectiveDepartmentId))
-                : List.of(currentUser.getDivision()));
+        model.addAttribute(
+                "departments",
+                admin
+                        ? departmentService.findAll()
+                        : List.of(currentUser.getDivision().getDepartment()));
+        model.addAttribute(
+                "divisions",
+                admin
+                        ? (effectiveDepartmentId == null
+                                ? List.of()
+                                : divisionService.findByDepartment(effectiveDepartmentId))
+                        : List.of(currentUser.getDivision()));
         model.addAttribute("selectedDepartmentId", effectiveDepartmentId);
         model.addAttribute("selectedDivisionId", effectiveDivisionId);
         model.addAttribute("activePage", "users");
@@ -84,47 +105,46 @@ public class UsersPageController {
 
     @PostMapping("/api/users/{id}/salary")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public String updateSalary(@PathVariable Long id, @RequestParam BigDecimal salary,
-                               @RequestParam(required = false) Long departmentId,
-                               @RequestParam(required = false) Long divisionId,
-                               @RequestParam(defaultValue = "department") String groupBy,
-                               @RequestParam(required = false) String returnTo,
-                               Authentication authentication) {
-        assertCanManage(id, authentication);
+    public String updateSalary(
+            @PathVariable Long id,
+            @RequestParam BigDecimal salary,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(defaultValue = "department") String groupBy,
+            @RequestParam(required = false) String returnTo,
+            Authentication authentication) {
+        accessService.assertCanManageUser(authentication.getName(), id);
         userService.updateSalary(id, salary);
-        if ("summary".equals(returnTo)) return "redirect:/api/overtime/review?mode=division&view=summary";
-        return "review".equals(returnTo) ? "redirect:/api/overtime/review?mode=division" : usersRedirect(departmentId, divisionId, groupBy);
+        if ("summary".equals(returnTo))
+            return "redirect:/api/overtime/review?mode=division&view=summary";
+        return "review".equals(returnTo)
+                ? "redirect:/api/overtime/review?mode=division"
+                : usersRedirect(departmentId, divisionId, groupBy);
     }
 
     @PostMapping("/api/users/{id}/deactivate")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-    public String deactivate(@PathVariable Long id, @RequestParam String reason, Authentication authentication,
-                             @RequestParam(required = false) Long departmentId,
-                             @RequestParam(required = false) Long divisionId,
-                             @RequestParam(defaultValue = "department") String groupBy) {
-        assertCanManage(id, authentication);
+    public String deactivate(
+            @PathVariable Long id,
+            @RequestParam String reason,
+            Authentication authentication,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        accessService.assertCanManageUser(authentication.getName(), id);
         userService.deactivate(id, reason);
         return usersRedirect(departmentId, divisionId, groupBy);
     }
 
     @PostMapping("/api/divisions/{divisionId}/manager")
     @PreAuthorize("hasRole('ADMIN')")
-    public String assignManager(@PathVariable Long divisionId, @RequestParam Long userId,
-                                @RequestParam(required = false) Long departmentId,
-                                @RequestParam(defaultValue = "department") String groupBy) {
+    public String assignManager(
+            @PathVariable Long divisionId,
+            @RequestParam Long userId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "department") String groupBy) {
         userService.assignDivisionManager(divisionId, userId);
         return usersRedirect(departmentId, divisionId, groupBy);
-    }
-
-    private void assertCanManage(Long userId, Authentication authentication) {
-        User currentUser = userService.findByEmail(authentication.getName());
-        if (currentUser.getRoles().contains(Role.ADMIN)) {
-            return;
-        }
-        User targetUser = userService.findById(userId);
-        if (!targetUser.getDivision().getId().equals(currentUser.getDivision().getId())) {
-            throw new UserException("Керівник може редагувати тільки користувачів свого відділу");
-        }
     }
 
     private String usersRedirect(Long departmentId, Long divisionId, String groupBy) {

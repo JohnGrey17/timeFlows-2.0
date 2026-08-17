@@ -3,10 +3,9 @@ package example.timeflows.service;
 import example.timeflows.exception.DepartmentException;
 import example.timeflows.model.Department;
 import example.timeflows.repository.DepartmentRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class DepartmentServiceImpl implements DepartmentService {
@@ -26,8 +25,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     @Transactional(readOnly = true)
     public Department findById(Long id) {
-        return departmentRepository.findWithDivisionsById(id)
-                .orElseThrow(() -> new DepartmentException("Департамент з id " + id + " не знайдено"));
+        return departmentRepository
+                .findWithDivisionsById(id)
+                .orElseThrow(
+                        () -> new DepartmentException("Департамент з id " + id + " не знайдено"));
     }
 
     @Override
@@ -41,6 +42,15 @@ public class DepartmentServiceImpl implements DepartmentService {
             throw new DepartmentException("Департамент з такою назвою вже існує");
         }
         return departmentRepository.save(department);
+    }
+
+    @Override
+    @Transactional
+    public Department create(String name, String description) {
+        Department department = new Department();
+        department.setName(name == null ? null : name.trim());
+        department.setDescription(description == null ? null : description.trim());
+        return create(department);
     }
 
     @Override

@@ -1,23 +1,22 @@
 package example.timeflows.service;
 
+import example.timeflows.controller.dto.RegisterRequest;
 import example.timeflows.exception.UserException;
 import example.timeflows.model.Division;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
 import example.timeflows.repository.DivisionRepository;
 import example.timeflows.repository.UserRepository;
-import example.timeflows.controller.dto.RegisterRequest;
+import java.math.BigDecimal;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 @Service
 public class UserServiceImpl implements UserService, UserDetailsService {
@@ -29,8 +28,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserServiceImpl(
             UserRepository userRepository,
             DivisionRepository divisionRepository,
-            PasswordEncoder passwordEncoder
-    ) {
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.divisionRepository = divisionRepository;
         this.passwordEncoder = passwordEncoder;
@@ -39,12 +37,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Користувача не знайдено"));
+        User user =
+                userRepository
+                        .findByEmail(username)
+                        .orElseThrow(
+                                () -> new UsernameNotFoundException("Користувача не знайдено"));
 
-        String[] roles = user.getRoles().stream()
-                .map(Role::name)
-                .toArray(String[]::new);
+        String[] roles = user.getRoles().stream().map(Role::name).toArray(String[]::new);
 
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                 .password(user.getPassword())
@@ -86,7 +85,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public User findById(Long id) {
-        return userRepository.findWithDivisionById(id)
+        return userRepository
+                .findWithDivisionById(id)
                 .orElseThrow(() -> new UserException("Користувача з id " + id + " не знайдено"));
     }
 
@@ -106,8 +106,10 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserException("Користувача з email " + email + " не знайдено"));
+        return userRepository
+                .findByEmail(email)
+                .orElseThrow(
+                        () -> new UserException("Користувача з email " + email + " не знайдено"));
     }
 
     @Override
@@ -181,17 +183,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Division division = findDivision(divisionId);
         User user = findById(userId);
         if (!user.isActive()) {
-            throw new UserException("Деактивованого користувача не можна призначити керівником відділу");
+            throw new UserException(
+                    "Деактивованого користувача не можна призначити керівником відділу");
         }
         if (!user.getDivision().getId().equals(divisionId)) {
             throw new UserException("Керівник відділу має належати до вибраного відділу");
         }
         User previousManager = division.getManager();
-        divisionRepository.findByManagerId(userId)
+        divisionRepository
+                .findByManagerId(userId)
                 .filter(existing -> !existing.getId().equals(divisionId))
-                .ifPresent(existing -> {
-                    throw new UserException("Користувач вже є керівником іншого відділу");
-                });
+                .ifPresent(
+                        existing -> {
+                            throw new UserException("Користувач вже є керівником іншого відділу");
+                        });
 
         division.setManager(user);
         user.getRoles().add(Role.MANAGER);
@@ -214,7 +219,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
-    public void changePassword(String email, String currentPassword, String newPassword, String confirmPassword) {
+    public void changePassword(
+            String email, String currentPassword, String newPassword, String confirmPassword) {
         User user = findByEmail(email);
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new UserException("Поточний пароль вказано невірно");
@@ -242,7 +248,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     private Division findDivision(Long divisionId) {
-        return divisionRepository.findById(divisionId)
+        return divisionRepository
+                .findById(divisionId)
                 .orElseThrow(() -> new UserException("Відділ з id " + divisionId + " не знайдено"));
     }
 }

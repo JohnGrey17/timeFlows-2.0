@@ -2,7 +2,6 @@ package example.timeflows.controller.dto;
 
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Set;
@@ -17,8 +16,7 @@ public record UserResponse(
         BigDecimal salary,
         boolean active,
         String deactivationReason,
-        LocalDateTime createdAt
-) {
+        LocalDateTime createdAt) {
 
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -31,7 +29,6 @@ public record UserResponse(
                 user.getSalary(),
                 user.isActive(),
                 user.getDeactivationReason(),
-                user.getCreatedAt()
-        );
+                user.getCreatedAt());
     }
 }

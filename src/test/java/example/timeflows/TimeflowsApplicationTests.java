@@ -1,26 +1,22 @@
 package example.timeflows;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import example.timeflows.repository.DivisionRepository;
+import example.timeflows.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import example.timeflows.repository.DivisionRepository;
-import example.timeflows.repository.UserRepository;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest
 class TimeflowsApplicationTests {
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired private UserRepository userRepository;
 
-    @Autowired
-    private DivisionRepository divisionRepository;
+    @Autowired private DivisionRepository divisionRepository;
 
     @Test
-    void contextLoads() {
-    }
+    void contextLoads() {}
 
     @Test
     void createsDemoUsersAndDivisionManagers() {
@@ -33,5 +29,4 @@ class TimeflowsApplicationTests {
         assertThat(divisionRepository.findById(1L).orElseThrow().getManager()).isNotNull();
         assertThat(divisionRepository.findById(2L).orElseThrow().getManager()).isNotNull();
     }
-
 }

@@ -22,7 +22,9 @@ public class RegisterRequest {
 
     @NotBlank(message = "Вкажіть email")
     @Email(message = "Вкажіть коректний email")
-    @Pattern(regexp = "^[A-Za-z0-9._%+-]+@vyriy\\.com$", message = "Будь ласка вкажіть корпоративний email")
+    @Pattern(
+            regexp = "^[A-Za-z0-9._%+-]+@vyriy\\.com$",
+            message = "Будь ласка вкажіть корпоративний email")
     private String email;
 
     @NotBlank(message = "Вкажіть пароль")

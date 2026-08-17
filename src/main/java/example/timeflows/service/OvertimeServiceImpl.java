@@ -4,16 +4,15 @@ import example.timeflows.controller.dto.OvertimeRequest;
 import example.timeflows.exception.OvertimeException;
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
-import example.timeflows.model.User;
 import example.timeflows.model.Role;
+import example.timeflows.model.User;
 import example.timeflows.repository.OvertimeRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OvertimeServiceImpl implements OvertimeService {
@@ -30,50 +29,45 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional(readOnly = true)
     public List<Overtime> findMonth(String userEmail, YearMonth month) {
         return overtimeRepository.findByUserEmailAndWorkDateBetweenOrderByWorkDateAsc(
-                userEmail,
-                month.atDay(1),
-                month.atEndOfMonth()
-        );
+                userEmail, month.atDay(1), month.atEndOfMonth());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Overtime> findUserMonth(Long userId, YearMonth month) {
         return overtimeRepository.findByUserIdAndWorkDateBetweenOrderByWorkDateAsc(
-                userId,
-                month.atDay(1),
-                month.atEndOfMonth()
-        );
+                userId, month.atDay(1), month.atEndOfMonth());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Overtime> findDivisionMonth(Long divisionId, YearMonth month) {
-        return overtimeRepository.findByUserDivisionIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(
-                divisionId,
-                month.atDay(1),
-                month.atEndOfMonth()
-        );
+        return overtimeRepository
+                .findByUserDivisionIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(
+                        divisionId, month.atDay(1), month.atEndOfMonth());
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Overtime> findDepartmentMonth(Long departmentId, YearMonth month) {
-        return overtimeRepository.findByUserDivisionDepartmentIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(
-                departmentId, month.atDay(1), month.atEndOfMonth());
+        return overtimeRepository
+                .findByUserDivisionDepartmentIdAndWorkDateBetweenOrderByUserEmailAscWorkDateAsc(
+                        departmentId, month.atDay(1), month.atEndOfMonth());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Overtime findByIdForUser(Long id, String userEmail) {
-        return overtimeRepository.findByIdAndUserEmail(id, userEmail)
+        return overtimeRepository
+                .findByIdAndUserEmail(id, userEmail)
                 .orElseThrow(() -> new OvertimeException("Overtime з id " + id + " не знайдено"));
     }
 
     @Override
     @Transactional(readOnly = true)
     public Overtime findById(Long id) {
-        return overtimeRepository.findWithUserById(id)
+        return overtimeRepository
+                .findWithUserById(id)
                 .orElseThrow(() -> new OvertimeException("Overtime з id " + id + " не знайдено"));
     }
 
@@ -106,11 +100,14 @@ public class OvertimeServiceImpl implements OvertimeService {
         Overtime overtime = findByIdForUser(id, userEmail);
         assertOwnerCanChange(userEmail, overtime);
         validateHours(request);
-        overtimeRepository.findByUserEmailAndWorkDate(userEmail, request.getWorkDate())
+        overtimeRepository
+                .findByUserEmailAndWorkDate(userEmail, request.getWorkDate())
                 .filter(existing -> !existing.getId().equals(id))
-                .ifPresent(existing -> {
-                    throw new OvertimeException("На один день можна створити тільки один overtime");
-                });
+                .ifPresent(
+                        existing -> {
+                            throw new OvertimeException(
+                                    "На один день можна створити тільки один overtime");
+                        });
 
         overtime.setWorkDate(request.getWorkDate());
         overtime.setHours(request.getHours());
@@ -132,7 +129,8 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime resubmit(String userEmail, Long id, OvertimeRequest request) {
         Overtime overtime = findByIdForUser(id, userEmail);
         if (overtime.getStatus() != OvertimeStatus.REJECTED) {
-            throw new OvertimeException("Повторно на погодження можна відправити тільки відхилений overtime");
+            throw new OvertimeException(
+                    "Повторно на погодження можна відправити тільки відхилений overtime");
         }
         if (request.getResubmissionReason() == null || request.getResubmissionReason().isBlank()) {
             throw new OvertimeException("Причина повторного погодження обов'язкова");
@@ -160,6 +158,13 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     @Override
     @Transactional
+    public Overtime approve(Long id, String managerComment, String reviewerEmail) {
+        assertCanReview(id, reviewerEmail);
+        return approve(id, managerComment);
+    }
+
+    @Override
+    @Transactional
     public Overtime reject(Long id, String managerComment) {
         if (managerComment == null || managerComment.isBlank()) {
             throw new OvertimeException("Причина відхилення є обов'язковою");
@@ -172,10 +177,30 @@ public class OvertimeServiceImpl implements OvertimeService {
         return overtimeRepository.save(overtime);
     }
 
+    @Override
+    @Transactional
+    public Overtime reject(Long id, String managerComment, String reviewerEmail) {
+        assertCanReview(id, reviewerEmail);
+        return reject(id, managerComment);
+    }
+
+    private void assertCanReview(Long overtimeId, String reviewerEmail) {
+        User reviewer = userService.findByEmail(reviewerEmail);
+        if (reviewer.getRoles().contains(Role.ADMIN)) {
+            return;
+        }
+        Overtime overtime = findById(overtimeId);
+        if (!overtime.getUser().getDivision().getId().equals(reviewer.getDivision().getId())) {
+            throw new example.timeflows.exception.UserException(
+                    "Керівник може переглядати тільки overtime свого відділу");
+        }
+    }
+
     private void validateHours(OvertimeRequest request) {
         double maxHours = isWeekend(request) ? 14.0 : 6.0;
         if (request.getHours() > maxHours) {
-            throw new OvertimeException("Максимальна кількість overtime для цього дня: " + maxHours + " годин");
+            throw new OvertimeException(
+                    "Максимальна кількість overtime для цього дня: " + maxHours + " годин");
         }
     }
 
@@ -193,15 +218,18 @@ public class OvertimeServiceImpl implements OvertimeService {
     private void assertOwnerCanChange(String userEmail, Overtime overtime) {
         if (overtime.getStatus() == OvertimeStatus.PENDING) return;
         User user = userService.findByEmail(userEmail);
-        boolean privileged = user.getRoles().contains(Role.ADMIN) || user.getRoles().contains(Role.MANAGER);
+        boolean privileged =
+                user.getRoles().contains(Role.ADMIN) || user.getRoles().contains(Role.MANAGER);
         if (!privileged || !YearMonth.from(overtime.getWorkDate()).equals(YearMonth.now())) {
-            throw new OvertimeException("Змінювати або видаляти завершений overtime може лише адміністратор чи керівник у поточному місяці");
+            throw new OvertimeException(
+                    "Змінювати або видаляти завершений overtime може лише адміністратор чи керівник у поточному місяці");
         }
     }
 
     private void assertAwaitingDecision(Overtime overtime) {
         if (overtime.getStatus() != OvertimeStatus.PENDING) {
-            throw new OvertimeException("Рішення можна прийняти тільки для overtime, що очікує погодження");
+            throw new OvertimeException(
+                    "Рішення можна прийняти тільки для overtime, що очікує погодження");
         }
     }
 }

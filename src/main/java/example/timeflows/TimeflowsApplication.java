@@ -9,5 +9,4 @@ public class TimeflowsApplication {
     public static void main(String[] args) {
         SpringApplication.run(TimeflowsApplication.class, args);
     }
-
 }

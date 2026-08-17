@@ -1,9 +1,8 @@
 package example.timeflows.controller.dto;
 
 import example.timeflows.model.User;
-
-import java.util.List;
 import java.math.BigDecimal;
+import java.util.List;
 
 public record DivisionOvertimeRow(
         User user,
@@ -13,6 +12,4 @@ public record DivisionOvertimeRow(
         BigDecimal overtimeHours,
         BigDecimal overtimeAmount,
         BigDecimal totalPayment,
-        List<OvertimePaymentDetail> overtimeDetails
-) {
-}
+        List<OvertimePaymentDetail> overtimeDetails) {}

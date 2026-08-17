@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>timeFlows | Експорт Excel</title>
+  <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
+  <link rel="stylesheet" th:href="@{/css/app.css}">
+  <script defer th:src="@{/js/app-shell.js}"></script>
+  <script defer th:src="@{/js/organization-filters.js}"></script>
+</head>
+<body class="app-body">
+<div class="app-layout">
+  <aside class="sidebar">
+    <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
+    <div class="sidebar-brand">timeFlows</div>
+    <nav class="side-nav">
+      <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+      <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+      <a th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
+      <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+      <a th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+      <a class="active" th:href="@{/api/admin/export}"><span class="nav-icon">⇩</span><span>Експорт Excel</span></a>
+      <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
+    </nav>
+    <form th:action="@{/api/logout}" method="post" class="logout-form"><button type="submit">Вийти</button></form>
+  </aside>
+  <main class="content">
+    <header class="topbar"><div><p class="eyebrow">ADMIN</p><h1>Експорт Excel</h1></div><div class="user-chip" th:text="${currentUser.firstName + ' ' + currentUser.lastName}"></div></header>
+    <section class="settings-panel">
+      <h2>Параметри вивантаження</h2>
+      <p>Файл міститиме календар перепрацювань і фінансовий підсумок. Для кожного місяця буде створено окрему вкладку.</p>
+      <form class="calendar-toolbar" method="get" th:action="@{/api/admin/export/download}">
+        <label>Департамент
+          <select name="departmentId" data-organization-department required>
+            <option value="">Оберіть департамент</option>
+            <option th:each="department : ${departments}" th:value="${department.id}" th:text="${department.name}"></option>
+          </select>
+        </label>
+        <label>Підвідділ
+          <select name="divisionId" data-organization-division>
+            <option value="">Усі підвідділи</option>
+            <option th:each="division : ${divisions}" th:value="${division.id}" th:data-department-id="${division.department.id}" th:text="${division.name}"></option>
+          </select>
+        </label>
+        <label>Період від<input type="month" name="from" th:value="${defaultFrom}" required></label>
+        <label>Період до<input type="month" name="to" th:value="${defaultTo}" required></label>
+        <button type="submit">Сформувати та завантажити Excel</button>
+      </form>
+    </section>
+  </main>
+</div>
+</body>
+</html>

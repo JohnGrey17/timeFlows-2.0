@@ -6,10 +6,13 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "bonus_categories")
-@Getter @Setter
+@Getter
+@Setter
 public class BonusCategory {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     @Column(nullable = false, unique = true, length = 255)
     private String name;
 }

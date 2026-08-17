@@ -2,7 +2,6 @@ package example.timeflows.controller.dto;
 
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
-
 import java.time.LocalDate;
 
 public record OvertimeResponse(
@@ -13,8 +12,7 @@ public record OvertimeResponse(
         OvertimeStatus status,
         String managerComment,
         String resubmissionReason,
-        UserSummaryResponse user
-) {
+        UserSummaryResponse user) {
 
     public static OvertimeResponse from(Overtime overtime) {
         return new OvertimeResponse(
@@ -25,7 +23,6 @@ public record OvertimeResponse(
                 overtime.getStatus(),
                 overtime.getManagerComment(),
                 overtime.getResubmissionReason(),
-                UserSummaryResponse.from(overtime.getUser())
-        );
+                UserSummaryResponse.from(overtime.getUser()));
     }
 }

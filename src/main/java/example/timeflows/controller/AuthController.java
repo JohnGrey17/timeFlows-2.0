@@ -9,6 +9,7 @@ import example.timeflows.service.DivisionService;
 import example.timeflows.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
@@ -24,8 +25,6 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
-
-import java.time.Duration;
 
 @Controller
 public class AuthController {
@@ -43,8 +42,7 @@ public class AuthController {
             UserService userService,
             DivisionService divisionService,
             example.timeflows.service.DepartmentService departmentService,
-            @Value("${timeflows.jwt.expiration}") Duration jwtExpiration
-    ) {
+            @Value("${timeflows.jwt.expiration}") Duration jwtExpiration) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userService = userService;
@@ -64,18 +62,19 @@ public class AuthController {
             @Valid @ModelAttribute LoginRequest loginRequest,
             BindingResult bindingResult,
             Model model,
-            HttpServletResponse response
-    ) {
+            HttpServletResponse response) {
         if (bindingResult.hasErrors()) {
             return "auth/login";
         }
 
         try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
-            );
+            Authentication authentication =
+                    authenticationManager.authenticate(
+                            new UsernamePasswordAuthenticationToken(
+                                    loginRequest.getEmail(), loginRequest.getPassword()));
             String token = jwtService.generateToken((UserDetails) authentication.getPrincipal());
-            response.addHeader(HttpHeaders.SET_COOKIE, createJwtCookie(token, jwtExpiration).toString());
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE, createJwtCookie(token, jwtExpiration).toString());
             return "redirect:/api/dashboard";
         } catch (BadCredentialsException exception) {
             model.addAttribute("loginError", "Невірний email або пароль");
@@ -95,8 +94,7 @@ public class AuthController {
     public String register(
             @Valid @ModelAttribute RegisterRequest registerRequest,
             BindingResult bindingResult,
-            Model model
-    ) {
+            Model model) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("divisions", divisionService.findAll());
             model.addAttribute("departments", departmentService.findAll());

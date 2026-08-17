@@ -1,0 +1,12 @@
+.git
+.gradle
+.idea
+build
+out
+*.iml
+*.log
+Dockerfile*
+README*
+TODO.md
+user*.md
+workflow.md

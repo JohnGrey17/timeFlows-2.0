@@ -1,8 +1,7 @@
 package example.timeflows.service;
 
-import example.timeflows.model.User;
 import example.timeflows.controller.dto.RegisterRequest;
-
+import example.timeflows.model.User;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -38,5 +37,6 @@ public interface UserService {
 
     void updateProfile(String email, String firstName, String lastName);
 
-    void changePassword(String email, String currentPassword, String newPassword, String confirmPassword);
+    void changePassword(
+            String email, String currentPassword, String newPassword, String confirmPassword);
 }

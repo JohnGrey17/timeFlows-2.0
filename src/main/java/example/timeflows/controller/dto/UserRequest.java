@@ -6,11 +6,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.LinkedHashSet;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -24,7 +23,9 @@ public class UserRequest {
 
     @NotBlank(message = "Вкажіть email")
     @Email(message = "Вкажіть коректний email")
-    @Pattern(regexp = "^[A-Za-z0-9._%+-]+@vyriy\\.com$", message = "Будь ласка вкажіть корпоративний email")
+    @Pattern(
+            regexp = "^[A-Za-z0-9._%+-]+@vyriy\\.com$",
+            message = "Будь ласка вкажіть корпоративний email")
     private String email;
 
     @Size(min = 6, message = "Пароль має містити щонайменше 6 символів")

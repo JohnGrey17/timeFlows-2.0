@@ -6,10 +6,9 @@ import example.timeflows.model.Department;
 import example.timeflows.model.Division;
 import example.timeflows.repository.DepartmentRepository;
 import example.timeflows.repository.DivisionRepository;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 public class DivisionServiceImpl implements DivisionService {
@@ -17,7 +16,8 @@ public class DivisionServiceImpl implements DivisionService {
     private final DivisionRepository divisionRepository;
     private final DepartmentRepository departmentRepository;
 
-    public DivisionServiceImpl(DivisionRepository divisionRepository, DepartmentRepository departmentRepository) {
+    public DivisionServiceImpl(
+            DivisionRepository divisionRepository, DepartmentRepository departmentRepository) {
         this.divisionRepository = divisionRepository;
         this.departmentRepository = departmentRepository;
     }
@@ -37,7 +37,8 @@ public class DivisionServiceImpl implements DivisionService {
     @Override
     @Transactional(readOnly = true)
     public Division findById(Long id) {
-        return divisionRepository.findWithDepartmentAndUsersById(id)
+        return divisionRepository
+                .findWithDepartmentAndUsersById(id)
                 .orElseThrow(() -> new DivisionException("Відділ з id " + id + " не знайдено"));
     }
 
@@ -48,11 +49,21 @@ public class DivisionServiceImpl implements DivisionService {
             throw new DivisionException("Назва підвідділу обов'язкова");
         }
         division.setName(division.getName().trim());
-        if (divisionRepository.existsByDepartmentIdAndNameIgnoreCase(departmentId, division.getName())) {
-            throw new DivisionException("Підвідділ з такою назвою вже існує у вибраному департаменті");
+        if (divisionRepository.existsByDepartmentIdAndNameIgnoreCase(
+                departmentId, division.getName())) {
+            throw new DivisionException(
+                    "Підвідділ з такою назвою вже існує у вибраному департаменті");
         }
         division.setDepartment(findDepartment(departmentId));
         return divisionRepository.save(division);
+    }
+
+    @Override
+    @Transactional
+    public Division create(String name, Long departmentId) {
+        Division division = new Division();
+        division.setName(name == null ? null : name.trim());
+        return create(division, departmentId);
     }
 
     @Override
@@ -74,7 +85,11 @@ public class DivisionServiceImpl implements DivisionService {
     }
 
     private Department findDepartment(Long departmentId) {
-        return departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new DepartmentException("Департамент з id " + departmentId + " не знайдено"));
+        return departmentRepository
+                .findById(departmentId)
+                .orElseThrow(
+                        () ->
+                                new DepartmentException(
+                                        "Департамент з id " + departmentId + " не знайдено"));
     }
 }

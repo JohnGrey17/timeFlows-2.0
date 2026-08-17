@@ -1,7 +1,6 @@
 package example.timeflows.service;
 
 import example.timeflows.model.Division;
-
 import java.util.List;
 
 public interface DivisionService {
@@ -13,6 +12,8 @@ public interface DivisionService {
     Division findById(Long id);
 
     Division create(Division division, Long departmentId);
+
+    Division create(String name, Long departmentId);
 
     Division update(Long id, Division division, Long departmentId);
 

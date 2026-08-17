@@ -1,7 +1,6 @@
 package example.timeflows.service;
 
 import example.timeflows.model.Department;
-
 import java.util.List;
 
 public interface DepartmentService {
@@ -11,6 +10,8 @@ public interface DepartmentService {
     Department findById(Long id);
 
     Department create(Department department);
+
+    Department create(String name, String description);
 
     Department update(Long id, Department department);
 

@@ -35,3 +35,9 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local project notes and credentials ###
+userfrendly.md
+workflow.md
+user.md
+timeflows-prototype.tar.gz

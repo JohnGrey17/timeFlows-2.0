@@ -1,7 +1,5 @@
 package example.timeflows.controller;
 
-import example.timeflows.model.Department;
-import example.timeflows.model.Division;
 import example.timeflows.service.DepartmentService;
 import example.timeflows.service.DivisionService;
 import example.timeflows.service.UserService;
@@ -22,7 +20,10 @@ public class OrganizationPageController {
     private final DivisionService divisionService;
     private final UserService userService;
 
-    public OrganizationPageController(DepartmentService departmentService, DivisionService divisionService, UserService userService) {
+    public OrganizationPageController(
+            DepartmentService departmentService,
+            DivisionService divisionService,
+            UserService userService) {
         this.departmentService = departmentService;
         this.divisionService = divisionService;
         this.userService = userService;
@@ -37,13 +38,12 @@ public class OrganizationPageController {
     }
 
     @PostMapping("/api/organization/departments")
-    public String createDepartment(@RequestParam String name, @RequestParam(required = false) String description,
-                                   RedirectAttributes redirectAttributes) {
-        Department department = new Department();
-        department.setName(name.trim());
-        department.setDescription(description == null ? null : description.trim());
+    public String createDepartment(
+            @RequestParam String name,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
         try {
-            departmentService.create(department);
+            departmentService.create(name, description);
             redirectAttributes.addFlashAttribute("success", "Департамент створено");
         } catch (RuntimeException exception) {
             redirectAttributes.addFlashAttribute("organizationError", exception.getMessage());
@@ -52,12 +52,12 @@ public class OrganizationPageController {
     }
 
     @PostMapping("/api/organization/divisions")
-    public String createDivision(@RequestParam Long departmentId, @RequestParam String name,
-                                 RedirectAttributes redirectAttributes) {
-        Division division = new Division();
-        division.setName(name.trim());
+    public String createDivision(
+            @RequestParam Long departmentId,
+            @RequestParam String name,
+            RedirectAttributes redirectAttributes) {
         try {
-            divisionService.create(division, departmentId);
+            divisionService.create(name, departmentId);
             redirectAttributes.addFlashAttribute("success", "Підвідділ створено");
         } catch (RuntimeException exception) {
             redirectAttributes.addFlashAttribute("organizationError", exception.getMessage());
