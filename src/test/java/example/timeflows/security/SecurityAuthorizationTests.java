@@ -11,12 +11,16 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(
+        properties =
+                "spring.datasource.url=jdbc:h2:mem:securitytests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false")
 @AutoConfigureMockMvc
+@Import(SecurityTestData.class)
 class SecurityAuthorizationTests {
 
     @Autowired private MockMvc mockMvc;
@@ -277,6 +281,20 @@ class SecurityAuthorizationTests {
         mockMvc.perform(get("/api/bonuses")).andExpect(status().isForbidden());
         mockMvc.perform(get("/h2-console")).andExpect(status().isForbidden());
         mockMvc.perform(get("/swagger-ui.html")).andExpect(status().isForbidden());
+        mockMvc.perform(get("/v3/api-docs")).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void swaggerAndOpenApiAreAvailableOnlyToAdmin() throws Exception {
+        mockMvc.perform(get("/swagger-ui.html").with(user("employee@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/v3/api-docs").with(user("employee@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/swagger-ui.html").with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(get("/v3/api-docs").with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk());
     }
 
     @Test

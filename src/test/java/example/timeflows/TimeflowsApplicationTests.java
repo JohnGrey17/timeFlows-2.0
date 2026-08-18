@@ -2,7 +2,9 @@ package example.timeflows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import example.timeflows.repository.BonusRepository;
 import example.timeflows.repository.DivisionRepository;
+import example.timeflows.repository.OvertimeRepository;
 import example.timeflows.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,18 +17,19 @@ class TimeflowsApplicationTests {
 
     @Autowired private DivisionRepository divisionRepository;
 
+    @Autowired private OvertimeRepository overtimeRepository;
+
+    @Autowired private BonusRepository bonusRepository;
+
     @Test
     void contextLoads() {}
 
     @Test
-    void createsDemoUsersAndDivisionManagers() {
-        assertThat(userRepository.findByEmail("admin@vyriy.com")).isPresent();
-        assertThat(userRepository.findByEmail("it.manager@vyriy.com")).isPresent();
-        assertThat(userRepository.findByEmail("architect.manager@vyriy.com")).isPresent();
-        assertThat(userRepository.findByEmail("andrii.employee@vyriy.com")).isPresent();
-        assertThat(userRepository.findByEmail("maria.employee@vyriy.com")).isPresent();
-        assertThat(userRepository.findByEmail("petro.employee@vyriy.com")).isPresent();
-        assertThat(divisionRepository.findById(1L).orElseThrow().getManager()).isNotNull();
-        assertThat(divisionRepository.findById(2L).orElseThrow().getManager()).isNotNull();
+    void startsWithoutUsersOvertimesBonusesOrManagers() {
+        assertThat(userRepository.count()).isZero();
+        assertThat(overtimeRepository.count()).isZero();
+        assertThat(bonusRepository.count()).isZero();
+        assertThat(divisionRepository.findAll())
+                .allSatisfy(division -> assertThat(division.getManager()).isNull());
     }
 }

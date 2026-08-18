@@ -48,6 +48,11 @@ public class SecurityConfig {
                                                 "/images/**",
                                                 "/favicon.ico")
                                         .permitAll()
+                                        .requestMatchers(
+                                                "/swagger-ui.html",
+                                                "/swagger-ui/**",
+                                                "/v3/api-docs/**")
+                                        .hasRole("ADMIN")
                                         .requestMatchers("/api/admin/export/**")
                                         .hasRole("ADMIN")
                                         .anyRequest()

@@ -45,3 +45,8 @@ refactor.md
 cashflow.md
 TimeFlows_assets_README.md
 timeflows-prototype.tar.gz
+
+# Local deployment secrets
+.env
+.env.*
+!.env.example
