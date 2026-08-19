@@ -1,6 +1,7 @@
 package example.timeflows.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -38,7 +39,9 @@ class JwtAuthenticationFilterTests {
     void setUp() {
         SecurityContextHolder.clearContext();
         jwtService = new JwtService(SECRET, Duration.ofHours(1));
-        filter = new JwtAuthenticationFilter(jwtService, userDetailsService);
+        example.timeflows.service.MfaService mfaService =
+                mock(example.timeflows.service.MfaService.class);
+        filter = new JwtAuthenticationFilter(jwtService, userDetailsService, mfaService);
         response = new MockHttpServletResponse();
     }
 

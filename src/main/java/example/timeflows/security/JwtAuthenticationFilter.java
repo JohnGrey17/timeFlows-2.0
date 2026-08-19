@@ -1,5 +1,6 @@
 package example.timeflows.security;
 
+import example.timeflows.service.MfaService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -23,10 +24,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final MfaService mfaService;
 
-    public JwtAuthenticationFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService, UserDetailsService userDetailsService, MfaService mfaService) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
+        this.mfaService = mfaService;
     }
 
     @Override
@@ -42,7 +46,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String username = jwtService.extractUsername(token);
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-            if (jwtService.isTokenValid(token, userDetails)) {
+            example.timeflows.model.User domainUser = mfaService.user(username);
+            boolean mfaPolicySatisfied =
+                    !mfaService.isRequired(domainUser) || domainUser.isMfaEnabled();
+            if (jwtService.isTokenValid(token, userDetails) && mfaPolicySatisfied) {
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities());

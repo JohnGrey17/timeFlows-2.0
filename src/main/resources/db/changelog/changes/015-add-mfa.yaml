@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 015-add-mfa
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column: { name: mfa_enabled, type: BOOLEAN, defaultValueBoolean: false, constraints: { nullable: false } }
+              - column: { name: mfa_secret, type: VARCHAR(1000) }
+              - column: { name: mfa_enabled_at, type: TIMESTAMP }
+        - createTable:
+            tableName: mfa_recovery_codes
+            columns:
+              - column: { name: id, type: BIGINT, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: user_id, type: BIGINT, constraints: { nullable: false, foreignKeyName: fk_mfa_recovery_user, references: users(id), deleteCascade: true } }
+              - column: { name: code_hash, type: VARCHAR(100), constraints: { nullable: false } }
+              - column: { name: used_at, type: TIMESTAMP }

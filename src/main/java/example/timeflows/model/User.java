@@ -70,4 +70,13 @@ public class User {
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "mfa_enabled", nullable = false)
+    private boolean mfaEnabled;
+
+    @Column(name = "mfa_secret", length = 1000)
+    private String mfaSecret;
+
+    @Column(name = "mfa_enabled_at")
+    private LocalDateTime mfaEnabledAt;
 }

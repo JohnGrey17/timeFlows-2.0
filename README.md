@@ -132,6 +132,9 @@ Department
 
 - Spring Security із role-based authorization;
 - JWT зберігається в `HttpOnly` cookie;
+- Google Authenticator TOTP як другий фактор: обов’язково для `ADMIN` і `MANAGER`, опціонально для `EMPLOYEE`;
+- повний JWT видається лише після успішної MFA-перевірки;
+- MFA secret шифрується AES-GCM, а recovery-коди зберігаються лише як BCrypt-хеші;
 - застосунок працює без серверної HTTP-сесії (`STATELESS`);
 - паролі хешуються через `PasswordEncoder` і не зберігаються відкритим текстом;
 - CSRF-захист для операцій, що змінюють дані;
@@ -141,7 +144,7 @@ Department
 - PostgreSQL у Compose не публікує порт назовні;
 - `.env` із секретами виключений із Git.
 
-Для production обов’язково встановіть випадковий `JWT_SECRET` довжиною щонайменше 32 символи та унікальний пароль PostgreSQL. Не використовуйте значення з `.env.example` без заміни.
+Для production обов’язково встановіть окремі випадкові `JWT_SECRET` і `MFA_ENCRYPTION_KEY` та унікальний пароль PostgreSQL. Не змінюйте або не втрачайте `MFA_ENCRYPTION_KEY`: без нього вже підключені Authenticator-акаунти потрібно буде налаштовувати повторно. Не використовуйте значення з `.env.example` без заміни.
 
 [Повернутися до змісту](#contents)
 
@@ -179,9 +182,11 @@ cp .env.example .env
 | `POSTGRES_PASSWORD` | Пароль PostgreSQL | випадковий сильний пароль |
 | `JWT_SECRET` | Ключ підпису JWT | випадковий секрет 32+ символи |
 | `JWT_EXPIRATION` | Термін дії JWT | `PT8H` |
+| `MFA_ENCRYPTION_KEY` | Окремий ключ шифрування TOTP-secret | довгий випадковий секрет |
+| `MFA_ISSUER` | Назва у Google Authenticator | `timeFlows` |
 | `APP_PORT` | Порт застосунку на хості | `8080` |
 
-При запуску без Compose Spring також розуміє `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION` і `H2_CONSOLE_ENABLED`.
+При запуску без Compose Spring також розуміє `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `MFA_ENCRYPTION_KEY`, `MFA_ISSUER` і `H2_CONSOLE_ENABLED`.
 
 [Повернутися до змісту](#contents)
 
@@ -265,6 +270,8 @@ docker compose exec postgres sh -c \
 Якщо shell не завантажив `.env`, підставте значення `POSTGRES_USER` і `POSTGRES_DB` безпосередньо в команду. Замініть `admin@vyriy.com` на email зареєстрованого адміністратора.
 
 Після цього перезайдіть у застосунок. Адміністратор зможе керувати організацією, призначати менеджерів і працювати з усіма модулями.
+
+Під час першого входу адміністратора застосунок вимагатиме підключити Google Authenticator: відскануйте QR-код, підтвердьте шестизначний код і збережіть показані recovery-коди. Для менеджерів MFA також є обов’язковою. Працівник може підключити її самостійно на сторінці налаштувань.
 
 [Повернутися до змісту](#contents)
 

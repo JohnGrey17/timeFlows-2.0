@@ -6,6 +6,7 @@ import example.timeflows.exception.UserException;
 import example.timeflows.security.JwtAuthenticationFilter;
 import example.timeflows.security.JwtService;
 import example.timeflows.service.DivisionService;
+import example.timeflows.service.MfaService;
 import example.timeflows.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -35,6 +36,7 @@ public class AuthController {
     private final DivisionService divisionService;
     private final example.timeflows.service.DepartmentService departmentService;
     private final Duration jwtExpiration;
+    private final MfaService mfaService;
 
     public AuthController(
             AuthenticationManager authenticationManager,
@@ -42,12 +44,14 @@ public class AuthController {
             UserService userService,
             DivisionService divisionService,
             example.timeflows.service.DepartmentService departmentService,
+            MfaService mfaService,
             @Value("${timeflows.jwt.expiration}") Duration jwtExpiration) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userService = userService;
         this.divisionService = divisionService;
         this.departmentService = departmentService;
+        this.mfaService = mfaService;
         this.jwtExpiration = jwtExpiration;
     }
 
@@ -72,6 +76,22 @@ public class AuthController {
                     authenticationManager.authenticate(
                             new UsernamePasswordAuthenticationToken(
                                     loginRequest.getEmail(), loginRequest.getPassword()));
+            example.timeflows.model.User domainUser = mfaService.user(authentication.getName());
+            if (domainUser.isMfaEnabled() || mfaService.isRequired(domainUser)) {
+                String pendingToken = jwtService.generateMfaPendingToken(authentication.getName());
+                response.addHeader(
+                        HttpHeaders.SET_COOKIE,
+                        ResponseCookie.from("TIMEFLOWS_MFA_PENDING", pendingToken)
+                                .httpOnly(true)
+                                .sameSite("Lax")
+                                .path("/")
+                                .maxAge(Duration.ofMinutes(5))
+                                .build()
+                                .toString());
+                return domainUser.isMfaEnabled()
+                        ? "redirect:/api/mfa/challenge"
+                        : "redirect:/api/mfa/setup";
+            }
             String token = jwtService.generateToken((UserDetails) authentication.getPrincipal());
             response.addHeader(
                     HttpHeaders.SET_COOKIE, createJwtCookie(token, jwtExpiration).toString());

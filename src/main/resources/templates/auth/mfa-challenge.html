@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>timeFlows | MFA</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<body class="auth-body"><main class="auth-shell"><section class="auth-panel">
+  <div class="brand">timeFlows</div><h1>Двофакторна перевірка</h1>
+  <p>Введіть 6-значний код із Google Authenticator або recovery-код.</p>
+  <p class="error-message" th:if="${mfaError}" th:text="${mfaError}"></p>
+  <form th:action="@{/api/mfa/challenge}" method="post" class="form-stack">
+    <label>Код<input name="code" inputmode="numeric" autocomplete="one-time-code" autofocus required></label>
+    <button type="submit">Підтвердити</button>
+  </form>
+  <p class="auth-switch"><a th:href="@{/api/login}">Повернутися до входу</a></p>
+</section></main></body></html>

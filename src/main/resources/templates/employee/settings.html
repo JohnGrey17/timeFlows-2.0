@@ -40,6 +40,12 @@
 
         <section class="settings-grid">
             <article class="settings-panel">
+                <h2>Двофакторна автентифікація</h2>
+                <p th:if="${currentUser.mfaEnabled}">MFA через Google Authenticator увімкнено.</p>
+                <p th:unless="${currentUser.mfaEnabled}">Захистіть обліковий запис додатковим одноразовим кодом.</p>
+                <a class="link-button" th:unless="${currentUser.mfaEnabled}" th:href="@{/api/mfa/setup}">Підключити Google Authenticator</a>
+            </article>
+            <article class="settings-panel">
                 <h2>Профіль</h2>
                 <p class="success-message" th:if="${param.profileUpdated}">Профіль оновлено.</p>
                 <form th:action="@{/api/settings/profile}" th:object="${profileRequest}" method="post" class="form-stack">

@@ -34,6 +34,35 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void privilegedLoginRequiresMfaEnrollmentBeforeIssuingFullSession() throws Exception {
+        mockMvc.perform(
+                        post("/api/login")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .param("email", "it.manager@vyriy.com")
+                                .param("password", "test-password"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .redirectedUrl("/api/mfa/setup"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                                .exists("TIMEFLOWS_MFA_PENDING"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                                .doesNotExist("TIMEFLOWS_JWT"));
+    }
+
+    @Test
+    void mfaPageWithoutPendingSessionReturnsToLogin() throws Exception {
+        mockMvc.perform(get("/api/mfa/challenge"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .redirectedUrl("/api/login?mfaExpired"));
+    }
+
+    @Test
     void stateChangingRequestWithoutCsrfIsForbidden() throws Exception {
         mockMvc.perform(
                         post("/api/departments")

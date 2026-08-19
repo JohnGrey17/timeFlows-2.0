@@ -26,11 +26,20 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
+        return generate(userDetails.getUsername(), expiration, "AUTH");
+    }
+
+    public String generateMfaPendingToken(String username) {
+        return generate(username, Duration.ofMinutes(5), "MFA_PENDING");
+    }
+
+    private String generate(String username, Duration lifetime, String type) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(userDetails.getUsername())
+                .subject(username)
+                .claim("type", type)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(expiration)))
+                .expiration(Date.from(now.plus(lifetime)))
                 .signWith(secretKey)
                 .compact();
     }
@@ -41,7 +50,14 @@ public class JwtService {
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
         String username = extractUsername(token);
-        return username.equals(userDetails.getUsername()) && !isExpired(token);
+        return username.equals(userDetails.getUsername())
+                && "AUTH".equals(extractClaims(token).get("type", String.class))
+                && !isExpired(token);
+    }
+
+    public boolean isMfaPendingToken(String token) {
+        return "MFA_PENDING".equals(extractClaims(token).get("type", String.class))
+                && !isExpired(token);
     }
 
     private boolean isExpired(String token) {

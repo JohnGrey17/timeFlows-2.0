@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>timeFlows | Recovery-коди</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
+<body class="auth-body"><main class="auth-shell"><section class="auth-panel">
+  <div class="brand">timeFlows</div><h1>MFA увімкнено</h1>
+  <p>Збережіть ці одноразові recovery-коди у password manager. Після закриття сторінки вони більше не відображатимуться.</p>
+  <ul><li th:each="code : ${recoveryCodes}"><code th:text="${code}"></code></li></ul>
+  <a class="link-button" th:href="@{/api/dashboard}">Продовжити</a>
+</section></main></body></html>
