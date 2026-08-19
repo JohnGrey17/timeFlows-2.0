@@ -3,7 +3,21 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>timeFlows | Recovery-коди</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
 <body class="auth-body"><main class="auth-shell"><section class="auth-panel">
   <div class="brand">timeFlows</div><h1>MFA увімкнено</h1>
-  <p>Збережіть ці одноразові recovery-коди у password manager. Після закриття сторінки вони більше не відображатимуться.</p>
-  <ul><li th:each="code : ${recoveryCodes}"><code th:text="${code}"></code></li></ul>
-  <a class="link-button" th:href="@{/api/dashboard}">Продовжити</a>
+  <p>Recovery-коди потрібні, якщо телефон загублено або Google Authenticator недоступний. Кожен код працює лише один раз. Після завершення реєстрації вони більше не відображатимуться.</p>
+  <div id="recovery-codes"><ul><li th:each="code : ${recoveryCodes}"><code th:text="${code}"></code></li></ul></div>
+  <div class="inline-form">
+    <button type="button" id="copy-recovery">Скопіювати</button>
+    <a class="link-button" th:href="@{/api/mfa/recovery/download}">Завантажити TXT</a>
+  </div>
+  <p class="error-message" th:if="${mfaError}" th:text="${mfaError}"></p>
+  <form th:action="@{/api/mfa/recovery/confirm}" method="post" class="form-stack">
+    <label><input type="checkbox" name="saved" value="true" required> Я зберіг recovery-коди</label>
+    <button type="submit">Завершити реєстрацію</button>
+  </form>
+  <script>
+    document.getElementById('copy-recovery').addEventListener('click', async () => {
+      const codes = [...document.querySelectorAll('#recovery-codes code')].map(node => node.textContent).join('\n');
+      await navigator.clipboard.writeText(codes);
+    });
+  </script>
 </section></main></body></html>

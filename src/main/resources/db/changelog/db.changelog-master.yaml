@@ -27,3 +27,5 @@ databaseChangeLog:
       file: db/changelog/changes/014-reset-organization-sequences.yaml
   - include:
       file: db/changelog/changes/015-add-mfa.yaml
+  - include:
+      file: db/changelog/changes/016-add-mfa-enrollment-and-audit.yaml

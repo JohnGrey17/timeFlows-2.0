@@ -63,6 +63,29 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void registrationContinuesDirectlyToMandatoryMfaEnrollment() throws Exception {
+        mockMvc.perform(
+                        post("/api/register")
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .param("firstName", "New")
+                                .param("lastName", "Employee")
+                                .param("email", "new.employee@vyriy.com")
+                                .param("password", "test-password")
+                                .param("divisionId", "1"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                                .redirectedUrl("/api/mfa/setup"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                                .exists("TIMEFLOWS_MFA_PENDING"))
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie()
+                                .doesNotExist("TIMEFLOWS_JWT"));
+    }
+
+    @Test
     void stateChangingRequestWithoutCsrfIsForbidden() throws Exception {
         mockMvc.perform(
                         post("/api/departments")

@@ -5,6 +5,7 @@ import example.timeflows.model.User;
 import example.timeflows.service.DepartmentService;
 import example.timeflows.service.DivisionService;
 import example.timeflows.service.ManagementAccessService;
+import example.timeflows.service.MfaService;
 import example.timeflows.service.UserService;
 import java.math.BigDecimal;
 import java.util.Comparator;
@@ -25,16 +26,19 @@ public class UsersPageController {
     private final DepartmentService departmentService;
     private final DivisionService divisionService;
     private final ManagementAccessService accessService;
+    private final MfaService mfaService;
 
     public UsersPageController(
             UserService userService,
             DepartmentService departmentService,
             DivisionService divisionService,
-            ManagementAccessService accessService) {
+            ManagementAccessService accessService,
+            MfaService mfaService) {
         this.userService = userService;
         this.departmentService = departmentService;
         this.divisionService = divisionService;
         this.accessService = accessService;
+        this.mfaService = mfaService;
     }
 
     @GetMapping("/api/users")
@@ -144,6 +148,18 @@ public class UsersPageController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(defaultValue = "department") String groupBy) {
         userService.assignDivisionManager(divisionId, userId);
+        return usersRedirect(departmentId, divisionId, groupBy);
+    }
+
+    @PostMapping("/api/users/{id}/mfa/reset")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String resetMfa(
+            @PathVariable Long id,
+            Authentication authentication,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        mfaService.resetByAdmin(id, authentication.getName());
         return usersRedirect(departmentId, divisionId, groupBy);
     }
 

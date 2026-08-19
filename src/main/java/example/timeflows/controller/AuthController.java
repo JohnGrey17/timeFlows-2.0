@@ -85,7 +85,7 @@ public class AuthController {
                                 .httpOnly(true)
                                 .sameSite("Lax")
                                 .path("/")
-                                .maxAge(Duration.ofMinutes(5))
+                                .maxAge(Duration.ofMinutes(15))
                                 .build()
                                 .toString());
                 return domainUser.isMfaEnabled()
@@ -114,7 +114,8 @@ public class AuthController {
     public String register(
             @Valid @ModelAttribute RegisterRequest registerRequest,
             BindingResult bindingResult,
-            Model model) {
+            Model model,
+            HttpServletResponse response) {
         if (bindingResult.hasErrors()) {
             model.addAttribute("divisions", divisionService.findAll());
             model.addAttribute("departments", departmentService.findAll());
@@ -122,8 +123,18 @@ public class AuthController {
         }
 
         try {
-            userService.register(registerRequest);
-            return "redirect:/api/login?registered";
+            example.timeflows.model.User user = userService.register(registerRequest);
+            String pendingToken = jwtService.generateMfaPendingToken(user.getEmail());
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE,
+                    ResponseCookie.from("TIMEFLOWS_MFA_PENDING", pendingToken)
+                            .httpOnly(true)
+                            .sameSite("Lax")
+                            .path("/")
+                            .maxAge(Duration.ofMinutes(15))
+                            .build()
+                            .toString());
+            return "redirect:/api/mfa/setup";
         } catch (UserException exception) {
             model.addAttribute("divisions", divisionService.findAll());
             model.addAttribute("departments", departmentService.findAll());

@@ -30,7 +30,7 @@ public class JwtService {
     }
 
     public String generateMfaPendingToken(String username) {
-        return generate(username, Duration.ofMinutes(5), "MFA_PENDING");
+        return generate(username, Duration.ofMinutes(15), "MFA_PENDING");
     }
 
     private String generate(String username, Duration lifetime, String type) {

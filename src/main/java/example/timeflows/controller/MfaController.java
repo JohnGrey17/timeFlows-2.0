@@ -10,7 +10,9 @@ import java.time.Duration;
 import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -63,6 +65,7 @@ public class MfaController {
             model.addAttribute("mfaError", "Невірний або прострочений код");
             return "auth/mfa-challenge";
         }
+        if (mfa.user(email).getMfaRecoveryBundle() != null) return "redirect:/api/mfa/recovery";
         completeLogin(email, response);
         return "redirect:/api/dashboard";
     }
@@ -81,13 +84,18 @@ public class MfaController {
             @RequestParam String code,
             Authentication authentication,
             HttpServletRequest request,
-            HttpServletResponse response,
             Model model) {
         String email = currentEmail(authentication, request);
         try {
-            model.addAttribute("recoveryCodes", mfa.enable(email, code));
-            if (authentication == null || authentication instanceof AnonymousAuthenticationToken)
-                completeLogin(email, response);
+            java.util.List<String> recoveryCodes = mfa.enable(email, code);
+            if (recoveryCodes.isEmpty()) {
+                model.addAttribute("email", email);
+                model.addAttribute("secret", mfa.prepare(email));
+                model.addAttribute("qrCode", mfa.qrDataUri(email));
+                model.addAttribute("firstCodeAccepted", true);
+                return "auth/mfa-setup";
+            }
+            model.addAttribute("recoveryCodes", recoveryCodes);
             return "auth/mfa-recovery";
         } catch (IllegalArgumentException exception) {
             model.addAttribute("email", email);
@@ -96,6 +104,43 @@ public class MfaController {
             model.addAttribute("mfaError", exception.getMessage());
             return "auth/mfa-setup";
         }
+    }
+
+    @GetMapping("/api/mfa/recovery")
+    public String recovery(HttpServletRequest request, Model model) {
+        model.addAttribute(
+                "recoveryCodes", mfa.recoveryCodesForConfirmation(pendingEmail(request)));
+        return "auth/mfa-recovery";
+    }
+
+    @GetMapping(value = "/api/mfa/recovery/download", produces = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> downloadRecoveryCodes(HttpServletRequest request) {
+        String body =
+                String.join(
+                        System.lineSeparator(),
+                        mfa.recoveryCodesForConfirmation(pendingEmail(request)));
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=timeflows-recovery-codes.txt")
+                .body(body);
+    }
+
+    @PostMapping("/api/mfa/recovery/confirm")
+    public String confirmRecoveryCodes(
+            @RequestParam(required = false) Boolean saved,
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Model model) {
+        String email = pendingEmail(request);
+        if (!Boolean.TRUE.equals(saved)) {
+            model.addAttribute("recoveryCodes", mfa.recoveryCodesForConfirmation(email));
+            model.addAttribute("mfaError", "Підтвердьте, що ви зберегли recovery-коди");
+            return "auth/mfa-recovery";
+        }
+        mfa.confirmRecoveryCodes(email);
+        completeLogin(email, response);
+        return "redirect:/api/dashboard";
     }
 
     private String currentEmail(Authentication authentication, HttpServletRequest request) {

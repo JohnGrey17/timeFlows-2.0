@@ -79,4 +79,10 @@ public class User {
 
     @Column(name = "mfa_enabled_at")
     private LocalDateTime mfaEnabledAt;
+
+    @Column(name = "mfa_enrollment_counter")
+    private Long mfaEnrollmentCounter;
+
+    @Column(name = "mfa_recovery_bundle", length = 4000)
+    private String mfaRecoveryBundle;
 }

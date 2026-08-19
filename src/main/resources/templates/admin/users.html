@@ -85,6 +85,7 @@
                 <tbody>
                 <tr th:each="user : ${users}">
                     <td>
+                        <span class="role-badge" th:text="${user.mfaEnabled} ? 'MFA ON' : 'MFA REQUIRED'"></span>
                         <strong th:text="${user.email}">email</strong>
                         <span th:text="${(user.firstName ?: '') + ' ' + (user.lastName ?: '')}">Ім'я Прізвище</span>
                     </td>
@@ -116,6 +117,16 @@
                             <input type="text" name="reason" placeholder="Причина" required>
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}"><input type="hidden" name="divisionId" th:value="${selectedDivisionId}"><input type="hidden" name="groupBy" th:value="${groupBy}">
                             <button type="submit" class="danger-button">Деактивувати</button>
+                        </form>
+                        <form sec:authorize="hasRole('ADMIN')"
+                              th:if="${user.mfaEnabled && user.id != currentUser.id}"
+                              th:action="@{/api/users/{id}/mfa/reset(id=${user.id})}"
+                              method="post"
+                              class="inline-form">
+                            <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
+                            <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
+                            <input type="hidden" name="groupBy" th:value="${groupBy}">
+                            <button type="submit" class="danger-button" onclick="return confirm('Скинути MFA користувача? Наступний вхід вимагатиме нового QR-коду.')">Скинути MFA</button>
                         </form>
                     </td>
                 </tr>

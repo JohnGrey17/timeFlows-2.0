@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 016-add-mfa-enrollment-and-audit
+      author: codex
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column: { name: mfa_enrollment_counter, type: BIGINT }
+              - column: { name: mfa_recovery_bundle, type: VARCHAR(4000) }
+        - createTable:
+            tableName: mfa_audit_events
+            columns:
+              - column: { name: id, type: BIGINT, autoIncrement: true, constraints: { primaryKey: true, nullable: false } }
+              - column: { name: actor_email, type: VARCHAR(255), constraints: { nullable: false } }
+              - column: { name: target_email, type: VARCHAR(255), constraints: { nullable: false } }
+              - column: { name: action, type: VARCHAR(100), constraints: { nullable: false } }
+              - column: { name: created_at, type: TIMESTAMP, constraints: { nullable: false } }

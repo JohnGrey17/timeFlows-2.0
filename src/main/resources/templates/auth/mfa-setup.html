@@ -3,12 +3,13 @@
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>timeFlows | Налаштування MFA</title><link rel="stylesheet" th:href="@{/css/app.css}"></head>
 <body class="auth-body"><main class="auth-shell"><section class="auth-panel">
   <div class="brand">timeFlows</div><h1>Google Authenticator</h1>
-  <ol><li>Відкрийте Google Authenticator.</li><li>Натисніть «+» і відскануйте QR-код.</li><li>Введіть створений 6-значний код.</li></ol>
+  <ol><li>Відкрийте Google Authenticator.</li><li>Натисніть «+» і відскануйте QR-код.</li><li>Введіть створений 6-значний код.</li><li>Дочекайтеся нового коду через 30 секунд і підтвердьте його ще раз.</li></ol>
+  <p class="success-message" th:if="${firstCodeAccepted}">Перший код підтверджено. Дочекайтеся, поки Google Authenticator покаже новий код.</p>
   <img th:src="${qrCode}" alt="QR-код Google Authenticator" width="260" height="260">
   <details><summary>Не можете сканувати?</summary><code th:text="${secret}"></code></details>
   <p class="error-message" th:if="${mfaError}" th:text="${mfaError}"></p>
   <form th:action="@{/api/mfa/setup}" method="post" class="form-stack">
     <label>Код підтвердження<input name="code" inputmode="numeric" autocomplete="one-time-code" required></label>
-    <button type="submit">Увімкнути MFA</button>
+    <button type="submit" th:text="${firstCodeAccepted} ? 'Підтвердити другим кодом' : 'Підтвердити перший код'">Підтвердити код</button>
   </form>
 </section></main></body></html>
