@@ -17,8 +17,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest(
-        properties =
-                "spring.datasource.url=jdbc:h2:mem:securitytests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false")
+        properties = {
+            "spring.datasource.url=jdbc:h2:mem:securitytests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false",
+            "timeflows.demo-data.enabled=false"
+        })
 @AutoConfigureMockMvc
 @Import(SecurityTestData.class)
 class SecurityAuthorizationTests {
