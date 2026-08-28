@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -22,6 +23,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class OvertimeViewServiceImpl implements OvertimeViewService {
+    private static final ZoneId KYIV_ZONE = ZoneId.of("Europe/Kyiv");
+
     @Override
     public YearMonth resolveMonth(Integer year, Integer month) {
         return year == null || month == null ? YearMonth.now() : YearMonth.of(year, month);
@@ -85,7 +88,10 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
         BigDecimal salary = user.getSalary() == null ? BigDecimal.ZERO : user.getSalary();
         BigDecimal hours =
                 byDate.values().stream()
-                        .filter(o -> o.getStatus() == OvertimeStatus.APPROVED)
+                        .filter(
+                                o ->
+                                        o.getStatus() == OvertimeStatus.APPROVED_ADMIN
+                                                || o.getStatus() == OvertimeStatus.APPROVED)
                         .map(o -> BigDecimal.valueOf(o.getHours()))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
         int workingHours =
@@ -107,7 +113,10 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
         BigDecimal amount = rate.multiply(hours).setScale(2, RoundingMode.HALF_UP);
         List<OvertimePaymentDetail> details =
                 byDate.values().stream()
-                        .filter(o -> o.getStatus() == OvertimeStatus.APPROVED)
+                        .filter(
+                                o ->
+                                        o.getStatus() == OvertimeStatus.APPROVED_ADMIN
+                                                || o.getStatus() == OvertimeStatus.APPROVED)
                         .sorted(Comparator.comparing(Overtime::getWorkDate))
                         .map(
                                 o ->
@@ -143,8 +152,15 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
 
     private String css(LocalDate date, YearMonth month, Overtime overtime) {
         if (!YearMonth.from(date).equals(month)) return "muted-day";
-        return overtime == null
-                ? ""
-                : "has-overtime status-" + overtime.getStatus().name().toLowerCase();
+        String pastClass = date.isBefore(LocalDate.now(KYIV_ZONE)) ? "past-day" : "";
+        if (overtime == null) return pastClass;
+        String statusClass =
+                switch (overtime.getStatus()) {
+                    case CHECKING, PENDING -> "status-pending";
+                    case APPROVED_MANAGER -> "status-manager";
+                    case APPROVED_ADMIN, APPROVED -> "status-approved";
+                    case DECLINED, REJECTED -> "status-rejected";
+                };
+        return ("has-overtime " + statusClass + " " + pastClass).trim();
     }
 }

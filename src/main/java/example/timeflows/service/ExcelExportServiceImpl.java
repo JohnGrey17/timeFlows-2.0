@@ -4,9 +4,11 @@ import example.timeflows.exception.DivisionException;
 import example.timeflows.model.Bonus;
 import example.timeflows.model.BonusStatus;
 import example.timeflows.model.Department;
+import example.timeflows.model.Directorate;
 import example.timeflows.model.Division;
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
+import example.timeflows.model.Subdivision;
 import example.timeflows.model.User;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -18,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Cell;
@@ -41,38 +44,107 @@ public class ExcelExportServiceImpl implements ExcelExportService {
     private final UserService userService;
     private final OvertimeService overtimeService;
     private final BonusService bonusService;
+    private final DirectorateService directorateService;
+    private final SubdivisionService subdivisionService;
 
     public ExcelExportServiceImpl(
             DepartmentService departmentService,
             DivisionService divisionService,
             UserService userService,
             OvertimeService overtimeService,
-            BonusService bonusService) {
+            BonusService bonusService,
+            DirectorateService directorateService,
+            SubdivisionService subdivisionService) {
         this.departmentService = departmentService;
         this.divisionService = divisionService;
         this.userService = userService;
         this.overtimeService = overtimeService;
         this.bonusService = bonusService;
+        this.directorateService = directorateService;
+        this.subdivisionService = subdivisionService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public ExcelExportResult export(
             Long departmentId, Long divisionId, YearMonth from, YearMonth to) {
+        return export(departmentId, null, divisionId, null, from, to);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExcelExportResult export(
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            YearMonth from,
+            YearMonth to) {
+        return exportInternal(
+                departmentId, directorateId, divisionId, subdivisionId, from, to, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExcelExportResult export(
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            YearMonth from,
+            YearMonth to,
+            Set<ExcelColumn> columns) {
+        if (columns == null || columns.isEmpty()) {
+            throw new IllegalArgumentException("Оберіть щонайменше одну колонку");
+        }
+        return exportInternal(
+                departmentId, directorateId, divisionId, subdivisionId, from, to, columns);
+    }
+
+    private ExcelExportResult exportInternal(
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            YearMonth from,
+            YearMonth to,
+            Set<ExcelColumn> columns) {
         validatePeriod(from, to);
         Department department = departmentService.findById(departmentId);
+        Directorate directorate =
+                directorateId == null ? null : directorateService.findById(directorateId);
         Division division = divisionId == null ? null : divisionService.findById(divisionId);
+        Subdivision subdivision =
+                subdivisionId == null ? null : subdivisionService.findById(subdivisionId);
+        if (directorate != null && !directorate.getDepartment().getId().equals(departmentId)) {
+            throw new DivisionException("Управління не належить вибраному департаменту");
+        }
         if (division != null && !division.getDepartment().getId().equals(departmentId)) {
-            throw new DivisionException("Підвідділ не належить вибраному департаменту");
+            throw new DivisionException("Відділ не належить вибраному департаменту");
+        }
+        if (division != null
+                && directorate != null
+                && (division.getDirectorate() == null
+                        || !division.getDirectorate().getId().equals(directorateId))) {
+            throw new DivisionException("Відділ не належить вибраному управлінню");
+        }
+        if (subdivision != null
+                && (division == null || !subdivision.getDivision().getId().equals(divisionId))) {
+            throw new DivisionException("Підвідділ не належить вибраному відділу");
         }
         List<User> users =
-                division == null
-                        ? userService.findActiveUsersByDepartment(departmentId)
-                        : userService.findActiveUsersByDivision(divisionId);
+                subdivision != null
+                        ? userService.findActiveUsersBySubdivision(subdivisionId)
+                        : division != null
+                                ? userService.findActiveUsersByDivision(divisionId)
+                                : directorate != null
+                                        ? userService.findActiveUsersByDirectorate(directorateId)
+                                        : userService.findActiveUsersByDepartment(departmentId);
         try (Workbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             for (YearMonth month = from; !month.isAfter(to); month = month.plusMonths(1)) {
-                addMonthSheets(workbook, month, department, division, users);
+                if (columns == null) addMonthSheets(workbook, month, department, division, users);
+                else addConstructorSheet(workbook, month, department, division, users, columns);
             }
             workbook.write(output);
             return new ExcelExportResult(
@@ -80,6 +152,89 @@ public class ExcelExportServiceImpl implements ExcelExportService {
         } catch (IOException exception) {
             throw new IllegalStateException("Не вдалося сформувати Excel-файл", exception);
         }
+    }
+
+    private void addConstructorSheet(
+            Workbook workbook,
+            YearMonth month,
+            Department department,
+            Division division,
+            List<User> users,
+            Set<ExcelColumn> columns) {
+        Sheet sheet = workbook.createSheet(month.format(MONTH_FORMAT));
+        CellStyle headerStyle = headerStyle(workbook);
+        Row headerRow = sheet.createRow(0);
+        List<ExcelColumn> ordered =
+                List.of(ExcelColumn.values()).stream().filter(columns::contains).toList();
+        for (int index = 0; index < ordered.size(); index++) {
+            header(headerRow, index, ordered.get(index).getLabel(), headerStyle);
+        }
+        Set<Long> userIds = users.stream().map(User::getId).collect(Collectors.toSet());
+        List<Overtime> overtimes =
+                (division == null
+                                ? overtimeService.findDepartmentMonth(department.getId(), month)
+                                : overtimeService.findDivisionMonth(division.getId(), month))
+                        .stream()
+                                .filter(overtime -> userIds.contains(overtime.getUser().getId()))
+                                .filter(
+                                        overtime ->
+                                                overtime.getStatus()
+                                                                == OvertimeStatus.APPROVED_ADMIN
+                                                        || overtime.getStatus()
+                                                                == OvertimeStatus.APPROVED)
+                                .toList();
+        Map<Long, BigDecimal> hoursByUser =
+                overtimes.stream()
+                        .collect(
+                                Collectors.groupingBy(
+                                        overtime -> overtime.getUser().getId(),
+                                        Collectors.reducing(
+                                                BigDecimal.ZERO,
+                                                overtime -> BigDecimal.valueOf(overtime.getHours()),
+                                                BigDecimal::add)));
+        Map<Long, BigDecimal> bonusesByUser =
+                bonusTotals(
+                        bonusService.findMonth(month).stream()
+                                .filter(bonus -> userIds.contains(bonus.getUser().getId()))
+                                .filter(bonus -> bonus.getStatus() == BonusStatus.APPROVED)
+                                .toList());
+        int rowIndex = 1;
+        for (User user : users.stream().sorted(Comparator.comparing(User::getEmail)).toList()) {
+            Row row = sheet.createRow(rowIndex++);
+            for (int columnIndex = 0; columnIndex < ordered.size(); columnIndex++) {
+                ExcelColumn column = ordered.get(columnIndex);
+                Object value = constructorValue(column, user, hoursByUser, bonusesByUser);
+                valuesFrom(row, columnIndex, value);
+            }
+        }
+        for (int index = 0; index < ordered.size(); index++) sheet.autoSizeColumn(index);
+        sheet.createFreezePane(0, 1);
+    }
+
+    private Object constructorValue(
+            ExcelColumn column,
+            User user,
+            Map<Long, BigDecimal> hoursByUser,
+            Map<Long, BigDecimal> bonusesByUser) {
+        return switch (column) {
+            case EMPLOYEE -> displayName(user);
+            case EMAIL -> user.getEmail();
+            case DEPARTMENT -> user.getDivision().getDepartment().getName();
+            case DIRECTORATE ->
+                    user.getDivision().getDirectorate() == null
+                            ? ""
+                            : user.getDivision().getDirectorate().getName();
+            case DIVISION -> user.getDivision().getName();
+            case SUBDIVISION ->
+                    user.getSubdivision() == null ? "" : user.getSubdivision().getName();
+            case TAGS ->
+                    user.getTags().stream()
+                            .map(Enum::name)
+                            .sorted()
+                            .collect(Collectors.joining(", "));
+            case OVERTIME_HOURS -> hoursByUser.getOrDefault(user.getId(), BigDecimal.ZERO);
+            case BONUS_TOTAL -> bonusesByUser.getOrDefault(user.getId(), BigDecimal.ZERO);
+        };
     }
 
     private void addMonthSheets(
@@ -93,7 +248,12 @@ public class ExcelExportServiceImpl implements ExcelExportService {
                                 ? overtimeService.findDepartmentMonth(department.getId(), month)
                                 : overtimeService.findDivisionMonth(division.getId(), month))
                         .stream()
-                                .filter(overtime -> overtime.getStatus() == OvertimeStatus.APPROVED)
+                                .filter(
+                                        overtime ->
+                                                overtime.getStatus()
+                                                                == OvertimeStatus.APPROVED_ADMIN
+                                                        || overtime.getStatus()
+                                                                == OvertimeStatus.APPROVED)
                                 .toList();
         var userIds = users.stream().map(User::getId).collect(Collectors.toSet());
         List<Bonus> approvedBonuses =
@@ -210,6 +370,7 @@ public class ExcelExportServiceImpl implements ExcelExportService {
                 BigDecimal categoryAmount =
                         bonuses.stream()
                                 .filter(bonus -> bonus.getUser().getId().equals(user.getId()))
+                                .filter(bonus -> bonus.getCategory() != null)
                                 .filter(
                                         bonus ->
                                                 bonus.getCategory()

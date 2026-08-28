@@ -1,0 +1,107 @@
+databaseChangeLog:
+  - changeSet:
+      id: 017-add-directorates-and-subdivisions
+      author: codex
+      changes:
+        - createTable:
+            tableName: directorates
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: department_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: manager_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: directorates
+            baseColumnNames: department_id
+            referencedTableName: departments
+            referencedColumnNames: id
+            constraintName: fk_directorates_departments
+        - addForeignKeyConstraint:
+            baseTableName: directorates
+            baseColumnNames: manager_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_directorates_manager
+        - addUniqueConstraint:
+            tableName: directorates
+            columnNames: department_id, name
+            constraintName: uk_directorate_department_name
+        - addColumn:
+            tableName: divisions
+            columns:
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: directorate_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: divisions
+            baseColumnNames: directorate_id
+            referencedTableName: directorates
+            referencedColumnNames: id
+            constraintName: fk_divisions_directorates
+        - createTable:
+            tableName: subdivisions
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(150)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(500)
+              - column:
+                  name: division_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+        - addForeignKeyConstraint:
+            baseTableName: subdivisions
+            baseColumnNames: division_id
+            referencedTableName: divisions
+            referencedColumnNames: id
+            constraintName: fk_subdivisions_divisions
+        - addUniqueConstraint:
+            tableName: subdivisions
+            columnNames: division_id, name
+            constraintName: uk_subdivision_division_name
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: subdivision_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: users
+            baseColumnNames: subdivision_id
+            referencedTableName: subdivisions
+            referencedColumnNames: id
+            constraintName: fk_users_subdivisions

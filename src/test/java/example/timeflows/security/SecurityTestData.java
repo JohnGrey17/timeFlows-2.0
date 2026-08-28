@@ -2,6 +2,7 @@ package example.timeflows.security;
 
 import example.timeflows.model.Bonus;
 import example.timeflows.model.BonusStatus;
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Division;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
@@ -59,6 +60,16 @@ class SecurityTestData {
                             "petro.employee@vyriy.com",
                             architects,
                             Role.EMPLOYEE);
+            User projectLead =
+                    create(
+                            users,
+                            passwordEncoder,
+                            "project.lead@vyriy.com",
+                            it,
+                            Role.MANAGER,
+                            Role.EMPLOYEE);
+            projectLead.getTags().add(BusinessTag.PROJECT_MANAGER_LEAD);
+            users.save(projectLead);
 
             it.setManager(itManager);
             architects.setManager(architectManager);
@@ -96,7 +107,7 @@ class SecurityTestData {
         Bonus bonus = new Bonus();
         bonus.setUser(user);
         bonus.setCreatedBy(createdBy);
-        bonus.setCategory(categories.findAllByOrderByNameAsc().get(0));
+        bonus.setCategory(categories.findByActiveTrueOrderByTypeAscNameAsc().get(0));
         bonus.setAmount(new BigDecimal("100.00"));
         bonus.setDescription("Test bonus");
         bonus.setStatus(BonusStatus.PENDING);

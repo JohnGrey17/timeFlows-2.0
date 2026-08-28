@@ -2,10 +2,13 @@ package example.timeflows.service;
 
 import example.timeflows.controller.dto.RegisterRequest;
 import example.timeflows.exception.UserException;
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Division;
 import example.timeflows.model.Role;
+import example.timeflows.model.Subdivision;
 import example.timeflows.model.User;
 import example.timeflows.repository.DivisionRepository;
+import example.timeflows.repository.SubdivisionRepository;
 import example.timeflows.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
@@ -24,13 +27,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final UserRepository userRepository;
     private final DivisionRepository divisionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final SubdivisionRepository subdivisionRepository;
 
     public UserServiceImpl(
             UserRepository userRepository,
             DivisionRepository divisionRepository,
+            SubdivisionRepository subdivisionRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.divisionRepository = divisionRepository;
+        this.subdivisionRepository = subdivisionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -84,6 +90,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<User> findActiveUsersByDirectorate(Long directorateId) {
+        return userRepository.findByDivisionDirectorateIdAndActiveTrueOrderByEmailAsc(
+                directorateId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<User> findActiveUsersBySubdivision(Long subdivisionId) {
+        return userRepository.findBySubdivisionIdAndActiveTrueOrderByEmailAsc(subdivisionId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public User findById(Long id) {
         return userRepository
                 .findWithDivisionById(id)
@@ -100,7 +119,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setLastName(request.getLastName());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
-        return create(user, request.getDivisionId());
+        User created = create(user, request.getDivisionId());
+        if (request.getSubdivisionId() != null) {
+            Subdivision subdivision =
+                    subdivisionRepository
+                            .findById(request.getSubdivisionId())
+                            .orElseThrow(() -> new UserException("Підвідділ не знайдено"));
+            if (!subdivision.getDivision().getId().equals(request.getDivisionId())) {
+                throw new UserException("Підвідділ не належить вибраному відділу");
+            }
+            created.setSubdivision(subdivision);
+            return userRepository.save(created);
+        }
+        return created;
     }
 
     @Override
@@ -206,6 +237,120 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             userRepository.save(previousManager);
         }
         return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public User moveToOrganization(Long userId, Long divisionId, Long subdivisionId) {
+        User user = findById(userId);
+        Division targetDivision = findDivision(divisionId);
+        Division currentDivision = user.getDivision();
+        if (currentDivision != null
+                && currentDivision.getManager() != null
+                && currentDivision.getManager().getId().equals(userId)
+                && !currentDivision.getId().equals(divisionId)) {
+            throw new UserException("Спочатку призначте іншого керівника поточного відділу");
+        }
+        Subdivision targetSubdivision = null;
+        if (subdivisionId != null) {
+            targetSubdivision =
+                    subdivisionRepository
+                            .findById(subdivisionId)
+                            .orElseThrow(() -> new UserException("Підвідділ не знайдено"));
+            if (!targetSubdivision.getDivision().getId().equals(divisionId)) {
+                throw new UserException("Підвідділ не належить вибраному відділу");
+            }
+        }
+        user.setDivision(targetDivision);
+        user.setSubdivision(targetSubdivision);
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public User updateRoles(Long userId, Set<Role> roles, String actorEmail) {
+        User user = findById(userId);
+        User actor = findByEmail(actorEmail);
+        Set<Role> requested = roles == null ? Set.of() : new LinkedHashSet<>(roles);
+        if (requested.isEmpty()) {
+            throw new UserException("Користувач повинен мати хоча б одну роль");
+        }
+        if (user.getId().equals(actor.getId())
+                && user.getRoles().contains(Role.ADMIN)
+                && !requested.contains(Role.ADMIN)) {
+            throw new UserException("Адміністратор не може забрати власну роль ADMIN");
+        }
+        boolean assignedManager =
+                user.getDivision() != null
+                        && user.getDivision().getManager() != null
+                        && user.getDivision().getManager().getId().equals(userId);
+        boolean requestsManager = requested.contains(Role.MANAGER);
+        if (requestsManager && !assignedManager) {
+            if (user.getDivision() == null) {
+                throw new UserException("Керівник повинен належати до відділу");
+            }
+            User previousManager = user.getDivision().getManager();
+            divisionRepository
+                    .findByManagerId(userId)
+                    .filter(existing -> !existing.getId().equals(user.getDivision().getId()))
+                    .ifPresent(
+                            existing -> {
+                                throw new UserException(
+                                        "Користувач вже є керівником іншого відділу");
+                            });
+            user.getDivision().setManager(user);
+            divisionRepository.save(user.getDivision());
+            if (previousManager != null && !previousManager.getId().equals(userId)) {
+                previousManager.getRoles().remove(Role.MANAGER);
+                userRepository.save(previousManager);
+            }
+        } else if (assignedManager && !requestsManager) {
+            user.getDivision().setManager(null);
+            divisionRepository.save(user.getDivision());
+        }
+        user.setRoles(requested);
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public User updateTags(Long userId, Set<BusinessTag> tags) {
+        User user = findById(userId);
+        Set<BusinessTag> requested = normalizedTags(tags);
+        if (requested.contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
+            boolean manager =
+                    user.getRoles().contains(Role.MANAGER)
+                            && user.getDivision().getManager() != null
+                            && user.getDivision().getManager().getId().equals(userId);
+            if (!manager) {
+                throw new UserException(
+                        "PROJECT_MANAGER_LEAD можна призначити лише керівнику відділу");
+            }
+        }
+        user.setTags(requested);
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public Division updateDivisionTags(Long divisionId, Set<BusinessTag> tags) {
+        Division division = findDivision(divisionId);
+        Set<BusinessTag> requested = normalizedTags(tags);
+        if (requested.contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
+            throw new UserException("PROJECT_MANAGER_LEAD призначається конкретному керівнику");
+        }
+        division.setTags(requested);
+        return divisionRepository.save(division);
+    }
+
+    private Set<BusinessTag> normalizedTags(Set<BusinessTag> tags) {
+        Set<BusinessTag> requested =
+                tags == null ? new LinkedHashSet<>() : new LinkedHashSet<>(tags);
+        if (requested.contains(BusinessTag.PROJECT_MANAGER)
+                && requested.contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
+            throw new UserException("Теги PROJECT_MANAGER і PROJECT_MANAGER_LEAD несумісні");
+        }
+        return requested;
     }
 
     @Override

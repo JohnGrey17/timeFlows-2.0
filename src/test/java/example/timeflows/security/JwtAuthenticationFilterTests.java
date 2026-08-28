@@ -41,7 +41,7 @@ class JwtAuthenticationFilterTests {
         jwtService = new JwtService(SECRET, Duration.ofHours(1));
         example.timeflows.service.MfaService mfaService =
                 mock(example.timeflows.service.MfaService.class);
-        filter = new JwtAuthenticationFilter(jwtService, userDetailsService, mfaService);
+        filter = new JwtAuthenticationFilter(jwtService, userDetailsService, mfaService, true);
         response = new MockHttpServletResponse();
     }
 

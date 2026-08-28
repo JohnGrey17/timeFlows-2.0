@@ -1,0 +1,53 @@
+databaseChangeLog:
+  - changeSet:
+      id: 018-add-business-tags
+      author: codex
+      changes:
+        - createTable:
+            tableName: user_tags
+            columns:
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: user_tags
+            columnNames: user_id, tag
+            constraintName: pk_user_tags
+        - addForeignKeyConstraint:
+            baseTableName: user_tags
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_user_tags_user
+            onDelete: CASCADE
+        - createTable:
+            tableName: division_tags
+            columns:
+              - column:
+                  name: division_id
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: tag
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: division_tags
+            columnNames: division_id, tag
+            constraintName: pk_division_tags
+        - addForeignKeyConstraint:
+            baseTableName: division_tags
+            baseColumnNames: division_id
+            referencedTableName: divisions
+            referencedColumnNames: id
+            constraintName: fk_division_tags_division
+            onDelete: CASCADE

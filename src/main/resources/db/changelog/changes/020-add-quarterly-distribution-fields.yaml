@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 020-add-quarterly-distribution-fields
+      author: codex
+      changes:
+        - addColumn:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: quarter_year
+                  type: INTEGER
+              - column:
+                  name: quarter_number
+                  type: INTEGER
+        - addUniqueConstraint:
+            tableName: bonuses
+            columnNames: user_id, type, quarter_year, quarter_number
+            constraintName: uk_bonus_user_type_quarter

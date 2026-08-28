@@ -55,9 +55,19 @@ public class User {
     @Column(name = "role", nullable = false)
     private Set<Role> roles = new LinkedHashSet<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_tags", joinColumns = @JoinColumn(name = "user_id"))
+    @Enumerated(EnumType.STRING)
+    @Column(name = "tag", nullable = false)
+    private Set<BusinessTag> tags = new LinkedHashSet<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "division_id", nullable = false)
     private Division division;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subdivision_id")
+    private Subdivision subdivision;
 
     @Column(precision = 12, scale = 2)
     private BigDecimal salary;

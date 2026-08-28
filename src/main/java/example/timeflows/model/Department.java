@@ -35,5 +35,13 @@ public class Department {
 
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("name ASC")
+    private Set<Directorate> directorates = new LinkedHashSet<>();
+
+    /**
+     * @deprecated Transitional direct link kept for existing data and API compatibility.
+     */
+    @Deprecated
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("name ASC")
     private Set<Division> divisions = new LinkedHashSet<>();
 }

@@ -8,10 +8,13 @@ import static org.mockito.Mockito.when;
 
 import example.timeflows.controller.dto.RegisterRequest;
 import example.timeflows.exception.UserException;
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Division;
 import example.timeflows.model.Role;
+import example.timeflows.model.Subdivision;
 import example.timeflows.model.User;
 import example.timeflows.repository.DivisionRepository;
+import example.timeflows.repository.SubdivisionRepository;
 import example.timeflows.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.LinkedHashSet;
@@ -30,13 +33,16 @@ class UserServiceImplTests {
 
     @Mock private UserRepository userRepository;
     @Mock private DivisionRepository divisionRepository;
+    @Mock private SubdivisionRepository subdivisionRepository;
     @Mock private PasswordEncoder passwordEncoder;
 
     private UserServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new UserServiceImpl(userRepository, divisionRepository, passwordEncoder);
+        service =
+                new UserServiceImpl(
+                        userRepository, divisionRepository, subdivisionRepository, passwordEncoder);
     }
 
     @Test
@@ -207,6 +213,108 @@ class UserServiceImplTests {
         assertThat(division.getManager()).isSameAs(candidate);
         verify(divisionRepository).save(division);
         verify(userRepository).save(previous);
+    }
+
+    @Test
+    void moveToOrganizationAssignsMatchingSubdivision() {
+        Division current = division(1L);
+        Division target = division(2L);
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        employee.setDivision(current);
+        Subdivision subdivision = new Subdivision();
+        subdivision.setId(20L);
+        subdivision.setDivision(target);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+        when(divisionRepository.findById(2L)).thenReturn(Optional.of(target));
+        when(subdivisionRepository.findById(20L)).thenReturn(Optional.of(subdivision));
+        when(userRepository.save(employee)).thenReturn(employee);
+
+        User moved = service.moveToOrganization(10L, 2L, 20L);
+
+        assertThat(moved.getDivision()).isSameAs(target);
+        assertThat(moved.getSubdivision()).isSameAs(subdivision);
+    }
+
+    @Test
+    void moveToOrganizationRejectsSubdivisionFromAnotherDivision() {
+        Division current = division(1L);
+        Division target = division(2L);
+        Division another = division(3L);
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        employee.setDivision(current);
+        Subdivision subdivision = new Subdivision();
+        subdivision.setDivision(another);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+        when(divisionRepository.findById(2L)).thenReturn(Optional.of(target));
+        when(subdivisionRepository.findById(20L)).thenReturn(Optional.of(subdivision));
+
+        assertThatThrownBy(() -> service.moveToOrganization(10L, 2L, 20L))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("не належить");
+    }
+
+    @Test
+    void updateRolesAssignsManagerToUsersCurrentDivision() {
+        Division division = division(1L);
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        employee.setDivision(division);
+        User admin = user(20L, "admin@vyriy.com", Role.ADMIN);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+        when(divisionRepository.findByManagerId(10L)).thenReturn(Optional.empty());
+        when(userRepository.save(employee)).thenReturn(employee);
+
+        service.updateRoles(10L, Set.of(Role.EMPLOYEE, Role.MANAGER), admin.getEmail());
+
+        assertThat(division.getManager()).isSameAs(employee);
+        assertThat(employee.getRoles()).contains(Role.MANAGER);
+        verify(divisionRepository).save(division);
+    }
+
+    @Test
+    void updateRolesClearsManagerWhenManagerRoleIsRemoved() {
+        Division division = division(1L);
+        User manager = user(10L, "manager@vyriy.com", Role.EMPLOYEE, Role.MANAGER);
+        manager.setDivision(division);
+        division.setManager(manager);
+        User admin = user(20L, "admin@vyriy.com", Role.ADMIN);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(manager));
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+        when(userRepository.save(manager)).thenReturn(manager);
+
+        service.updateRoles(10L, Set.of(Role.EMPLOYEE), admin.getEmail());
+
+        assertThat(division.getManager()).isNull();
+        assertThat(manager.getRoles()).doesNotContain(Role.MANAGER);
+        verify(divisionRepository).save(division);
+    }
+
+    @Test
+    void projectManagerLeadTagRequiresDepartmentManager() {
+        Division division = division(1L);
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        employee.setDivision(division);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> service.updateTags(10L, Set.of(BusinessTag.PROJECT_MANAGER_LEAD)))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("керівнику відділу");
+    }
+
+    @Test
+    void projectManagerTagsCannotBeCombined() {
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(
+                        () ->
+                                service.updateTags(
+                                        10L,
+                                        Set.of(
+                                                BusinessTag.PROJECT_MANAGER,
+                                                BusinessTag.PROJECT_MANAGER_LEAD)))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("несумісні");
     }
 
     private User user(Long id, String email, Role... roles) {

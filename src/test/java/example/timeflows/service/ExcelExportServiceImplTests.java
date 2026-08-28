@@ -34,6 +34,8 @@ class ExcelExportServiceImplTests {
     @Mock private UserService userService;
     @Mock private OvertimeService overtimeService;
     @Mock private BonusService bonusService;
+    @Mock private DirectorateService directorateService;
+    @Mock private SubdivisionService subdivisionService;
     private ExcelExportService service;
     private Department department;
     private Division division;
@@ -46,7 +48,9 @@ class ExcelExportServiceImplTests {
                         divisionService,
                         userService,
                         overtimeService,
-                        bonusService);
+                        bonusService,
+                        directorateService,
+                        subdivisionService);
         department = new Department();
         department.setId(1L);
         department.setName("Engineering");

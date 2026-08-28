@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -56,11 +57,13 @@ class BonusServiceTests {
     }
 
     @Test
-    void adminCanDeleteFinalBonus() {
+    void adminArchivesBonusWithoutDeletingHistory() {
         Bonus b = bonus(BonusStatus.APPROVED);
         when(repository.findById(1L)).thenReturn(Optional.of(b));
         service.delete(1L, true);
-        verify(repository).delete(b);
+        assertThat(b.isArchived()).isTrue();
+        verify(repository).save(b);
+        verify(repository, never()).delete(b);
     }
 
     @Test
@@ -113,6 +116,140 @@ class BonusServiceTests {
     }
 
     @Test
+    void projectManagerLeadCreatesImmediatelyApprovedKpi() {
+        Division division = new Division();
+        division.setId(5L);
+        User lead = new User();
+        lead.setDivision(division);
+        lead.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
+        User target = new User();
+        target.setDivision(division);
+        target.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER)));
+        when(userService.findById(1L)).thenReturn(target);
+        when(userService.findByEmail("lead@vyriy.com")).thenReturn(lead);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        1L, 3L, BonusType.KPI, BigDecimal.TEN, "August KPI", "lead@vyriy.com");
+
+        assertThat(result.getType()).isEqualTo(BonusType.KPI);
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThat(result.getCategory()).isNull();
+    }
+
+    @Test
+    void projectManagerLeadCanCreateKpiForSelf() {
+        Division division = new Division();
+        division.setId(5L);
+        User lead = new User();
+        lead.setId(7L);
+        lead.setDivision(division);
+        lead.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
+        when(userService.findById(7L)).thenReturn(lead);
+        when(userService.findByEmail("lead@vyriy.com")).thenReturn(lead);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        7L,
+                        null,
+                        BonusType.KPI,
+                        new BigDecimal("125.00"),
+                        "Lead KPI",
+                        "lead@vyriy.com");
+
+        assertThat(result.getUser()).isSameAs(lead);
+        assertThat(result.getType()).isEqualTo(BonusType.KPI);
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+    }
+
+    @Test
+    void quarterlyDistributionPreservesPoolToTheCent() {
+        User admin = new User();
+        admin.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.ADMIN)));
+        Bonus approvedKpi = bonus(BonusStatus.APPROVED);
+        approvedKpi.setType(BonusType.KPI);
+        approvedKpi.setAmount(BigDecimal.TEN);
+        User first = activeUser(1L, "first@vyriy.com");
+        User second = activeUser(2L, "second@vyriy.com");
+        User third = activeUser(3L, "third@vyriy.com");
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(userService.findById(1L)).thenReturn(first);
+        when(userService.findById(2L)).thenReturn(second);
+        when(userService.findById(3L)).thenReturn(third);
+        when(repository.findByCreatedAtBetweenOrderByCreatedAtDesc(
+                        LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 10, 1, 0, 0)))
+                .thenReturn(List.of(approvedKpi));
+        when(repository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<Bonus> result =
+                service.distributeQuarterly(
+                        2026,
+                        3,
+                        7L,
+                        new java.util.LinkedHashSet<>(List.of(1L, 2L, 3L)),
+                        "admin@vyriy.com");
+
+        assertThat(result)
+                .extracting(Bonus::getAmount)
+                .containsExactly(
+                        new BigDecimal("3.34"), new BigDecimal("3.33"), new BigDecimal("3.33"));
+        assertThat(result.stream().map(Bonus::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
+                .isEqualByComparingTo("10.00");
+        assertThat(result).allMatch(bonus -> bonus.getStatus() == BonusStatus.APPROVED);
+        assertThat(result).allMatch(bonus -> bonus.getCategory() == null);
+    }
+
+    @Test
+    void quarterlyDistributionReportsMissingPool() {
+        User admin = new User();
+        admin.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.ADMIN)));
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+
+        assertThatThrownBy(
+                        () ->
+                                service.distributeQuarterly(
+                                        2026, 1, null, Set.of(1L), "admin@vyriy.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("немає погоджених KPI");
+    }
+
+    @Test
+    void quarterlyDistributionReportsAlreadyDistributedQuarter() {
+        User admin = new User();
+        admin.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.ADMIN)));
+        Bonus existing = bonus(BonusStatus.APPROVED);
+        existing.setType(BonusType.QUARTERLY);
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(repository.findByTypeAndQuarterYearAndQuarterNumberOrderByUserEmailAsc(
+                        BonusType.QUARTERLY, 2026, 1))
+                .thenReturn(List.of(existing));
+
+        assertThatThrownBy(
+                        () ->
+                                service.distributeQuarterly(
+                                        2026, 1, null, Set.of(1L), "admin@vyriy.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("вже розподілено");
+    }
+
+    @Test
+    void adminCanResetQuarterlyDistribution() {
+        User admin = new User();
+        admin.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.ADMIN)));
+        Bonus first = bonus(BonusStatus.APPROVED);
+        Bonus second = bonus(BonusStatus.APPROVED);
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(repository.findByTypeAndQuarterYearAndQuarterNumberOrderByUserEmailAsc(
+                        BonusType.QUARTERLY, 2026, 1))
+                .thenReturn(List.of(first, second));
+
+        assertThat(service.resetQuarterlyDistribution(2026, 1, "admin@vyriy.com")).isEqualTo(2);
+        verify(repository).deleteAll(List.of(first, second));
+    }
+
+    @Test
     void updatePendingBonusChangesEditableFields() {
         Bonus bonus = bonus(BonusStatus.PENDING);
         BonusCategory category = category(2L, "Teamwork");
@@ -130,7 +267,8 @@ class BonusServiceTests {
 
     @Test
     void categoryCrudValidatesNamesAndReportsDeleteFailure() {
-        when(categoryRepository.findAllByOrderByNameAsc()).thenReturn(List.of(category(1L, "A")));
+        when(categoryRepository.findByActiveTrueOrderByTypeAscNameAsc())
+                .thenReturn(List.of(category(1L, "A")));
         assertThat(service.findCategories())
                 .extracting(BonusCategory::getName)
                 .containsExactly("A");
@@ -140,7 +278,8 @@ class BonusServiceTests {
         BonusCategory created = service.createCategory("  Performance  ");
         assertThat(created.getName()).isEqualTo("Performance");
 
-        when(categoryRepository.existsByNameIgnoreCase("Duplicate")).thenReturn(true);
+        when(categoryRepository.existsByTypeAndNameIgnoreCase(BonusType.MONTHLY, "Duplicate"))
+                .thenReturn(true);
         assertThatThrownBy(() -> service.createCategory("Duplicate"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.createCategory(" "))
@@ -151,9 +290,10 @@ class BonusServiceTests {
         BonusCategory updated = service.updateCategory(1L, " New ");
         assertThat(updated.getName()).isEqualTo("New");
 
-        doThrow(new RuntimeException("constraint")).when(categoryRepository).flush();
-        assertThatThrownBy(() -> service.deleteCategory(1L))
-                .isInstanceOf(IllegalArgumentException.class);
+        clearInvocations(categoryRepository);
+        service.deleteCategory(1L);
+        assertThat(existing.isActive()).isFalse();
+        verify(categoryRepository).save(existing);
     }
 
     private Bonus bonus(BonusStatus status) {
@@ -168,5 +308,13 @@ class BonusServiceTests {
         category.setId(id);
         category.setName(name);
         return category;
+    }
+
+    private User activeUser(Long id, String email) {
+        User user = new User();
+        user.setId(id);
+        user.setEmail(email);
+        user.setActive(true);
+        return user;
     }
 }

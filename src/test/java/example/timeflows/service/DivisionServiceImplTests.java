@@ -11,6 +11,7 @@ import example.timeflows.exception.DivisionException;
 import example.timeflows.model.Department;
 import example.timeflows.model.Division;
 import example.timeflows.repository.DepartmentRepository;
+import example.timeflows.repository.DirectorateRepository;
 import example.timeflows.repository.DivisionRepository;
 import java.util.List;
 import java.util.Optional;
@@ -25,12 +26,15 @@ class DivisionServiceImplTests {
 
     @Mock private DivisionRepository divisionRepository;
     @Mock private DepartmentRepository departmentRepository;
+    @Mock private DirectorateRepository directorateRepository;
 
     private DivisionServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new DivisionServiceImpl(divisionRepository, departmentRepository);
+        service =
+                new DivisionServiceImpl(
+                        divisionRepository, departmentRepository, directorateRepository);
     }
 
     @Test
@@ -96,14 +100,13 @@ class DivisionServiceImplTests {
         assertThat(result.getName()).isEqualTo("New");
         assertThat(result.getDepartment()).isSameAs(department);
 
-        when(divisionRepository.existsById(1L)).thenReturn(true);
         service.delete(1L);
-        verify(divisionRepository).deleteById(1L);
+        verify(divisionRepository).delete(existing);
     }
 
     @Test
     void deleteRejectsMissingDivision() {
-        when(divisionRepository.existsById(1L)).thenReturn(false);
+        when(divisionRepository.findWithDepartmentAndUsersById(1L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.delete(1L)).isInstanceOf(DivisionException.class);
     }
 

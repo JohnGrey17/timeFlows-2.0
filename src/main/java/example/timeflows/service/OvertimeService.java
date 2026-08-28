@@ -3,6 +3,7 @@ package example.timeflows.service;
 import example.timeflows.controller.dto.OvertimeRequest;
 import example.timeflows.model.Overtime;
 import java.time.YearMonth;
+import java.util.Collection;
 import java.util.List;
 
 public interface OvertimeService {
@@ -30,6 +31,10 @@ public interface OvertimeService {
     Overtime approve(Long id, String managerComment);
 
     Overtime approve(Long id, String managerComment, String reviewerEmail);
+
+    int approveAll(Collection<Long> ids, String managerComment, String reviewerEmail);
+
+    boolean canAdminApprove(Overtime overtime);
 
     Overtime reject(Long id, String managerComment);
 

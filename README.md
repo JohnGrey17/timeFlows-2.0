@@ -32,7 +32,7 @@ timeFlows допомагає працівникам фіксувати пере�
 - окрема видимість даних для керівника його підрозділу;
 - міграції бази даних при кожному запуску;
 - готовий Docker Compose для застосунку та PostgreSQL;
-- H2 in-memory база для швидкого локального запуску й тестів.
+- H2 in-memory база лише для автоматизованих тестів.
 
 [Повернутися до змісту](#contents)
 
@@ -142,7 +142,7 @@ Department
 - CSRF-захист для операцій, що змінюють дані;
 - перевірка прав виконується як на URL-рівні, так і через `@PreAuthorize`;
 - Swagger UI та `/v3/api-docs/**` доступні лише `ADMIN`;
-- H2 Console вимкнена за замовчуванням;
+- H2 не входить до production-збірки;
 - PostgreSQL у Compose не публікує порт назовні;
 - `.env` із секретами виключений із Git.
 
@@ -157,7 +157,7 @@ Department
 - Spring Boot 4;
 - Spring MVC, Thymeleaf та Spring Security;
 - Spring Data JPA;
-- PostgreSQL у production, H2 локально та в тестах;
+- PostgreSQL для запуску застосунку, H2 лише в тестах;
 - Liquibase для версіонування схеми;
 - Gradle Wrapper;
 - Apache POI для Excel;
@@ -186,21 +186,26 @@ cp .env.example .env
 | `JWT_EXPIRATION` | Термін дії JWT | `PT8H` |
 | `MFA_ENCRYPTION_KEY` | Окремий ключ шифрування TOTP-secret | довгий випадковий секрет |
 | `MFA_ISSUER` | Назва у Google Authenticator | `timeFlows` |
+| `MFA_ENABLED` | Увімкнення двофакторної автентифікації | `true` |
+| `DEMO_DATA_ENABLED` | Створення мінімальних демонстраційних даних | `false` |
+| `INITIAL_ADMIN_PASSWORD` | Початковий пароль адміністратора, потрібний лише при `DEMO_DATA_ENABLED=true` | випадковий сильний пароль |
 | `APP_PORT` | Порт застосунку на хості | `8080` |
 
-При запуску без Compose Spring також розуміє `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `MFA_ENCRYPTION_KEY`, `MFA_ISSUER` і `H2_CONSOLE_ENABLED`.
+При запуску без Compose Spring використовує `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `JWT_EXPIRATION`, `MFA_ENABLED`, `MFA_ENCRYPTION_KEY`, `MFA_ISSUER`, `DEMO_DATA_ENABLED` та `INITIAL_ADMIN_PASSWORD`.
+
+У `application.properties`, `.env.example` і Compose встановлено безпечний fallback `DEMO_DATA_ENABLED=false`. Якщо демонстраційні дані вмикаються свідомо, обов’язково задайте `INITIAL_ADMIN_PASSWORD`.
 
 [Повернутися до змісту](#contents)
 
 <a id="running"></a>
 ## 8. Варіанти запуску
 
-### Варіант A — швидкий локальний запуск з H2
+### Варіант A — автоматизовані тести з H2
 
-Потрібна Java 21. Зовнішня база не потрібна.
+Тестове H2-оточення налаштоване окремо в `src/test/resources` і не потрапляє до production JAR.
 
 ```powershell
-.\gradlew.bat bootRun
+.\gradlew.bat test
 ```
 
 Linux/macOS:
@@ -240,6 +245,8 @@ $env:DB_URL="jdbc:postgresql://localhost:5432/timeflows"
 $env:DB_USERNAME="timeflows"
 $env:DB_PASSWORD="your-password"
 $env:JWT_SECRET="your-random-secret-with-at-least-32-characters"
+$env:MFA_ENCRYPTION_KEY="your-independent-random-mfa-key"
+$env:DEMO_DATA_ENABLED="false"
 .\gradlew.bat bootRun
 ```
 
@@ -266,10 +273,10 @@ docker compose up -d --build
 
 ```bash
 docker compose exec postgres sh -c \
-  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "INSERT INTO user_roles (user_id, role) SELECT id, '\''ADMIN'\'' FROM users WHERE email = '\''admin@vyriy.com'\'' ON CONFLICT DO NOTHING;"'
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "INSERT INTO user_roles (user_id, role) SELECT id, '\''ADMIN'\'' FROM users WHERE email = '\''serhii.hainovskyi@vyriy.com'\'' ON CONFLICT DO NOTHING;"'
 ```
 
-Якщо shell не завантажив `.env`, підставте значення `POSTGRES_USER` і `POSTGRES_DB` безпосередньо в команду. Замініть `admin@vyriy.com` на email зареєстрованого адміністратора.
+Якщо shell не завантажив `.env`, підставте значення `POSTGRES_USER` і `POSTGRES_DB` безпосередньо в команду. Замініть `serhii.hainovskyi@vyriy.com` на email зареєстрованого адміністратора.
 
 Після цього перезайдіть у застосунок. Адміністратор зможе керувати організацією, призначати менеджерів і працювати з усіма модулями.
 

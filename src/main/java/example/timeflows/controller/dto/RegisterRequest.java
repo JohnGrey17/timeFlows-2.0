@@ -33,4 +33,10 @@ public class RegisterRequest {
 
     @NotNull(message = "Оберіть відділ")
     private Long divisionId;
+
+    private Long departmentId;
+
+    private Long directorateId;
+
+    private Long subdivisionId;
 }

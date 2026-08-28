@@ -1,15 +1,21 @@
 package example.timeflows.controller;
 
+import example.timeflows.exception.UserException;
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
 import example.timeflows.service.DepartmentService;
+import example.timeflows.service.DirectorateService;
 import example.timeflows.service.DivisionService;
 import example.timeflows.service.ManagementAccessService;
 import example.timeflows.service.MfaService;
+import example.timeflows.service.SubdivisionService;
 import example.timeflows.service.UserService;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -27,39 +33,60 @@ public class UsersPageController {
     private final DivisionService divisionService;
     private final ManagementAccessService accessService;
     private final MfaService mfaService;
+    private final SubdivisionService subdivisionService;
+    private final DirectorateService directorateService;
 
     public UsersPageController(
             UserService userService,
             DepartmentService departmentService,
             DivisionService divisionService,
+            DirectorateService directorateService,
+            SubdivisionService subdivisionService,
             ManagementAccessService accessService,
             MfaService mfaService) {
         this.userService = userService;
         this.departmentService = departmentService;
         this.divisionService = divisionService;
+        this.directorateService = directorateService;
+        this.subdivisionService = subdivisionService;
         this.accessService = accessService;
         this.mfaService = mfaService;
     }
 
     @GetMapping("/api/users")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public String users(
             @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
             @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
             @RequestParam(defaultValue = "department") String groupBy,
             Authentication authentication,
             Model model) {
         User currentUser = userService.findByEmail(authentication.getName());
+        if (!currentUser.getRoles().contains(Role.ADMIN)
+                && !currentUser.getRoles().contains(Role.MANAGER)) {
+            throw new AccessDeniedException(
+                    "Керування користувачами доступне лише адміністратору або менеджеру");
+        }
         boolean admin = currentUser.getRoles().contains(Role.ADMIN);
         Long effectiveDepartmentId =
                 admin ? departmentId : currentUser.getDivision().getDepartment().getId();
         Long effectiveDivisionId = admin ? divisionId : currentUser.getDivision().getId();
+        Long effectiveDirectorateId = admin ? directorateId : null;
+        Long effectiveSubdivisionId = admin ? subdivisionId : null;
         List<User> users =
-                effectiveDivisionId != null
-                        ? userService.findActiveUsersByDivision(effectiveDivisionId)
-                        : effectiveDepartmentId != null
-                                ? userService.findActiveUsersByDepartment(effectiveDepartmentId)
-                                : userService.findActiveUsers();
+                effectiveSubdivisionId != null
+                        ? userService.findActiveUsersBySubdivision(effectiveSubdivisionId)
+                        : effectiveDivisionId != null
+                                ? userService.findActiveUsersByDivision(effectiveDivisionId)
+                                : effectiveDirectorateId != null
+                                        ? userService.findActiveUsersByDirectorate(
+                                                effectiveDirectorateId)
+                                        : effectiveDepartmentId != null
+                                                ? userService.findActiveUsersByDepartment(
+                                                        effectiveDepartmentId)
+                                                : userService.findActiveUsers();
         groupBy = "role".equals(groupBy) ? "role" : "department";
         Comparator<User> byName =
                 Comparator.comparing(
@@ -92,9 +119,35 @@ public class UsersPageController {
                                 : divisionService.findByDepartment(effectiveDepartmentId))
                         : List.of(currentUser.getDivision()));
         model.addAttribute("selectedDepartmentId", effectiveDepartmentId);
+        model.addAttribute("selectedDirectorateId", effectiveDirectorateId);
         model.addAttribute("selectedDivisionId", effectiveDivisionId);
+        model.addAttribute("selectedSubdivisionId", effectiveSubdivisionId);
+        model.addAttribute(
+                "directorates",
+                admin && effectiveDepartmentId != null
+                        ? directorateService.findByDepartment(effectiveDepartmentId)
+                        : List.of());
+        model.addAttribute(
+                "filterDivisions",
+                admin && effectiveDirectorateId != null
+                        ? divisionService.findByDirectorate(effectiveDirectorateId)
+                        : List.of());
+        model.addAttribute(
+                "filterSubdivisions",
+                admin && effectiveDivisionId != null
+                        ? subdivisionService.findByDivision(effectiveDivisionId)
+                        : List.of());
+        model.addAttribute(
+                "selectedDivision",
+                admin
+                        ? (effectiveDivisionId == null
+                                ? null
+                                : divisionService.findById(effectiveDivisionId))
+                        : currentUser.getDivision());
         model.addAttribute("activePage", "users");
         model.addAttribute("groupBy", groupBy);
+        model.addAttribute("allDivisions", admin ? divisionService.findAll() : List.of());
+        model.addAttribute("allSubdivisions", admin ? subdivisionService.findAll() : List.of());
         return "admin/users";
     }
 
@@ -135,6 +188,10 @@ public class UsersPageController {
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long divisionId,
             @RequestParam(defaultValue = "department") String groupBy) {
+        User currentUser = userService.findByEmail(authentication.getName());
+        if (currentUser.getId().equals(id)) {
+            throw new UserException("Не можна деактивувати власний обліковий запис");
+        }
         accessService.assertCanManageUser(authentication.getName(), id);
         userService.deactivate(id, reason);
         return usersRedirect(departmentId, divisionId, groupBy);
@@ -151,6 +208,59 @@ public class UsersPageController {
         return usersRedirect(departmentId, divisionId, groupBy);
     }
 
+    @PostMapping("/api/users/{id}/organization")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String moveUser(
+            @PathVariable Long id,
+            @RequestParam Long targetDivisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        userService.moveToOrganization(id, targetDivisionId, subdivisionId);
+        return usersRedirect(departmentId, divisionId, groupBy);
+    }
+
+    @PostMapping("/api/users/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String updateRoles(
+            @PathVariable Long id,
+            @RequestParam(required = false) Set<Role> roles,
+            Authentication authentication,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        userService.updateRoles(id, roles, authentication.getName());
+        return usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy);
+    }
+
+    @PostMapping("/api/users/{id}/tags")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String updateTags(
+            @PathVariable Long id,
+            @RequestParam(required = false) Set<BusinessTag> tags,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        userService.updateTags(id, tags);
+        return usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy);
+    }
+
+    @PostMapping("/api/divisions/{id}/tags")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String updateDivisionTags(
+            @PathVariable Long id,
+            @RequestParam(required = false) Set<BusinessTag> tags,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(defaultValue = "department") String groupBy) {
+        userService.updateDivisionTags(id, tags);
+        return usersRedirect(departmentId, id, groupBy);
+    }
+
     @PostMapping("/api/users/{id}/mfa/reset")
     @PreAuthorize("hasRole('ADMIN')")
     public String resetMfa(
@@ -164,10 +274,22 @@ public class UsersPageController {
     }
 
     private String usersRedirect(Long departmentId, Long divisionId, String groupBy) {
+        return usersRedirect(departmentId, null, divisionId, null, groupBy);
+    }
+
+    private String usersRedirect(
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            String groupBy) {
         StringBuilder redirect = new StringBuilder("redirect:/api/users?");
         if (departmentId != null) redirect.append("departmentId=").append(departmentId).append('&');
-        if (divisionId != null) redirect.append("divisionId=").append(divisionId);
-        if (redirect.charAt(redirect.length() - 1) != '?') redirect.append('&');
+        if (directorateId != null)
+            redirect.append("directorateId=").append(directorateId).append('&');
+        if (divisionId != null) redirect.append("divisionId=").append(divisionId).append('&');
+        if (subdivisionId != null)
+            redirect.append("subdivisionId=").append(subdivisionId).append('&');
         redirect.append("groupBy=").append("role".equals(groupBy) ? "role" : "department");
         return redirect.toString();
     }

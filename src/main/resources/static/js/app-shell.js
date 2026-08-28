@@ -54,6 +54,8 @@ document.querySelectorAll(".bonus-history-actions .decision-row form").forEach((
         document.body.append(backdrop);
         backdrop.querySelector("textarea").focus();
     });
-    form.replaceChildren(opener, originalInput);
+    // Replace only the visible submit button. Rebuilding the whole form here used to remove
+    // Spring Security's hidden CSRF input and caused every bonus decision to fail with 403.
+    submit.replaceWith(opener);
     originalInput.hidden = true;
 });

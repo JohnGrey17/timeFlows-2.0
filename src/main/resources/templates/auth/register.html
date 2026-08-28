@@ -39,21 +39,41 @@
             </label>
             <label>
                 Департамент
-                <select id="departmentFilter" data-organization-department>
+                <select id="departmentFilter" th:field="*{departmentId}" data-organization-department required>
                     <option value="">Оберіть департамент</option>
                     <option th:each="department : ${departments}" th:value="${department.id}" th:text="${department.name}"></option>
                 </select>
             </label>
             <label>
-                Підвідділ
-                <select th:field="*{divisionId}" data-organization-division>
-                    <option value="">Оберіть підвідділ</option>
+                Управління
+                <select th:field="*{directorateId}" data-organization-directorate required>
+                    <option value="">Оберіть управління</option>
+                    <option th:each="directorate : ${directorates}"
+                            th:value="${directorate.id}"
+                            th:data-department-id="${directorate.department.id}"
+                            th:text="${directorate.name}"></option>
+                </select>
+            </label>
+            <label>
+                Відділ
+                <select th:field="*{divisionId}" data-organization-division required>
+                    <option value="">Оберіть відділ</option>
                     <option th:each="division : ${divisions}"
                             th:value="${division.id}"
-                            th:data-department-id="${division.department.id}"
+                            th:data-directorate-id="${division.directorate == null ? '' : division.directorate.id}"
                             th:text="${division.name}"></option>
                 </select>
                 <span class="field-error" th:if="${#fields.hasErrors('divisionId')}" th:errors="*{divisionId}"></span>
+            </label>
+            <label>
+                Підвідділ (якщо є)
+                <select th:field="*{subdivisionId}" data-organization-subdivision>
+                    <option value="">Без підвідділу</option>
+                    <option th:each="subdivision : ${subdivisions}"
+                            th:value="${subdivision.id}"
+                            th:data-division-id="${subdivision.division.id}"
+                            th:text="${subdivision.name}"></option>
+                </select>
             </label>
             <button type="submit">Створити акаунт</button>
         </form>

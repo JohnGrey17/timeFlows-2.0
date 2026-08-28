@@ -81,11 +81,12 @@ class DepartmentServiceImplTests {
 
     @Test
     void deleteChecksExistence() {
-        when(repository.existsById(1L)).thenReturn(true);
+        Department existing = department(1L, "Engineering");
+        when(repository.findWithDivisionsById(1L)).thenReturn(Optional.of(existing));
         service.delete(1L);
-        verify(repository).deleteById(1L);
+        verify(repository).delete(existing);
 
-        when(repository.existsById(2L)).thenReturn(false);
+        when(repository.findWithDivisionsById(2L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.delete(2L)).isInstanceOf(DepartmentException.class);
     }
 

@@ -54,8 +54,6 @@ public class SecurityConfig {
                                                 "/swagger-ui/**",
                                                 "/v3/api-docs/**")
                                         .hasRole("ADMIN")
-                                        .requestMatchers("/api/admin/export/**")
-                                        .hasRole("ADMIN")
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(

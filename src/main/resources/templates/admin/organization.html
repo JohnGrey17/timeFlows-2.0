@@ -16,10 +16,9 @@
         <nav class="side-nav">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
             <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
-            <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a th:if="${currentUser.roles.contains(T(example.timeflows.model.Role).ADMIN)}" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a class="active" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
-            <a th:href="@{/api/admin/export}"><span class="nav-icon">⇩</span><span>Експорт Excel</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form"><button type="submit">Вийти</button></form>
@@ -39,21 +38,102 @@
                 </form>
             </section>
             <section class="settings-panel">
-                <div class="section-title-with-help"><h2>Новий підвідділ</h2><span class="help-tip" tabindex="0" data-tooltip="Оберіть департамент і створіть у ньому підвідділ. Після цього працівників можна буде віднести до цього підвідділу та призначити його керівника.">?</span></div>
-                <form th:action="@{/api/organization/divisions}" method="post" class="form-stack">
+                <h2>Нове управління</h2>
+                <form th:action="@{/api/organization/directorates}" method="post" class="form-stack">
                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <label>Департамент<select name="departmentId" required><option value="">Оберіть департамент</option><option th:each="d:${departments}" th:value="${d.id}" th:text="${d.name}"></option></select></label>
-                    <label>Назва підвідділу<input name="name" required maxlength="150"></label>
+                    <label>Назва<input name="name" required maxlength="150"></label>
+                    <label>Опис<textarea name="description" maxlength="500" rows="3"></textarea></label>
+                    <button type="submit">Додати управління</button>
+                </form>
+            </section>
+            <section class="settings-panel">
+                <h2>Новий відділ</h2>
+                <form th:action="@{/api/organization/divisions}" method="post" class="form-stack">
+                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <label>Управління<select name="directorateId" required><option value="">Оберіть управління</option><option th:each="d:${directorates}" th:value="${d.id}" th:text="${d.department.name + ' / ' + d.name}"></option></select></label>
+                    <label>Назва<input name="name" required maxlength="150"></label>
+                    <label>Опис<textarea name="description" maxlength="500" rows="3"></textarea></label>
+                    <button type="submit">Додати відділ</button>
+                </form>
+            </section>
+            <section class="settings-panel">
+                <h2>Новий підвідділ</h2>
+                <form th:action="@{/api/organization/subdivisions}" method="post" class="form-stack">
+                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <label>Відділ<select name="divisionId" required><option value="">Оберіть відділ</option><option th:each="d:${divisions}" th:value="${d.id}" th:text="${d.name}"></option></select></label>
+                    <label>Назва<input name="name" required maxlength="150"></label>
+                    <label>Опис<textarea name="description" maxlength="500" rows="3"></textarea></label>
                     <button type="submit">Додати підвідділ</button>
                 </form>
             </section>
         </div>
         <div class="section-title-with-help organization-schema-title"><h2>Схема Компанії</h2><span class="help-tip" tabindex="0" data-tooltip="Тут показана структура компанії: усі департаменти та підвідділи, що входять до них. Ця схема допомагає швидко зрозуміти, як організовані команди, і перевірити щойно створені підрозділи.">?</span></div>
-        <section class="organization-list">
-            <article th:each="department:${departments}" class="settings-panel">
-                <h2 th:text="${department.name}"></h2><p th:text="${department.description}"></p>
-                <div class="division-tags"><span th:each="division:${department.divisions}" th:text="${division.name}"></span></div>
-            </article>
+        <section class="organization-list company-tree">
+            <details th:each="department:${departments}" class="company-tree-department">
+                <summary class="company-tree-root">
+                    <span th:text="${department.name}"></span>
+                    <span class="company-tree-toggle" aria-hidden="true">⌄</span>
+                </summary>
+                <div class="company-tree-content">
+                    <div class="company-tree-department-tools">
+                        <details class="company-tree-description" th:if="${department.description != null and !department.description.isBlank()}">
+                            <summary>Переглянути опис</summary><p th:text="${department.description}"></p>
+                        </details>
+                        <details class="company-tree-editor"><summary>Редагувати департамент</summary>
+                    <form th:action="@{/api/organization/departments/{id}/update(id=${department.id})}" method="post" class="inline-form">
+                        <label>Назва<input name="name" th:value="${department.name}" required></label><label>Опис<textarea name="description" rows="3" th:text="${department.description}"></textarea></label><button type="submit">Зберегти</button>
+                    </form>
+                    <form th:action="@{/api/organization/departments/{id}/delete(id=${department.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити департамент?')">Видалити</button></form>
+                        </details>
+                    </div>
+                    <div class="company-tree-directorates">
+                <article th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate">
+                    <h3><small>Управління</small><span th:text="${directorate.name}"></span></h3>
+                    <details class="company-tree-description" th:if="${directorate.description != null and !directorate.description.isBlank()}">
+                        <summary>Переглянути опис</summary><p th:text="${directorate.description}"></p>
+                    </details>
+                    <details class="company-tree-editor"><summary>Редагувати управління</summary>
+                        <form th:action="@{/api/organization/directorates/{id}/update(id=${directorate.id})}" method="post" class="inline-form">
+                            <input type="hidden" name="departmentId" th:value="${department.id}"><label>Назва<input name="name" th:value="${directorate.name}" required></label><label>Опис<textarea name="description" rows="3" th:text="${directorate.description}"></textarea></label><button type="submit">Зберегти</button>
+                        </form>
+                        <form th:action="@{/api/organization/directorates/{id}/delete(id=${directorate.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити управління?')">Видалити</button></form>
+                    </details>
+                    <div class="company-tree-divisions">
+                    <article th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division">
+                        <strong><small>Відділ</small><span th:text="${division.name}"></span></strong>
+                        <details class="company-tree-description" th:if="${division.description != null and !division.description.isBlank()}">
+                            <summary>Переглянути опис</summary><p th:text="${division.description}"></p>
+                        </details>
+                        <details class="company-tree-editor"><summary>Редагувати відділ</summary>
+                            <form th:action="@{/api/organization/divisions/{id}/update(id=${division.id})}" method="post" class="inline-form">
+                                <input type="hidden" name="directorateId" th:value="${directorate.id}"><label>Назва<input name="name" th:value="${division.name}" required></label><label>Опис<textarea name="description" rows="3" th:text="${division.description}"></textarea></label><button type="submit">Зберегти</button>
+                            </form>
+                            <form th:action="@{/api/organization/divisions/{id}/delete(id=${division.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити відділ?')">Видалити</button></form>
+                        </details>
+                        <div class="company-tree-subdivisions">
+                        <div th:each="subdivision:${subdivisions}" th:if="${subdivision.division.id == division.id}" class="company-tree-subdivision">
+                            <span><small>Підвідділ</small><b th:text="${subdivision.name}"></b></span>
+                            <details class="company-tree-description" th:if="${subdivision.description != null and !subdivision.description.isBlank()}">
+                                <summary>Переглянути опис</summary><p th:text="${subdivision.description}"></p>
+                            </details>
+                            <details class="company-tree-editor"><summary>Редагувати підвідділ</summary>
+                                <form th:action="@{/api/organization/subdivisions/{id}/update(id=${subdivision.id})}" method="post" class="inline-form">
+                                    <input type="hidden" name="divisionId" th:value="${division.id}"><label>Назва<input name="name" th:value="${subdivision.name}" required></label><label>Опис<textarea name="description" rows="3" th:text="${subdivision.description}"></textarea></label><button type="submit">Зберегти</button>
+                                </form>
+                                <form th:action="@{/api/organization/subdivisions/{id}/delete(id=${subdivision.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити підвідділ?')">Видалити</button></form>
+                            </details>
+                        </div>
+                        </div>
+                    </article>
+                    </div>
+                </article>
+                    </div>
+                <div class="company-tree-legacy" th:if="${!department.divisions.isEmpty()}">
+                    <span th:each="division:${department.divisions}" th:if="${division.directorate == null}" th:text="${'Відділ без управління: ' + division.name}"></span>
+                </div>
+                </div>
+            </details>
         </section>
     </main>
 </div>

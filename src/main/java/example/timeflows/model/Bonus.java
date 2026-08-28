@@ -24,8 +24,18 @@ public class Bonus {
     private User createdBy;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
+    @JoinColumn(name = "category_id")
     private BonusCategory category;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private BonusType type = BonusType.MONTHLY;
+
+    @Column(name = "quarter_year")
+    private Integer quarterYear;
+
+    @Column(name = "quarter_number")
+    private Integer quarterNumber;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
@@ -39,6 +49,9 @@ public class Bonus {
 
     @Column(name = "admin_comment", length = 1000)
     private String adminComment;
+
+    @Column(nullable = false)
+    private boolean archived;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

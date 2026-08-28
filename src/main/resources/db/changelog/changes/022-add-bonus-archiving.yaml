@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: 022-add-bonus-archiving
+      author: codex
+      changes:
+        - addColumn:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: archived
+                  type: boolean
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false

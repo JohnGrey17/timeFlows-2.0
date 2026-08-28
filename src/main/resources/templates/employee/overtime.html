@@ -19,10 +19,9 @@
         <nav class="side-nav" aria-label="Основна навігація">
             <a class="active" th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
             <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a th:if="${currentUser.roles.contains(T(example.timeflows.model.Role).ADMIN)}" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER')" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a sec:authorize="hasRole('ADMIN')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
-            <a sec:authorize="hasRole('ADMIN')" th:href="@{/api/admin/export}"><span class="nav-icon">⇩</span><span>Експорт Excel</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">
@@ -42,7 +41,7 @@
         </header>
 
         <div class="calendar-tools-row">
-            <form class="calendar-toolbar" method="get" th:action="@{/api/overtime}">
+            <form class="calendar-toolbar" method="get" th:action="@{/api/overtime}" data-calendar-filter>
                 <label>
                     Місяць
                     <select name="month">
@@ -64,8 +63,9 @@
                 <button type="submit">Показати</button>
             </form>
             <div class="status-legend" aria-label="Статуси перепрацювань">
-                <span><i class="legend-box legend-approved"></i>Погоджено керівником</span>
-                <span><i class="legend-box legend-pending"></i>На розгляді у керівника</span>
+                <span><i class="legend-box legend-pending"></i>Очікує Manager</span>
+                <span><i class="legend-box legend-manager"></i>Погоджено Manager</span>
+                <span><i class="legend-box legend-approved"></i>Погоджено Admin</span>
                 <span><i class="legend-box legend-rejected"></i>Не погоджено керівником</span>
             </div>
         </div>

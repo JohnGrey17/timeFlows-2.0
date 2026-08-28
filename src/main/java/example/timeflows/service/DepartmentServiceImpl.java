@@ -65,9 +65,10 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!departmentRepository.existsById(id)) {
-            throw new DepartmentException("Департамент з id " + id + " не знайдено");
+        Department department = findById(id);
+        if (!department.getDirectorates().isEmpty() || !department.getDivisions().isEmpty()) {
+            throw new DepartmentException("Не можна видалити департамент з активною структурою");
         }
-        departmentRepository.deleteById(id);
+        departmentRepository.delete(department);
     }
 }

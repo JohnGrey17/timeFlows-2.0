@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 021-migrate-overtime-statuses
+      author: codex
+      changes:
+        - sql:
+            sql: "UPDATE overtimes SET status = 'CHECKING' WHERE status = 'PENDING'"
+        - sql:
+            sql: "UPDATE overtimes SET status = 'APPROVED_ADMIN' WHERE status = 'APPROVED'"
+        - sql:
+            sql: "UPDATE overtimes SET status = 'DECLINED' WHERE status = 'REJECTED'"

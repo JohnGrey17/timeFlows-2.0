@@ -9,6 +9,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,12 +26,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final MfaService mfaService;
+    private final boolean mfaEnabled;
 
     public JwtAuthenticationFilter(
-            JwtService jwtService, UserDetailsService userDetailsService, MfaService mfaService) {
+            JwtService jwtService,
+            UserDetailsService userDetailsService,
+            MfaService mfaService,
+            @Value("${timeflows.mfa.enabled:true}") boolean mfaEnabled) {
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.mfaService = mfaService;
+        this.mfaEnabled = mfaEnabled;
     }
 
     @Override
@@ -48,7 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
             example.timeflows.model.User domainUser = mfaService.user(username);
             boolean mfaPolicySatisfied =
-                    !mfaService.isRequired(domainUser) || domainUser.isMfaEnabled();
+                    !mfaEnabled || !mfaService.isRequired(domainUser) || domainUser.isMfaEnabled();
             if (jwtService.isTokenValid(token, userDetails) && mfaPolicySatisfied) {
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

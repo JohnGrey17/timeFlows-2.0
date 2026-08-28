@@ -14,6 +14,8 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "user",
                 "user.division",
                 "user.division.department",
+                "user.division.directorate",
+                "user.subdivision",
                 "createdBy",
                 "category"
             })
@@ -24,6 +26,8 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "user",
                 "user.division",
                 "user.division.department",
+                "user.division.directorate",
+                "user.subdivision",
                 "createdBy",
                 "category"
             })
@@ -34,6 +38,8 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "user",
                 "user.division",
                 "user.division.department",
+                "user.division.directorate",
+                "user.subdivision",
                 "createdBy",
                 "category"
             })
@@ -45,9 +51,18 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "user",
                 "user.division",
                 "user.division.department",
+                "user.division.directorate",
+                "user.subdivision",
                 "createdBy",
                 "category"
             })
     List<Bonus> findByUserDivisionIdAndCreatedAtBetweenOrderByCreatedAtDesc(
             Long divisionId, LocalDateTime from, LocalDateTime to);
+
+    boolean existsByUserIdAndTypeAndQuarterYearAndQuarterNumber(
+            Long userId, example.timeflows.model.BonusType type, Integer year, Integer quarter);
+
+    @EntityGraph(attributePaths = {"user", "createdBy", "category"})
+    List<Bonus> findByTypeAndQuarterYearAndQuarterNumberOrderByUserEmailAsc(
+            example.timeflows.model.BonusType type, Integer year, Integer quarter);
 }

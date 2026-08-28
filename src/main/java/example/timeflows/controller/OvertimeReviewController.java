@@ -1,7 +1,15 @@
 package example.timeflows.controller;
 
+import example.timeflows.model.Overtime;
+import example.timeflows.model.OvertimeStatus;
+import example.timeflows.service.OvertimeReviewExcelService;
 import example.timeflows.service.OvertimeReviewPageService;
 import example.timeflows.service.OvertimeService;
+import java.nio.charset.StandardCharsets;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -14,11 +22,54 @@ import org.springframework.web.bind.annotation.RequestParam;
 public class OvertimeReviewController {
     private final OvertimeService overtimeService;
     private final OvertimeReviewPageService pageService;
+    private final OvertimeReviewExcelService excelService;
 
     public OvertimeReviewController(
-            OvertimeService overtimeService, OvertimeReviewPageService pageService) {
+            OvertimeService overtimeService,
+            OvertimeReviewPageService pageService,
+            OvertimeReviewExcelService excelService) {
         this.overtimeService = overtimeService;
         this.pageService = pageService;
+        this.excelService = excelService;
+    }
+
+    @GetMapping("/api/overtime/review/export")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    public ResponseEntity<byte[]> export(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            Authentication authentication) {
+        var page =
+                pageService.buildPage(
+                        authentication.getName(),
+                        "division",
+                        "summary",
+                        departmentId,
+                        directorateId,
+                        divisionId,
+                        subdivisionId,
+                        status,
+                        year,
+                        month,
+                        null,
+                        null);
+        var result = excelService.exportSummary(page);
+        ContentDisposition disposition =
+                ContentDisposition.attachment()
+                        .filename(result.filename(), StandardCharsets.UTF_8)
+                        .build();
+        return ResponseEntity.ok()
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+                .contentLength(result.content().length)
+                .body(result.content());
     }
 
     @GetMapping("/api/overtime/review")
@@ -27,7 +78,10 @@ public class OvertimeReviewController {
             @RequestParam(defaultValue = "division") String mode,
             @RequestParam(defaultValue = "matrix") String view,
             @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
             @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
@@ -37,11 +91,16 @@ public class OvertimeReviewController {
         model.addAllAttributes(
                 pageService.buildPage(
                         authentication.getName(),
+                        mode,
                         view,
                         departmentId,
+                        directorateId,
                         divisionId,
+                        subdivisionId,
+                        status,
                         year,
                         month,
+                        userId,
                         openBonusUserId));
         return "manager/overtime-review";
     }
@@ -56,6 +115,44 @@ public class OvertimeReviewController {
         return "redirect:/api/overtime/review";
     }
 
+    @PostMapping("/api/overtime/review/approve-all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String approveAll(
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(defaultValue = "matrix") String view,
+            Authentication authentication) {
+        var page =
+                pageService.buildPage(
+                        authentication.getName(),
+                        "division",
+                        view,
+                        departmentId,
+                        directorateId,
+                        divisionId,
+                        subdivisionId,
+                        status,
+                        year,
+                        month,
+                        null,
+                        null);
+        @SuppressWarnings("unchecked")
+        var overtimes =
+                (java.util.List<Overtime>)
+                        page.getOrDefault("filteredOvertimes", java.util.List.of());
+        overtimeService.approveAll(
+                overtimes.stream().map(Overtime::getId).toList(),
+                "Погоджено адміністратором масово",
+                authentication.getName());
+        return reviewRedirect(
+                departmentId, directorateId, divisionId, subdivisionId, status, year, month, view);
+    }
+
     @PostMapping("/api/overtime/review/reject")
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
     public String reject(
@@ -64,5 +161,26 @@ public class OvertimeReviewController {
             Authentication authentication) {
         overtimeService.reject(overtimeId, comment, authentication.getName());
         return "redirect:/api/overtime/review";
+    }
+
+    private String reviewRedirect(
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            OvertimeStatus status,
+            Integer year,
+            Integer month,
+            String view) {
+        var parameters = new java.util.ArrayList<String>();
+        if (departmentId != null) parameters.add("departmentId=" + departmentId);
+        if (directorateId != null) parameters.add("directorateId=" + directorateId);
+        if (divisionId != null) parameters.add("divisionId=" + divisionId);
+        if (subdivisionId != null) parameters.add("subdivisionId=" + subdivisionId);
+        if (status != null) parameters.add("status=" + status);
+        if (year != null) parameters.add("year=" + year);
+        if (month != null) parameters.add("month=" + month);
+        parameters.add("view=" + ("summary".equals(view) ? "summary" : "matrix"));
+        return "redirect:/api/overtime/review?" + String.join("&", parameters);
     }
 }

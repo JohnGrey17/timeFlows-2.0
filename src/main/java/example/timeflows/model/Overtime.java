@@ -45,7 +45,7 @@ public class Overtime {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OvertimeStatus status = OvertimeStatus.PENDING;
+    private OvertimeStatus status = OvertimeStatus.CHECKING;
 
     @Column(name = "manager_comment", length = 1000)
     private String managerComment;

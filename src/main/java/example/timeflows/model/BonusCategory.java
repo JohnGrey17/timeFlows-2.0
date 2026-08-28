@@ -15,4 +15,11 @@ public class BonusCategory {
 
     @Column(nullable = false, unique = true, length = 255)
     private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private BonusType type = BonusType.MONTHLY;
+
+    @Column(nullable = false)
+    private boolean active = true;
 }

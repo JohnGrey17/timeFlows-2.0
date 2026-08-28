@@ -76,9 +76,10 @@ function openOvertimeModal(day) {
     }
 
     const status = day.dataset.status;
-    const rejected = status === "REJECTED";
+    const rejected = status === "DECLINED" || status === "REJECTED";
     const privilegedCurrentMonth = modal.dataset.privilegedCurrentMonth === "true";
-    const locked = (status === "APPROVED" || rejected) && !privilegedCurrentMonth;
+    const approved = ["APPROVED_MANAGER", "APPROVED_ADMIN", "APPROVED"].includes(status);
+    const locked = (approved || rejected) && !privilegedCurrentMonth;
 
     overtimeId.value = day.dataset.id || "";
     workDate.value = day.dataset.date;
@@ -103,13 +104,16 @@ function closeModal() {
 }
 
 function buildStatusText(status, managerComment) {
-    if (status === "APPROVED") {
-        return "Погоджено керівником.";
+    if (status === "APPROVED_ADMIN" || status === "APPROVED") {
+        return "Фінально погоджено ADMIN.";
     }
-    if (status === "REJECTED") {
+    if (status === "APPROVED_MANAGER") {
+        return "Погоджено керівником, очікує фінального рішення ADMIN.";
+    }
+    if (status === "DECLINED" || status === "REJECTED") {
         return managerComment ? `Відхилено. Причина: ${managerComment}` : "Відхилено керівником.";
     }
-    if (status === "PENDING") {
+    if (status === "CHECKING" || status === "PENDING") {
         return "Очікує погодження керівника.";
     }
     return "";
@@ -150,3 +154,5 @@ function mutationHeaders(includeJson = true) {
     }
     return headers;
 }
+document.querySelectorAll("form[data-calendar-filter] select[name='month'], form[data-calendar-filter] select[name='year']")
+    .forEach((select) => select.addEventListener("change", () => select.form.requestSubmit()));

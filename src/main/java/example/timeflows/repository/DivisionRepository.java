@@ -10,14 +10,30 @@ public interface DivisionRepository extends JpaRepository<Division, Long> {
 
     boolean existsByDepartmentIdAndNameIgnoreCase(Long departmentId, String name);
 
-    @EntityGraph(attributePaths = {"department"})
+    Optional<Division> findByDepartmentIdAndNameIgnoreCase(Long departmentId, String name);
+
+    @EntityGraph(attributePaths = {"department", "directorate", "tags"})
     List<Division> findAllByOrderByNameAsc();
 
-    @EntityGraph(attributePaths = {"department", "manager"})
+    @EntityGraph(attributePaths = {"department", "directorate", "manager", "tags"})
     List<Division> findByDepartmentIdOrderByNameAsc(Long departmentId);
 
-    @EntityGraph(attributePaths = {"department", "manager", "users", "users.roles"})
+    @EntityGraph(attributePaths = {"department", "directorate", "manager", "tags"})
+    List<Division> findByDirectorateIdOrderByNameAsc(Long directorateId);
+
+    @EntityGraph(
+            attributePaths = {
+                "department",
+                "directorate",
+                "manager",
+                "users",
+                "users.roles",
+                "subdivisions",
+                "tags"
+            })
     Optional<Division> findWithDepartmentAndUsersById(Long id);
 
     Optional<Division> findByManagerId(Long managerId);
+
+    boolean existsByIdAndUsersActiveTrue(Long id);
 }

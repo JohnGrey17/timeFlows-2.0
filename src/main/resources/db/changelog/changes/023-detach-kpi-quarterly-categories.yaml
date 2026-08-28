@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 023-detach-kpi-quarterly-categories
+      author: codex
+      changes:
+        - dropNotNullConstraint:
+            tableName: bonuses
+            columnName: category_id
+            columnDataType: bigint
+        - update:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: category_id
+                  valueComputed: "NULL"
+            where: type IN ('KPI', 'QUARTERLY')
+        - update:
+            tableName: bonus_categories
+            columns:
+              - column:
+                  name: active
+                  valueBoolean: false
+            where: type IN ('KPI', 'QUARTERLY')

@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 019-add-bonus-types-and-archiving
+      author: codex
+      changes:
+        - addColumn:
+            tableName: bonus_categories
+            columns:
+              - column:
+                  name: type
+                  type: VARCHAR(30)
+                  defaultValue: MONTHLY
+                  constraints:
+                    nullable: false
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: type
+                  type: VARCHAR(30)
+                  defaultValue: MONTHLY
+                  constraints:
+                    nullable: false

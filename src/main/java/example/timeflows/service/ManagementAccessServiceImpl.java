@@ -30,7 +30,7 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
     public void assertCanManage(User actor, User target) {
         if (!actor.getRoles().contains(Role.ADMIN)
                 && !actor.getDivision().getId().equals(target.getDivision().getId())) {
-            throw new UserException("Керівник може працювати лише зі своїм підвідділом");
+            throw new UserException("Керівник може працювати лише зі своїм відділом");
         }
     }
 }

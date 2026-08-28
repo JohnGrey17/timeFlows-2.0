@@ -5,6 +5,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -19,13 +20,16 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest(
         properties = {
             "spring.datasource.url=jdbc:h2:mem:securitytests;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=false",
-            "timeflows.demo-data.enabled=false"
+            "timeflows.demo-data.enabled=false",
+            "timeflows.mfa.enabled=true"
         })
 @AutoConfigureMockMvc
 @Import(SecurityTestData.class)
 class SecurityAuthorizationTests {
 
     @Autowired private MockMvc mockMvc;
+    @Autowired private example.timeflows.service.UserService userService;
+    @Autowired private example.timeflows.repository.BonusRepository bonusRepository;
 
     @Test
     void loginPageContainsCsrfToken() throws Exception {
@@ -164,19 +168,6 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void excelExportPageIsAvailableOnlyToAdmin() throws Exception {
-        mockMvc.perform(get("/api/admin/export").with(user("employee@vyriy.com").roles("EMPLOYEE")))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(
-                        get("/api/admin/export")
-                                .with(user("it.manager@vyriy.com").roles("MANAGER")))
-                .andExpect(status().isForbidden());
-        mockMvc.perform(get("/api/admin/export").with(user("admin@vyriy.com").roles("ADMIN")))
-                .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Експорт Excel")));
-    }
-
-    @Test
     void registrationContainsDepartmentAndDivisionSelectors() throws Exception {
         mockMvc.perform(get("/api/register"))
                 .andExpect(status().isOk())
@@ -227,7 +218,7 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void adminNavigationUsesRequestedOrderAndThreeStatusLegendItems() throws Exception {
+    void adminNavigationUsesRequestedOrderAndFourStatusLegendItems() throws Exception {
         String html =
                 mockMvc.perform(
                                 get("/api/overtime")
@@ -237,26 +228,71 @@ class SecurityAuthorizationTests {
                         .getResponse()
                         .getContentAsString();
 
-        org.assertj.core.api.Assertions.assertThat(html.indexOf("Мої перепрацювання"))
-                .isLessThan(html.indexOf("Перевірка перепрацювань"));
-        org.assertj.core.api.Assertions.assertThat(html.indexOf("Перевірка перепрацювань"))
-                .isLessThan(html.indexOf("Користувачі"));
-        org.assertj.core.api.Assertions.assertThat(html.indexOf("Користувачі"))
-                .isLessThan(html.indexOf("Керування Відділами"));
-        org.assertj.core.api.Assertions.assertThat(html.indexOf("Керування Відділами"))
-                .isLessThan(html.indexOf("Налаштування"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("/api/overtime\""))
+                .isLessThan(html.indexOf("/api/overtime/review"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("/api/overtime/review"))
+                .isLessThan(html.indexOf("/api/users"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("/api/users"))
+                .isLessThan(html.indexOf("/api/organization"));
+        org.assertj.core.api.Assertions.assertThat(html.indexOf("/api/organization"))
+                .isLessThan(html.indexOf("/api/settings"));
         org.assertj.core.api.Assertions.assertThat(html.split("legend-box", -1).length - 1)
-                .isEqualTo(3);
+                .isEqualTo(4);
     }
 
     @Test
-    void employeeCannotOpenBonusesButManagerCan() throws Exception {
-        mockMvc.perform(get("/api/bonuses").with(user("employee@vyriy.com").roles("EMPLOYEE")))
+    void onlyAdminCanOpenBonusModule() throws Exception {
+        mockMvc.perform(
+                        get("/api/bonuses")
+                                .with(user("andrii.employee@vyriy.com").roles("EMPLOYEE")))
                 .andExpect(status().isForbidden());
         mockMvc.perform(
                         get("/api/bonuses")
                                 .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        get("/api/bonuses")
+                                .with(user("project.lead@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(
+                        get("/api/bonuses")
+                                .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminModulesUseCurrentDatabaseRolesWhenAuthorityIsStale() throws Exception {
+        mockMvc.perform(get("/api/bonuses").with(user("admin@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/users").with(user("admin@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void managerCannotDeactivateOwnAccount() throws Exception {
+        Long managerId = userService.findByEmail("it.manager@vyriy.com").getId();
+        mockMvc.perform(
+                        post("/api/users/{id}/deactivate", managerId)
+                                .with(csrf())
+                                .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE"))
+                                .param("reason", "Помилкова самодеактивація"))
+                .andExpect(status().isBadRequest());
+        org.assertj.core.api.Assertions.assertThat(
+                        userService.findByEmail("it.manager@vyriy.com").isActive())
+                .isTrue();
+    }
+
+    @Test
+    void managerCanOpenUsersForOwnDivision() throws Exception {
+        mockMvc.perform(
+                        get("/api/users")
+                                .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "andrii.employee@vyriy.com")));
     }
 
     @Test
@@ -275,7 +311,32 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void overtimeReviewFinancialSummaryRendersDynamicCategoryColumnsAndDetails() throws Exception {
+    void adminExportsCurrentOvertimeSummarySelectionToExcel() throws Exception {
+        mockMvc.perform(
+                        get("/api/overtime/review/export")
+                                .param("departmentId", "1")
+                                .param("divisionId", "1")
+                                .param("year", "2026")
+                                .param("month", "8")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        header().string(
+                                        "Content-Type",
+                                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .andExpect(
+                        header().string(
+                                        "Content-Disposition",
+                                        org.hamcrest.Matchers.containsString("attachment")))
+                .andExpect(
+                        result ->
+                                org.assertj.core.api.Assertions.assertThat(
+                                                result.getResponse().getContentAsByteArray())
+                                        .isNotEmpty());
+    }
+
+    @Test
+    void overtimeReviewShowsFinancialSummaryWithHoursButWithoutSalaryFormula() throws Exception {
         mockMvc.perform(
                         get("/api/overtime/review")
                                 .param("departmentId", "1")
@@ -289,11 +350,24 @@ class SecurityAuthorizationTests {
                         content()
                                 .string(
                                         org.hamcrest.Matchers.containsString(
+                                                "Години перепрацювань")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
                                                 "financial-summary-table")))
                 .andExpect(
-                        content().string(org.hamcrest.Matchers.containsString("categorySummary-")))
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "Базова ставка"))))
                 .andExpect(
-                        content().string(org.hamcrest.Matchers.containsString("overtimeSummary-")));
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "Сума до сплати"))));
     }
 
     @Test
@@ -325,7 +399,8 @@ class SecurityAuthorizationTests {
                         .getResponse()
                         .getContentAsString();
         org.assertj.core.api.Assertions.assertThat(adminHtml)
-                .contains("summary-salary-form", "summary-bonus-create");
+                .contains("financial-summary-table", "summary-bonus-create")
+                .doesNotContain("summary-salary-form");
     }
 
     @Test
@@ -372,20 +447,42 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void managerBonusPageIsRestrictedToOwnDivision() throws Exception {
-        String html =
-                mockMvc.perform(
-                                get("/api/bonuses")
-                                        .with(
-                                                user("it.manager@vyriy.com")
-                                                        .roles("MANAGER", "EMPLOYEE")))
-                        .andExpect(status().isOk())
-                        .andReturn()
-                        .getResponse()
-                        .getContentAsString();
-        org.assertj.core.api.Assertions.assertThat(html)
-                .contains("andrii.employee@vyriy.com", "maria.employee@vyriy.com");
-        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("petro.employee@vyriy.com");
+    void managerCannotOpenBonusPageEvenWithOrganizationFilter() throws Exception {
+        mockMvc.perform(
+                        get("/api/bonuses")
+                                .param("divisionId", "1")
+                                .with(user("it.manager@vyriy.com").roles("MANAGER", "EMPLOYEE")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCanApproveAndRejectPendingBonusFromBonusModule() throws Exception {
+        example.timeflows.model.Bonus bonus =
+                bonusRepository.findAll().stream()
+                        .filter(b -> b.getStatus() == example.timeflows.model.BonusStatus.PENDING)
+                        .findFirst()
+                        .orElseThrow();
+        try {
+            mockMvc.perform(
+                            post("/api/bonuses/{id}/approve", bonus.getId())
+                                    .with(csrf())
+                                    .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
+                    .andExpect(status().is3xxRedirection());
+
+            bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
+            bonusRepository.save(bonus);
+
+            mockMvc.perform(
+                            post("/api/bonuses/{id}/reject", bonus.getId())
+                                    .with(csrf())
+                                    .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE"))
+                                    .param("comment", "Відхилено адміністратором"))
+                    .andExpect(status().is3xxRedirection());
+        } finally {
+            bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
+            bonus.setAdminComment(null);
+            bonusRepository.save(bonus);
+        }
     }
 
     @Test

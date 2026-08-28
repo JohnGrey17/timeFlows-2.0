@@ -10,16 +10,19 @@ public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
     boolean existsByNameIgnoreCase(String name);
 
+    Optional<Department> findByNameIgnoreCase(String name);
+
     @EntityGraph(
             attributePaths = {
                 "divisions",
                 "divisions.department",
                 "divisions.manager",
                 "divisions.users",
-                "divisions.users.roles"
+                "divisions.users.roles",
+                "directorates"
             })
     List<Department> findAllByOrderByNameAsc();
 
-    @EntityGraph(attributePaths = {"divisions", "divisions.manager"})
+    @EntityGraph(attributePaths = {"divisions", "divisions.manager", "directorates"})
     Optional<Department> findWithDivisionsById(Long id);
 }

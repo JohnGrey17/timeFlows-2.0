@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,10 +16,9 @@
         <nav class="side-nav" aria-label="Основна навігація">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
             <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Бонуси</span></a>
-            <a class="active" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Користувачі</span></a>
+            <a th:if="${currentUser.roles.contains(T(example.timeflows.model.Role).ADMIN)}" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a class="active" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
-            <a th:href="@{/api/admin/export}"><span class="nav-icon">⇩</span><span>Експорт Excel</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">

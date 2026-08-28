@@ -29,3 +29,17 @@ databaseChangeLog:
       file: db/changelog/changes/015-add-mfa.yaml
   - include:
       file: db/changelog/changes/016-add-mfa-enrollment-and-audit.yaml
+  - include:
+      file: db/changelog/changes/017-add-directorates-and-subdivisions.yaml
+  - include:
+      file: db/changelog/changes/018-add-business-tags.yaml
+  - include:
+      file: db/changelog/changes/019-add-bonus-types-and-archiving.yaml
+  - include:
+      file: db/changelog/changes/020-add-quarterly-distribution-fields.yaml
+  - include:
+      file: db/changelog/changes/021-migrate-overtime-statuses.yaml
+  - include:
+      file: db/changelog/changes/022-add-bonus-archiving.yaml
+  - include:
+      file: db/changelog/changes/023-detach-kpi-quarterly-categories.yaml
