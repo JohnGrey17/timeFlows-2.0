@@ -1,0 +1,52 @@
+name: Deploy TimeFlows
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t timeflows:${{ github.sha }} \
+            -t timeflows:latest \
+            .
+
+      - name: Stop old container
+        run: |
+          docker stop timeflows || true
+          docker rm timeflows || true
+
+      - name: Start new container
+        run: |
+          docker run -d \
+            --name timeflows \
+            --restart unless-stopped \
+            -p 8080:8080 \
+            -e DB_URL="${{ vars.DB_URL }}" \
+            -e DB_USERNAME="${{ vars.DB_USERNAME }}" \
+            -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            -e JWT_EXPIRATION="${{ vars.JWT_EXPIRATION }}" \
+            -e MFA_ENABLED="${{ vars.MFA_ENABLED }}" \
+            -e MFA_ENCRYPTION_KEY="${{ secrets.MFA_ENCRYPTION_KEY }}" \
+            -e MFA_ISSUER="${{ vars.MFA_ISSUER }}" \
+            -e DEMO_DATA_ENABLED="${{ vars.DEMO_DATA_ENABLED }}" \
+            -e INITIAL_ADMIN_PASSWORD="${{ secrets.INITIAL_ADMIN_PASSWORD }}" \
+            timeflows:${{ github.sha }}
+
+      - name: Wait for application
+        run: sleep 15
+
+      - name: Check container
+        run: |
+          docker ps
+          docker logs --tail=100 timeflows
