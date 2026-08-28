@@ -42,6 +42,8 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(
                                                 "/api/login",
+                                                "/",
+                                                "/login",
                                                 "/api/register",
                                                 "/api/mfa/**",
                                                 "/css/**",
