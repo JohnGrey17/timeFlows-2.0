@@ -144,20 +144,31 @@ public class MfaController {
     }
 
     private String currentEmail(Authentication authentication, HttpServletRequest request) {
-        return authentication != null && !(authentication instanceof AnonymousAuthenticationToken)
-                ? authentication.getName()
-                : pendingEmail(request);
+        String pendingToken = cookieValue(request, PENDING_COOKIE);
+        if (pendingToken != null) {
+            return emailFromPendingToken(pendingToken);
+        }
+        if (authentication != null && !(authentication instanceof AnonymousAuthenticationToken)) {
+            return authentication.getName();
+        }
+        throw new IllegalArgumentException("MFA-сесія завершилася. Увійдіть знову.");
     }
 
     private String pendingEmail(HttpServletRequest request) {
-        String token =
-                request.getCookies() == null
-                        ? null
-                        : Arrays.stream(request.getCookies())
-                                .filter(cookie -> PENDING_COOKIE.equals(cookie.getName()))
-                                .map(Cookie::getValue)
-                                .findFirst()
-                                .orElse(null);
+        return emailFromPendingToken(cookieValue(request, PENDING_COOKIE));
+    }
+
+    private String cookieValue(HttpServletRequest request, String name) {
+        return request.getCookies() == null
+                ? null
+                : Arrays.stream(request.getCookies())
+                        .filter(cookie -> name.equals(cookie.getName()))
+                        .map(Cookie::getValue)
+                        .findFirst()
+                        .orElse(null);
+    }
+
+    private String emailFromPendingToken(String token) {
         try {
             if (token == null || !jwt.isMfaPendingToken(token))
                 throw new IllegalArgumentException();

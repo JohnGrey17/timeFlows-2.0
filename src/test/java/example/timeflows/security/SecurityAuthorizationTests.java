@@ -92,6 +92,35 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void registrationMfaUsesPendingUserInsteadOfExistingAuthenticatedUser() throws Exception {
+        MvcResult registration =
+                mockMvc.perform(
+                                post("/api/register")
+                                        .with(user("admin@vyriy.com").roles("ADMIN"))
+                                        .with(csrf())
+                                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                        .param("firstName", "Pending")
+                                        .param("lastName", "Employee")
+                                        .param("email", "pending.employee@vyriy.com")
+                                        .param("password", "test-password")
+                                        .param("divisionId", "1"))
+                        .andExpect(status().is3xxRedirection())
+                        .andReturn();
+
+        jakarta.servlet.http.Cookie pendingCookie =
+                registration.getResponse().getCookie("TIMEFLOWS_MFA_PENDING");
+
+        mockMvc.perform(
+                        get("/api/mfa/setup")
+                                .with(user("admin@vyriy.com").roles("ADMIN"))
+                                .cookie(pendingCookie))
+                .andExpect(status().isOk())
+                .andExpect(
+                        org.springframework.test.web.servlet.result.MockMvcResultMatchers.model()
+                                .attribute("email", "pending.employee@vyriy.com"));
+    }
+
+    @Test
     void stateChangingRequestWithoutCsrfIsForbidden() throws Exception {
         mockMvc.perform(
                         post("/api/departments")
