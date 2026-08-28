@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class DashboardController {
 
-    @GetMapping("/")
+    @GetMapping({"/", "/login"})
     public String index() {
-        return "redirect:/api/dashboard";
+        return "redirect:/api/login";
     }
 
     @GetMapping("/api/dashboard")

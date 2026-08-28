@@ -121,7 +121,7 @@ class CrudControllerTests {
     @Test
     void dashboardRoutesToApplicationPages() {
         DashboardController controller = new DashboardController();
-        assertThat(controller.index()).isEqualTo("redirect:/api/dashboard");
+        assertThat(controller.index()).isEqualTo("redirect:/api/login");
         assertThat(controller.dashboard()).isEqualTo("redirect:/api/overtime");
     }
 
