@@ -8,6 +8,7 @@ import example.timeflows.model.OvertimeStatus;
 import example.timeflows.service.OvertimeReviewExcelService;
 import example.timeflows.service.OvertimeReviewPageService;
 import example.timeflows.service.OvertimeService;
+import example.timeflows.service.SavedOvertimeFilterService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.core.Authentication;
@@ -25,7 +26,8 @@ class OvertimeReviewControllerTests {
                 new OvertimeReviewController(
                         overtimeService,
                         mock(OvertimeReviewPageService.class),
-                        mock(OvertimeReviewExcelService.class));
+                        mock(OvertimeReviewExcelService.class),
+                        mock(SavedOvertimeFilterService.class));
         authentication = mock(Authentication.class);
         org.mockito.Mockito.when(authentication.getName()).thenReturn("manager@vyriy.com");
     }
