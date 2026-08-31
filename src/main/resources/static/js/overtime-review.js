@@ -1,4 +1,52 @@
 const reviewModal = document.getElementById("reviewOvertimeModal");
+const divisionOvertimeModal = document.getElementById("divisionOvertimeModal");
+const divisionOvertimeForm = divisionOvertimeModal?.querySelector("[data-division-overtime-form]");
+document.querySelectorAll("[data-employee-id][data-work-date].division-overtime-create").forEach((button) => {
+    button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        divisionOvertimeForm.reset();
+        divisionOvertimeForm.elements.employeeId.value = button.dataset.employeeId;
+        divisionOvertimeForm.elements.workDate.value = button.dataset.workDate;
+        divisionOvertimeModal.querySelector("[data-division-overtime-employee]").textContent =
+            `${button.dataset.employeeName} · ${button.dataset.workDate}`;
+        divisionOvertimeModal.querySelector("[data-division-overtime-error]").textContent = "";
+        divisionOvertimeModal.hidden = false;
+        divisionOvertimeForm.elements.hours.focus();
+    });
+});
+document.querySelector("[data-division-overtime-close]")?.addEventListener("click", () => divisionOvertimeModal.hidden = true);
+divisionOvertimeModal?.addEventListener("click", (event) => {
+    if (event.target === divisionOvertimeModal) divisionOvertimeModal.hidden = true;
+});
+divisionOvertimeForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const error = divisionOvertimeModal.querySelector("[data-division-overtime-error]");
+    error.textContent = "";
+    const employeeId = divisionOvertimeForm.elements.employeeId.value;
+    const response = await fetch(`/api/overtimes/users/${employeeId}`, {
+        method: "POST",
+        headers: reviewJsonHeaders(),
+        body: JSON.stringify({
+            workDate: divisionOvertimeForm.elements.workDate.value,
+            hours: Number(divisionOvertimeForm.elements.hours.value),
+            description: divisionOvertimeForm.elements.description.value
+        })
+    });
+    if (response.ok) {
+        window.location.reload();
+        return;
+    }
+    const body = await response.json().catch(() => null);
+    error.textContent = body?.validationErrors
+        ? Object.values(body.validationErrors)[0]
+        : body?.message || `Помилка HTTP ${response.status}`;
+});
+function reviewJsonHeaders() {
+    const headers = {"Content-Type": "application/json"};
+    const csrfCookie = document.cookie.split("; ").find((cookie) => cookie.startsWith("XSRF-TOKEN="));
+    if (csrfCookie) headers["X-XSRF-TOKEN"] = decodeURIComponent(csrfCookie.substring("XSRF-TOKEN=".length));
+    return headers;
+}
 const savedFilterModal = document.getElementById("saveOvertimeFilterModal");
 document.querySelector("[data-saved-filter-open]")?.addEventListener("click", () => {
     savedFilterModal.hidden = false;
