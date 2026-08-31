@@ -12,7 +12,6 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -23,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OvertimeServiceImpl implements OvertimeService {
+
+    private static final YearMonth AUGUST_2026 = YearMonth.of(2026, 8);
 
     private final OvertimeRepository overtimeRepository;
     private final UserService userService;
@@ -185,7 +186,6 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime approve(Long id, String managerComment, String reviewerEmail) {
         User reviewer = assertCanReview(id, reviewerEmail);
         Overtime overtime = findById(id);
-        validateReviewDeadline(overtime, reviewer);
         if (reviewer.getRoles().contains(Role.ADMIN)) {
             if (overtime.getStatus() != OvertimeStatus.APPROVED_MANAGER) {
                 throw new OvertimeException("ADMIN фінально погоджує лише заявку APPROVED_MANAGER");
@@ -222,12 +222,7 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     @Override
     public boolean canAdminApprove(Overtime overtime) {
-        if (overtime.getStatus() != OvertimeStatus.APPROVED_MANAGER) return false;
-        ZonedDateTime now = ZonedDateTime.now(clock);
-        LocalDate overtimeFriday = fridayOfWeek(overtime.getWorkDate());
-        LocalDate currentFriday = fridayOfWeek(now.toLocalDate());
-        return overtimeFriday.equals(currentFriday)
-                && !now.isAfter(overtimeFriday.atTime(LocalTime.of(21, 0)).atZone(now.getZone()));
+        return overtime.getStatus() == OvertimeStatus.APPROVED_MANAGER;
     }
 
     @Override
@@ -249,8 +244,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Override
     @Transactional
     public Overtime reject(Long id, String managerComment, String reviewerEmail) {
-        User reviewer = assertCanReview(id, reviewerEmail);
-        validateReviewDeadline(findById(id), reviewer);
+        assertCanReview(id, reviewerEmail);
         return reject(id, managerComment);
     }
 
@@ -273,7 +267,9 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     private void validateHours(OvertimeRequest request, User user) {
-        if (!isWeekend(request) && !allowsCurrentWeekOvertime(user)) {
+        if (!isWeekend(request)
+                && !allowsCurrentWeekOvertime(user)
+                && !isAugust2026(request.getWorkDate())) {
             throw new OvertimeException("Перепрацювання дозволені лише у вихідні дні");
         }
         double maxHours = 14.0;
@@ -307,6 +303,9 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private void validateSubmission(LocalDate workDate, User user) {
         ZonedDateTime now = ZonedDateTime.now(clock);
+        if (isAugust2026(workDate)) {
+            return;
+        }
         if (allowsCurrentWeekOvertime(user)) {
             LocalDate weekStart =
                     now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
@@ -317,36 +316,23 @@ public class OvertimeServiceImpl implements OvertimeService {
             }
             return;
         }
-        LocalDate friday = now.toLocalDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.FRIDAY));
-        LocalDate saturday = friday.plusDays(1);
-        LocalDate sunday = friday.plusDays(2);
-        if (!workDate.equals(saturday) && !workDate.equals(sunday)) {
-            throw new OvertimeException("Заявку можна подати лише на поточні вихідні");
+        boolean weekend =
+                workDate.getDayOfWeek() == DayOfWeek.SATURDAY
+                        || workDate.getDayOfWeek() == DayOfWeek.SUNDAY;
+        boolean currentMonth = YearMonth.from(workDate).equals(YearMonth.from(now));
+        boolean future = workDate.isAfter(now.toLocalDate());
+        if (!weekend || (!currentMonth && !future)) {
+            throw new OvertimeException(
+                    "Заявку можна подати на всі вихідні поточного місяця або на майбутні вихідні");
         }
-        if (now.isAfter(friday.atTime(LocalTime.of(11, 0)).atZone(now.getZone()))) {
-            throw new OvertimeException("Дедлайн подання заявки — п'ятниця 11:00 Europe/Kyiv");
-        }
+    }
+
+    private boolean isAugust2026(LocalDate date) {
+        return YearMonth.from(date).equals(AUGUST_2026);
     }
 
     private boolean allowsCurrentWeekOvertime(User user) {
         return user.getTags().contains(BusinessTag.ALLOW_OVER);
-    }
-
-    private void validateReviewDeadline(Overtime overtime, User reviewer) {
-        ZonedDateTime now = ZonedDateTime.now(clock);
-        LocalDate friday = fridayOfWeek(overtime.getWorkDate());
-        LocalTime deadline =
-                reviewer.getRoles().contains(Role.ADMIN)
-                        ? LocalTime.of(21, 0)
-                        : LocalTime.of(14, 0);
-        if (now.isAfter(friday.atTime(deadline).atZone(now.getZone()))) {
-            throw new OvertimeException(
-                    "Дедлайн погодження минув: п'ятниця " + deadline + " Europe/Kyiv");
-        }
-    }
-
-    private LocalDate fridayOfWeek(LocalDate date) {
-        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusDays(4);
     }
 
     private OvertimeStatus initialStatus(User user) {

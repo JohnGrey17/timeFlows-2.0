@@ -110,9 +110,29 @@ public class OvertimeReviewController {
     public String approve(
             @RequestParam Long overtimeId,
             @RequestParam(required = false) String comment,
+            @RequestParam(defaultValue = "division") String mode,
+            @RequestParam(defaultValue = "matrix") String view,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             Authentication authentication) {
         overtimeService.approve(overtimeId, comment, authentication.getName());
-        return "redirect:/api/overtime/review";
+        return reviewRedirect(
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status,
+                year,
+                month,
+                view,
+                mode,
+                userId);
     }
 
     @PostMapping("/api/overtime/review/approve-all")
@@ -150,7 +170,16 @@ public class OvertimeReviewController {
                 "Погоджено адміністратором масово",
                 authentication.getName());
         return reviewRedirect(
-                departmentId, directorateId, divisionId, subdivisionId, status, year, month, view);
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status,
+                year,
+                month,
+                view,
+                "division",
+                null);
     }
 
     @PostMapping("/api/overtime/review/reject")
@@ -158,9 +187,29 @@ public class OvertimeReviewController {
     public String reject(
             @RequestParam Long overtimeId,
             @RequestParam String comment,
+            @RequestParam(defaultValue = "division") String mode,
+            @RequestParam(defaultValue = "matrix") String view,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             Authentication authentication) {
         overtimeService.reject(overtimeId, comment, authentication.getName());
-        return "redirect:/api/overtime/review";
+        return reviewRedirect(
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status,
+                year,
+                month,
+                view,
+                mode,
+                userId);
     }
 
     private String reviewRedirect(
@@ -171,7 +220,9 @@ public class OvertimeReviewController {
             OvertimeStatus status,
             Integer year,
             Integer month,
-            String view) {
+            String view,
+            String mode,
+            Long userId) {
         var parameters = new java.util.ArrayList<String>();
         if (departmentId != null) parameters.add("departmentId=" + departmentId);
         if (directorateId != null) parameters.add("directorateId=" + directorateId);
@@ -180,6 +231,8 @@ public class OvertimeReviewController {
         if (status != null) parameters.add("status=" + status);
         if (year != null) parameters.add("year=" + year);
         if (month != null) parameters.add("month=" + month);
+        parameters.add("mode=" + ("employee".equals(mode) ? "employee" : "division"));
+        if (userId != null) parameters.add("userId=" + userId);
         parameters.add("view=" + ("summary".equals(view) ? "summary" : "matrix"));
         return "redirect:/api/overtime/review?" + String.join("&", parameters);
     }

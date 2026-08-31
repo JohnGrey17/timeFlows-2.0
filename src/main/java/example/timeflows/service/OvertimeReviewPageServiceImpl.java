@@ -182,49 +182,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                 current.getTags()
                         .contains(example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD));
         boolean projectManagerView =
-                !users.isEmpty()
-                        && users.stream()
-                                .allMatch(
-                                        user ->
-                                                user.getTags()
-                                                                .contains(
-                                                                        example.timeflows.model
-                                                                                .BusinessTag
-                                                                                .PROJECT_MANAGER)
-                                                        || user.getTags()
-                                                                .contains(
-                                                                        example.timeflows.model
-                                                                                .BusinessTag
-                                                                                .PROJECT_MANAGER_LEAD)
-                                                        || user.getDivision()
-                                                                .getTags()
-                                                                .contains(
-                                                                        example.timeflows.model
-                                                                                .BusinessTag
-                                                                                .PROJECT_MANAGER));
-        boolean hasProjectManagers =
-                users.stream()
-                        .anyMatch(
-                                user ->
-                                        user.getTags()
-                                                .contains(
-                                                        example.timeflows.model.BusinessTag
-                                                                .PROJECT_MANAGER));
+                !users.isEmpty() && users.stream().allMatch(this::canReceiveKpi);
+        boolean hasProjectManagers = users.stream().anyMatch(this::canReceiveKpi);
         data.put("projectManagerView", projectManagerView);
         data.put("hasProjectManagers", hasProjectManagers);
         data.put(
                 "projectManagerUserIds",
                 users.stream()
-                        .filter(
-                                user ->
-                                        user.getTags()
-                                                        .contains(
-                                                                example.timeflows.model.BusinessTag
-                                                                        .PROJECT_MANAGER)
-                                                || user.getTags()
-                                                        .contains(
-                                                                example.timeflows.model.BusinessTag
-                                                                        .PROJECT_MANAGER_LEAD))
+                        .filter(this::canReceiveKpi)
                         .map(User::getId)
                         .collect(Collectors.toSet()));
         data.put(
@@ -543,5 +508,16 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                         + " — "
                         + user.getEmail())
                 .trim();
+    }
+
+    private boolean canReceiveKpi(User user) {
+        return !user.getTags().contains(example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD)
+                && (user.getTags().contains(example.timeflows.model.BusinessTag.PROJECT_MANAGER)
+                        || (user.getDivision() != null
+                                && user.getDivision()
+                                        .getTags()
+                                        .contains(
+                                                example.timeflows.model.BusinessTag
+                                                        .PROJECT_MANAGER)));
     }
 }

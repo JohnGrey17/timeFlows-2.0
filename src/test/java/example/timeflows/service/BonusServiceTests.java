@@ -139,7 +139,7 @@ class BonusServiceTests {
     }
 
     @Test
-    void projectManagerLeadCanCreateKpiForSelf() {
+    void projectManagerLeadCannotCreateKpiForSelf() {
         Division division = new Division();
         division.setId(5L);
         User lead = new User();
@@ -148,20 +148,18 @@ class BonusServiceTests {
         lead.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
         when(userService.findById(7L)).thenReturn(lead);
         when(userService.findByEmail("lead@vyriy.com")).thenReturn(lead);
-        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Bonus result =
-                service.create(
-                        7L,
-                        null,
-                        BonusType.KPI,
-                        new BigDecimal("125.00"),
-                        "Lead KPI",
-                        "lead@vyriy.com");
-
-        assertThat(result.getUser()).isSameAs(lead);
-        assertThat(result.getType()).isEqualTo(BonusType.KPI);
-        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThatThrownBy(
+                        () ->
+                                service.create(
+                                        7L,
+                                        null,
+                                        BonusType.KPI,
+                                        new BigDecimal("125.00"),
+                                        "Lead KPI",
+                                        "lead@vyriy.com"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("KPI доступний лише PROJECT_MANAGER");
     }
 
     @Test
@@ -174,6 +172,7 @@ class BonusServiceTests {
         User first = activeUser(1L, "first@vyriy.com");
         User second = activeUser(2L, "second@vyriy.com");
         User third = activeUser(3L, "third@vyriy.com");
+        third.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
         when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
         when(userService.findById(1L)).thenReturn(first);
         when(userService.findById(2L)).thenReturn(second);

@@ -1,11 +1,14 @@
 package example.timeflows.controller;
 
 import example.timeflows.model.Department;
+import example.timeflows.model.Division;
 import example.timeflows.service.DepartmentService;
 import example.timeflows.service.DirectorateService;
 import example.timeflows.service.DivisionService;
 import example.timeflows.service.SubdivisionService;
 import example.timeflows.service.UserService;
+import java.util.Comparator;
+import java.util.List;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -17,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
 public class OrganizationPageController {
 
     private final DepartmentService departmentService;
@@ -41,13 +44,32 @@ public class OrganizationPageController {
 
     @GetMapping("/api/organization")
     public String page(Authentication authentication, Model model) {
+        List<Division> divisions =
+                divisionService.findAll().stream()
+                        .sorted(
+                                Comparator.comparing(
+                                        OrganizationPageController::divisionPath,
+                                        String.CASE_INSENSITIVE_ORDER))
+                        .toList();
         model.addAttribute("currentUser", userService.findByEmail(authentication.getName()));
         model.addAttribute("departments", departmentService.findAll());
         model.addAttribute("directorates", directorateService.findAll());
-        model.addAttribute("divisions", divisionService.findAll());
+        model.addAttribute("divisions", divisions);
         model.addAttribute("subdivisions", subdivisionService.findAll());
         model.addAttribute("activePage", "organization");
         return "admin/organization";
+    }
+
+    private static String divisionPath(Division division) {
+        String department = division.getDepartment().getName();
+        if (division.getDirectorate() == null) {
+            return department + " / " + division.getName();
+        }
+        return department
+                + " / "
+                + division.getDirectorate().getName()
+                + " / "
+                + division.getName();
     }
 
     @PostMapping("/api/organization/directorates")

@@ -180,9 +180,8 @@ public class BonusServiceImpl implements BonusService {
                         "Не можна включити деактивованого користувача: " + recipient.getEmail());
             }
             if (hasEffectiveTag(recipient, BusinessTag.PROJECT_MANAGER)
-                    || hasEffectiveTag(recipient, BusinessTag.PROJECT_MANAGER_LEAD)) {
-                throw new IllegalArgumentException(
-                        "PROJECT_MANAGER та PROJECT_MANAGER_LEAD не отримують квартальний бонус");
+                    && !recipient.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
+                throw new IllegalArgumentException("PROJECT_MANAGER не отримує квартальний бонус");
             }
             if (repository.existsByUserIdAndTypeAndQuarterYearAndQuarterNumber(
                     recipient.getId(), BonusType.QUARTERLY, year, quarter)) {
@@ -347,7 +346,7 @@ public class BonusServiceImpl implements BonusService {
     private void validateTypeAccess(BonusType type, User creator, User target) {
         boolean targetProjectManager =
                 hasEffectiveTag(target, BusinessTag.PROJECT_MANAGER)
-                        || target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD);
+                        && !target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD);
         if (type == BonusType.KPI) {
             if (!creator.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
                 throw new IllegalArgumentException("KPI може створювати лише PROJECT_MANAGER_LEAD");
@@ -355,7 +354,8 @@ public class BonusServiceImpl implements BonusService {
             if (!creator.getDivision().getId().equals(target.getDivision().getId())) {
                 throw new IllegalArgumentException("PM Lead працює лише зі своїм відділом");
             }
-            if (!targetProjectManager) {
+            if (!targetProjectManager
+                    || target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
                 throw new IllegalArgumentException("KPI доступний лише PROJECT_MANAGER");
             }
         } else if (type == BonusType.MONTHLY && targetProjectManager) {

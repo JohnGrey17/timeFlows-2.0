@@ -65,16 +65,21 @@ public class UsersPageController {
             Model model) {
         User currentUser = userService.findByEmail(authentication.getName());
         if (!currentUser.getRoles().contains(Role.ADMIN)
-                && !currentUser.getRoles().contains(Role.MANAGER)) {
+                && !currentUser.getRoles().contains(Role.MANAGER)
+                && !currentUser.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException(
                     "Керування користувачами доступне лише адміністратору або менеджеру");
         }
         boolean admin = currentUser.getRoles().contains(Role.ADMIN);
+        boolean globalUserManager = admin || currentUser.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId =
-                admin ? departmentId : currentUser.getDivision().getDepartment().getId();
-        Long effectiveDivisionId = admin ? divisionId : currentUser.getDivision().getId();
-        Long effectiveDirectorateId = admin ? directorateId : null;
-        Long effectiveSubdivisionId = admin ? subdivisionId : null;
+                globalUserManager
+                        ? departmentId
+                        : currentUser.getDivision().getDepartment().getId();
+        Long effectiveDivisionId =
+                globalUserManager ? divisionId : currentUser.getDivision().getId();
+        Long effectiveDirectorateId = globalUserManager ? directorateId : null;
+        Long effectiveSubdivisionId = globalUserManager ? subdivisionId : null;
         List<User> users =
                 effectiveSubdivisionId != null
                         ? userService.findActiveUsersBySubdivision(effectiveSubdivisionId)
@@ -108,12 +113,12 @@ public class UsersPageController {
         model.addAttribute("users", users);
         model.addAttribute(
                 "departments",
-                admin
+                globalUserManager
                         ? departmentService.findAll()
                         : List.of(currentUser.getDivision().getDepartment()));
         model.addAttribute(
                 "divisions",
-                admin
+                globalUserManager
                         ? (effectiveDepartmentId == null
                                 ? List.of()
                                 : divisionService.findByDepartment(effectiveDepartmentId))
@@ -124,22 +129,22 @@ public class UsersPageController {
         model.addAttribute("selectedSubdivisionId", effectiveSubdivisionId);
         model.addAttribute(
                 "directorates",
-                admin && effectiveDepartmentId != null
+                globalUserManager && effectiveDepartmentId != null
                         ? directorateService.findByDepartment(effectiveDepartmentId)
                         : List.of());
         model.addAttribute(
                 "filterDivisions",
-                admin && effectiveDirectorateId != null
+                globalUserManager && effectiveDirectorateId != null
                         ? divisionService.findByDirectorate(effectiveDirectorateId)
                         : List.of());
         model.addAttribute(
                 "filterSubdivisions",
-                admin && effectiveDivisionId != null
+                globalUserManager && effectiveDivisionId != null
                         ? subdivisionService.findByDivision(effectiveDivisionId)
                         : List.of());
         model.addAttribute(
                 "selectedDivision",
-                admin
+                globalUserManager
                         ? (effectiveDivisionId == null
                                 ? null
                                 : divisionService.findById(effectiveDivisionId))
@@ -152,7 +157,7 @@ public class UsersPageController {
     }
 
     @GetMapping("/api/users/deactivated")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
     public String deactivatedUsers(Authentication authentication, Model model) {
         model.addAttribute("currentUser", userService.findByEmail(authentication.getName()));
         model.addAttribute("users", userService.findDeactivatedUsers());
@@ -180,7 +185,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SYS_ADMIN')")
     public String deactivate(
             @PathVariable Long id,
             @RequestParam String reason,
@@ -192,7 +197,14 @@ public class UsersPageController {
         if (currentUser.getId().equals(id)) {
             throw new UserException("Не можна деактивувати власний обліковий запис");
         }
-        accessService.assertCanManageUser(authentication.getName(), id);
+        if (currentUser.getTags().contains(BusinessTag.SYS_ADMIN)
+                && !currentUser.getRoles().contains(Role.ADMIN)
+                && userService.findById(id).getRoles().contains(Role.ADMIN)) {
+            throw new UserException("SYS_ADMIN не може деактивувати адміністратора");
+        }
+        if (!currentUser.getTags().contains(BusinessTag.SYS_ADMIN)) {
+            accessService.assertCanManageUser(authentication.getName(), id);
+        }
         userService.deactivate(id, reason);
         return usersRedirect(departmentId, divisionId, groupBy);
     }
@@ -222,7 +234,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/roles")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
     public String updateRoles(
             @PathVariable Long id,
             @RequestParam(required = false) Set<Role> roles,

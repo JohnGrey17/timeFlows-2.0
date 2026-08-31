@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk" xmlns:th="http://www.thymeleaf.org">
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,8 +15,8 @@
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
-            <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a th:if="${currentUser.roles.contains(T(example.timeflows.model.Role).ADMIN)}" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a class="active" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
@@ -24,7 +24,7 @@
         <form th:action="@{/api/logout}" method="post" class="logout-form"><button type="submit">Вийти</button></form>
     </aside>
     <main class="content">
-        <header class="topbar"><div><p class="eyebrow">ADMIN</p><h1>Керування відділами</h1></div><div class="user-chip" th:text="${currentUser.firstName + ' ' + currentUser.lastName}"></div></header>
+        <header class="topbar"><div><p class="eyebrow" th:text="${#authorization.expression('hasRole(''ADMIN'')') ? 'ADMIN' : 'SYS ADMIN'}">ADMIN</p><h1>Керування відділами</h1></div><div class="user-chip" th:text="${currentUser.firstName + ' ' + currentUser.lastName}"></div></header>
         <p class="success-message" th:if="${success}" th:text="${success}"></p>
         <p class="error-message" th:if="${organizationError}" th:text="${organizationError}"></p>
         <div class="organization-grid">
@@ -61,7 +61,7 @@
                 <h2>Новий підвідділ</h2>
                 <form th:action="@{/api/organization/subdivisions}" method="post" class="form-stack">
                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <label>Відділ<select name="divisionId" required><option value="">Оберіть відділ</option><option th:each="d:${divisions}" th:value="${d.id}" th:text="${d.name}"></option></select></label>
+                    <label>Відділ<select name="divisionId" required><option value="">Оберіть відділ</option><option th:each="d:${divisions}" th:value="${d.id}" th:text="${d.directorate == null ? d.department.name + ' / ' + d.name : d.department.name + ' / ' + d.directorate.name + ' / ' + d.name}"></option></select></label>
                     <label>Назва<input name="name" required maxlength="150"></label>
                     <label>Опис<textarea name="description" maxlength="500" rows="3"></textarea></label>
                     <button type="submit">Додати підвідділ</button>

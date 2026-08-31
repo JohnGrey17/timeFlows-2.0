@@ -64,6 +64,7 @@ public class BonusController {
         YearMonth selected =
                 year == null || month == null ? YearMonth.now() : YearMonth.of(year, month);
         boolean admin = current.getRoles().contains(Role.ADMIN);
+        boolean sysAdmin = current.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId = departmentId;
         Long effectiveDivisionId = divisionId;
         Long effectiveDirectorateId = directorateId;
@@ -116,7 +117,7 @@ public class BonusController {
         model.addAttribute(
                 "quarterlyRecipients",
                 userService.findActiveUsers().stream()
-                        .filter(user -> !isProjectManager(user))
+                        .filter(user -> !hasProjectManagerTag(user))
                         .sorted(
                                 Comparator.comparing(
                                                 (User user) ->
@@ -174,7 +175,8 @@ public class BonusController {
                         : List.of());
         model.addAttribute("selectedStatus", status);
         model.addAttribute("admin", admin);
-        model.addAttribute("canApproveBonuses", true);
+        model.addAttribute("sysAdmin", sysAdmin);
+        model.addAttribute("canApproveBonuses", !sysAdmin);
         return "manager/bonuses";
     }
 
@@ -323,7 +325,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonus-categories")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
     public String createCategory(
             @RequestParam String name,
             @RequestParam(defaultValue = "MONTHLY") BonusType type,
@@ -337,7 +339,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonus-categories/{id}/update")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
     public String updateCategory(
             @PathVariable Long id,
             @RequestParam String name,
@@ -352,7 +354,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonus-categories/{id}/delete")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
     public String deleteCategory(@PathVariable Long id, RedirectAttributes ra) {
         try {
             bonusService.deleteCategory(id);
@@ -444,14 +446,13 @@ public class BonusController {
                 : "redirect:/api/bonuses";
     }
 
-    private boolean isProjectManager(User user) {
-        return user.getTags().contains(BusinessTag.PROJECT_MANAGER)
-                || user.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)
-                || (user.getDivision() != null
-                        && (user.getDivision().getTags().contains(BusinessTag.PROJECT_MANAGER)
-                                || user.getDivision()
+    private boolean hasProjectManagerTag(User user) {
+        return !user.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)
+                && (user.getTags().contains(BusinessTag.PROJECT_MANAGER)
+                        || (user.getDivision() != null
+                                && user.getDivision()
                                         .getTags()
-                                        .contains(BusinessTag.PROJECT_MANAGER_LEAD)));
+                                        .contains(BusinessTag.PROJECT_MANAGER)));
     }
 
     private void assertCanApproveBonuses(User user) {
@@ -463,7 +464,8 @@ public class BonusController {
     }
 
     private void assertCanOpenBonusModule(User user) {
-        if (!user.getRoles().contains(Role.ADMIN)) {
+        if (!user.getRoles().contains(Role.ADMIN)
+                && !user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException("Модуль керування бонусами доступний лише ADMIN");
         }
     }

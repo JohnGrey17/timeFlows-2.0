@@ -15,8 +15,8 @@
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
-            <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a th:if="${currentUser.roles.contains(T(example.timeflows.model.Role).ADMIN)}" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a class="active" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>

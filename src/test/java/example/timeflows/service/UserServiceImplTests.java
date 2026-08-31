@@ -50,6 +50,7 @@ class UserServiceImplTests {
         User user = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
         user.setPassword("encoded");
         user.setActive(false);
+        user.setTags(new LinkedHashSet<>(Set.of(BusinessTag.SYS_ADMIN)));
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
 
         var details = service.loadUserByUsername(user.getEmail());
@@ -58,7 +59,7 @@ class UserServiceImplTests {
         assertThat(details.isEnabled()).isFalse();
         assertThat(details.getAuthorities())
                 .extracting("authority")
-                .containsExactly("ROLE_EMPLOYEE");
+                .containsExactlyInAnyOrder("ROLE_EMPLOYEE", "ROLE_SYS_ADMIN");
     }
 
     @Test
@@ -287,6 +288,24 @@ class UserServiceImplTests {
         assertThat(division.getManager()).isNull();
         assertThat(manager.getRoles()).doesNotContain(Role.MANAGER);
         verify(divisionRepository).save(division);
+    }
+
+    @Test
+    void sysAdminCannotGrantAdminRole() {
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        User sysAdmin = user(20L, "sysadmin@vyriy.com", Role.EMPLOYEE);
+        sysAdmin.setTags(new LinkedHashSet<>(Set.of(BusinessTag.SYS_ADMIN)));
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+        when(userRepository.findByEmail(sysAdmin.getEmail())).thenReturn(Optional.of(sysAdmin));
+
+        assertThatThrownBy(
+                        () ->
+                                service.updateRoles(
+                                        10L,
+                                        Set.of(Role.EMPLOYEE, Role.ADMIN),
+                                        sysAdmin.getEmail()))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("не може додавати або забирати роль ADMIN");
     }
 
     @Test

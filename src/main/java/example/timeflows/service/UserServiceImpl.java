@@ -49,12 +49,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                         .orElseThrow(
                                 () -> new UsernameNotFoundException("Користувача не знайдено"));
 
-        String[] roles = user.getRoles().stream().map(Role::name).toArray(String[]::new);
+        java.util.Set<String> authorities =
+                user.getRoles().stream()
+                        .map(role -> "ROLE_" + role.name())
+                        .collect(
+                                java.util.stream.Collectors.toCollection(
+                                        java.util.LinkedHashSet::new));
+        if (user.getTags().contains(BusinessTag.SYS_ADMIN)) {
+            authorities.add("ROLE_SYS_ADMIN");
+        }
 
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                 .password(user.getPassword())
                 .disabled(!user.isActive())
-                .roles(roles)
+                .authorities(authorities.toArray(String[]::new))
                 .build();
     }
 
@@ -272,6 +280,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         User user = findById(userId);
         User actor = findByEmail(actorEmail);
         Set<Role> requested = roles == null ? Set.of() : new LinkedHashSet<>(roles);
+        boolean sysAdmin = actor.getTags().contains(BusinessTag.SYS_ADMIN);
+        if (sysAdmin && !actor.getRoles().contains(Role.ADMIN)) {
+            boolean changesAdminRole =
+                    user.getRoles().contains(Role.ADMIN) != requested.contains(Role.ADMIN);
+            if (changesAdminRole) {
+                throw new UserException("SYS_ADMIN не може додавати або забирати роль ADMIN");
+            }
+        }
         if (requested.isEmpty()) {
             throw new UserException("Користувач повинен мати хоча б одну роль");
         }

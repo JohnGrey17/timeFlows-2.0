@@ -1214,6 +1214,17 @@ textarea:focus {
 
 .section-title-with-help { justify-content: flex-start; }
 .section-title-with-help > .help-tip { align-self: center; flex: 0 0 28px; }
+.permission-name { display: inline-flex; align-items: center; gap: 6px; }
+.data-table td .permission-name > span:first-child { display: inline; }
+.help-tip-small { width: 20px; height: 20px; flex: 0 0 20px; font-size: 12px; }
+.help-tip:hover,
+.help-tip:focus,
+.help-tip:focus-visible { z-index: 200; }
+.help-tip:hover::after,
+.help-tip:focus::after,
+.help-tip:focus-visible::after { z-index: 201; }
+.disabled-admin-actions { display: grid; gap: 8px; }
+.disabled-admin-actions button:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
 .title-help-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .employee-short-name { display: flex; flex-direction: column; gap: 2px; line-height: 1.15; overflow-wrap: anywhere; }
 .error-message { max-width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }

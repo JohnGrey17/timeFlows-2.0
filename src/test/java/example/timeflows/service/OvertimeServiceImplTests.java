@@ -42,12 +42,7 @@ class OvertimeServiceImplTests {
 
     @BeforeEach
     void setUp() {
-        overtimeService =
-                new OvertimeServiceImpl(
-                        overtimeRepository,
-                        userService,
-                        Clock.fixed(
-                                Instant.parse("2026-08-10T08:00:00Z"), ZoneId.of("Europe/Kyiv")));
+        overtimeService = serviceAt("2026-08-10T08:00:00Z");
     }
 
     @Test
@@ -188,9 +183,8 @@ class OvertimeServiceImplTests {
     }
 
     @Test
-    void allowOverTagAllowsAnyDayOnlyWithinCurrentWeek() {
+    void august2026AllowsAnyDayForEveryUser() {
         User employee = user(Role.EMPLOYEE);
-        employee.getTags().add(BusinessTag.ALLOW_OVER);
         when(userService.findByEmail("employee@vyriy.com")).thenReturn(employee);
         when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -202,11 +196,78 @@ class OvertimeServiceImplTests {
         assertThat(created.getWorkDate()).isEqualTo(LocalDate.of(2026, 8, 12));
         assertThat(created.getStatus()).isEqualTo(OvertimeStatus.CHECKING);
 
+        OvertimeRequest pastWeekday = validRequest();
+        pastWeekday.setWorkDate(LocalDate.of(2026, 8, 3));
+        assertThat(overtimeService.create("employee@vyriy.com", pastWeekday).getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 8, 3));
+    }
+
+    @Test
+    void ordinaryUserCanSubmitPastWeekendInCurrentMonthAndFutureWeekend() {
+        overtimeService = serviceAt("2026-09-15T08:00:00Z");
+        User employee = user(Role.EMPLOYEE);
+        when(userService.findByEmail("employee@vyriy.com")).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        OvertimeRequest pastCurrentMonthWeekend = validRequest();
+        pastCurrentMonthWeekend.setWorkDate(LocalDate.of(2026, 9, 5));
+        assertThat(
+                        overtimeService
+                                .create("employee@vyriy.com", pastCurrentMonthWeekend)
+                                .getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 9, 5));
+
+        OvertimeRequest futureWeekend = validRequest();
+        futureWeekend.setWorkDate(LocalDate.of(2026, 10, 3));
+        assertThat(overtimeService.create("employee@vyriy.com", futureWeekend).getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 10, 3));
+    }
+
+    @Test
+    void ordinaryUserCannotSubmitPastWeekendFromPreviousMonthOrWeekday() {
+        overtimeService = serviceAt("2026-09-15T08:00:00Z");
+        when(userService.findByEmail("employee@vyriy.com")).thenReturn(user(Role.EMPLOYEE));
+
+        OvertimeRequest previousMonthWeekend = validRequest();
+        previousMonthWeekend.setWorkDate(LocalDate.of(2026, 7, 26));
+        assertThatThrownBy(() -> overtimeService.create("employee@vyriy.com", previousMonthWeekend))
+                .isInstanceOf(OvertimeException.class)
+                .hasMessageContaining("вихідні поточного місяця");
+
+        OvertimeRequest weekday = validRequest();
+        weekday.setWorkDate(LocalDate.of(2026, 9, 16));
+        assertThatThrownBy(() -> overtimeService.create("employee@vyriy.com", weekday))
+                .isInstanceOf(OvertimeException.class)
+                .hasMessageContaining("вихідні поточного місяця");
+    }
+
+    @Test
+    void allowOverTagStillAllowsAnyDayOnlyWithinCurrentWeekOutsideAugust() {
+        overtimeService = serviceAt("2026-09-14T08:00:00Z");
+        User employee = user(Role.EMPLOYEE);
+        employee.getTags().add(BusinessTag.ALLOW_OVER);
+        when(userService.findByEmail("employee@vyriy.com")).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        OvertimeRequest weekday = validRequest();
+        weekday.setWorkDate(LocalDate.of(2026, 9, 16));
+        assertThat(overtimeService.create("employee@vyriy.com", weekday).getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 9, 16));
+
         OvertimeRequest nextWeek = validRequest();
-        nextWeek.setWorkDate(LocalDate.of(2026, 8, 17));
+        nextWeek.setWorkDate(LocalDate.of(2026, 9, 21));
         assertThatThrownBy(() -> overtimeService.create("employee@vyriy.com", nextWeek))
                 .isInstanceOf(OvertimeException.class)
                 .hasMessageContaining("поточного тижня");
+    }
+
+    private OvertimeServiceImpl serviceAt(String instant) {
+        return new OvertimeServiceImpl(
+                overtimeRepository,
+                userService,
+                Clock.fixed(Instant.parse(instant), ZoneId.of("Europe/Kyiv")));
     }
 
     @Test
@@ -297,45 +358,44 @@ class OvertimeServiceImplTests {
     }
 
     @Test
-    void adminBulkApprovalApprovesOnlyManagerApprovedOvertimes() {
+    void adminBulkApprovalApprovesAllManagerApprovedOvertimesWithoutDeadline() {
         User admin = user(Role.ADMIN);
         Overtime eligible = overtime(OvertimeStatus.APPROVED_MANAGER);
         eligible.setId(1L);
         Overtime alreadyApproved = overtime(OvertimeStatus.APPROVED_ADMIN);
         alreadyApproved.setId(2L);
-        Overtime expired = overtime(OvertimeStatus.APPROVED_MANAGER);
-        expired.setId(3L);
-        expired.setWorkDate(LocalDate.of(2026, 8, 9));
+        Overtime olderApproved = overtime(OvertimeStatus.APPROVED_MANAGER);
+        olderApproved.setId(3L);
+        olderApproved.setWorkDate(LocalDate.of(2026, 8, 9));
         when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
         when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(eligible));
         when(overtimeRepository.findWithUserById(2L)).thenReturn(Optional.of(alreadyApproved));
-        when(overtimeRepository.findWithUserById(3L)).thenReturn(Optional.of(expired));
+        when(overtimeRepository.findWithUserById(3L)).thenReturn(Optional.of(olderApproved));
 
         int approved =
                 overtimeService.approveAll(
                         List.of(1L, 2L, 3L), "Погоджено масово", "admin@vyriy.com");
 
-        assertThat(approved).isEqualTo(1);
+        assertThat(approved).isEqualTo(2);
         assertThat(eligible.getStatus()).isEqualTo(OvertimeStatus.APPROVED_ADMIN);
         assertThat(eligible.getManagerComment()).isEqualTo("Погоджено масово");
         verify(overtimeRepository).save(eligible);
         verify(overtimeRepository, never()).save(alreadyApproved);
-        verify(overtimeRepository, never()).save(expired);
+        assertThat(olderApproved.getStatus()).isEqualTo(OvertimeStatus.APPROVED_ADMIN);
+        verify(overtimeRepository).save(olderApproved);
     }
 
     @Test
-    void submissionAfterFridayElevenIsRejected() {
-        OvertimeServiceImpl lateService =
-                new OvertimeServiceImpl(
-                        overtimeRepository,
-                        userService,
-                        Clock.fixed(
-                                Instant.parse("2026-08-14T08:01:00Z"), ZoneId.of("Europe/Kyiv")));
+    void submissionAfterFridayElevenIsAllowedForWeekend() {
+        OvertimeServiceImpl lateService = serviceAt("2026-09-18T08:01:00Z");
         when(userService.findByEmail("employee@vyriy.com")).thenReturn(user(Role.EMPLOYEE));
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        OvertimeRequest request = validRequest();
+        request.setWorkDate(LocalDate.of(2026, 9, 19));
 
-        assertThatThrownBy(() -> lateService.create("employee@vyriy.com", validRequest()))
-                .isInstanceOf(OvertimeException.class)
-                .hasMessageContaining("п'ятниця 11:00");
+        assertThat(lateService.create("employee@vyriy.com", request).getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 9, 19));
     }
 
     private Overtime overtime(OvertimeStatus status) {
