@@ -191,6 +191,67 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void adminCanSaveAndReuseOwnOvertimeFilterInBothViews() throws Exception {
+        String filterName = "IT DEV за серпень";
+
+        mockMvc.perform(
+                        post("/api/overtime/review/filters")
+                                .with(user("admin@vyriy.com").roles("ADMIN"))
+                                .with(csrf())
+                                .param("name", filterName)
+                                .param("departmentId", "1")
+                                .param("divisionId", "1")
+                                .param("status", "APPROVED_MANAGER")
+                                .param("month", "8")
+                                .param("year", "2026")
+                                .param("view", "matrix"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(
+                        header().string(
+                                        "Location",
+                                        org.hamcrest.Matchers.containsString("divisionId=1")))
+                .andExpect(
+                        header().string(
+                                        "Location",
+                                        org.hamcrest.Matchers.containsString("view=matrix")));
+
+        mockMvc.perform(
+                        get("/api/overtime/review")
+                                .param("view", "matrix")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(filterName)))
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("Зберегти фільтр")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "У вас є змога зберігти вже налаштований фільтр")));
+
+        mockMvc.perform(
+                        get("/api/overtime/review")
+                                .param("view", "summary")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString(filterName)))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("view=summary")));
+    }
+
+    @Test
+    void managerCannotSaveAdminOvertimeFilter() throws Exception {
+        mockMvc.perform(
+                        post("/api/overtime/review/filters")
+                                .with(user("it.manager@vyriy.com").roles("MANAGER"))
+                                .with(csrf())
+                                .param("name", "Недоступний фільтр")
+                                .param("departmentId", "1")
+                                .param("month", "8")
+                                .param("year", "2026"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void organizationShowsDivisionManagerAndAdminReviewLink() throws Exception {
         mockMvc.perform(get("/api/organization").with(user("admin@vyriy.com").roles("ADMIN")))
                 .andExpect(status().isOk())

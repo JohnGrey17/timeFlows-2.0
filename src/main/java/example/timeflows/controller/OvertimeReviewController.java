@@ -5,7 +5,9 @@ import example.timeflows.model.OvertimeStatus;
 import example.timeflows.service.OvertimeReviewExcelService;
 import example.timeflows.service.OvertimeReviewPageService;
 import example.timeflows.service.OvertimeService;
+import example.timeflows.service.SavedOvertimeFilterService;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -17,20 +19,24 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class OvertimeReviewController {
     private final OvertimeService overtimeService;
     private final OvertimeReviewPageService pageService;
     private final OvertimeReviewExcelService excelService;
+    private final SavedOvertimeFilterService savedFilterService;
 
     public OvertimeReviewController(
             OvertimeService overtimeService,
             OvertimeReviewPageService pageService,
-            OvertimeReviewExcelService excelService) {
+            OvertimeReviewExcelService excelService,
+            SavedOvertimeFilterService savedFilterService) {
         this.overtimeService = overtimeService;
         this.pageService = pageService;
         this.excelService = excelService;
+        this.savedFilterService = savedFilterService;
     }
 
     @GetMapping("/api/overtime/review/export")
@@ -88,7 +94,7 @@ public class OvertimeReviewController {
             @RequestParam(required = false) Long openBonusUserId,
             Authentication authentication,
             Model model) {
-        model.addAllAttributes(
+        Map<String, Object> page =
                 pageService.buildPage(
                         authentication.getName(),
                         mode,
@@ -101,8 +107,56 @@ public class OvertimeReviewController {
                         year,
                         month,
                         userId,
-                        openBonusUserId));
+                        openBonusUserId);
+        if (Boolean.TRUE.equals(page.get("admin"))) {
+            page.put(
+                    "savedOvertimeFilters",
+                    savedFilterService.findForAdmin(authentication.getName()));
+        }
+        model.addAllAttributes(page);
         return "manager/overtime-review";
+    }
+
+    @PostMapping("/api/overtime/review/filters")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String saveFilter(
+            @RequestParam String name,
+            @RequestParam Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam Integer year,
+            @RequestParam Integer month,
+            @RequestParam(defaultValue = "matrix") String view,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+        try {
+            savedFilterService.save(
+                    authentication.getName(),
+                    name,
+                    departmentId,
+                    directorateId,
+                    divisionId,
+                    subdivisionId,
+                    status,
+                    year,
+                    month);
+            redirectAttributes.addFlashAttribute("savedFilterSuccess", "Фільтр збережено");
+        } catch (RuntimeException exception) {
+            redirectAttributes.addFlashAttribute("savedFilterError", exception.getMessage());
+        }
+        return reviewRedirect(
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status,
+                year,
+                month,
+                view,
+                "division",
+                null);
     }
 
     @PostMapping("/api/overtime/review/approve")

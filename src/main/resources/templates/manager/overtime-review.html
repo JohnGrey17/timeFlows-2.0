@@ -38,6 +38,9 @@
             </div>
         </header>
 
+        <p class="success-message" th:if="${savedFilterSuccess}" th:text="${savedFilterSuccess}"></p>
+        <p class="error-message" th:if="${savedFilterError}" th:text="${savedFilterError}"></p>
+
         <div class="department-context" th:if="${selectedDivision != null}">
             <strong th:text="${selectedDivision.department.name + ' / ' + selectedDivision.name}">Division</strong>
             <span th:text="${selectedDivision.manager != null ? 'Керівник: ' + (selectedDivision.manager.lastName ?: '') + ' ' + (selectedDivision.manager.firstName ?: '') + ' — ' + selectedDivision.manager.email : 'Керівник не призначений'}">Manager</span>
@@ -88,6 +91,22 @@
                 <span class="help-tip" tabindex="0" data-tooltip="Ви можете погодити всі перепрацювання які не є просрочені одним кліком">?</span>
             </span>
         </form>
+        <div sec:authorize="hasRole('ADMIN')" class="saved-filter-toolbar">
+            <div class="saved-filter-control">
+                <button type="button" data-saved-filter-open>Зберегти фільтр</button>
+                <span class="help-tip" tabindex="0" data-tooltip="У вас є змога зберігти вже налаштований фільтр для подальшого швидкого доступу до інформації по відділу">?</span>
+            </div>
+            <div class="saved-filter-control">
+                <select data-saved-filter-select aria-label="Збережені фільтри">
+                    <option value="">Оберіть збережений фільтр</option>
+                    <option th:each="savedFilter:${savedOvertimeFilters}"
+                            th:value="${savedFilter.id}"
+                            th:text="${savedFilter.name}"
+                            th:data-url="@{/api/overtime/review(mode='division',view=${viewMode},departmentId=${savedFilter.departmentId},directorateId=${savedFilter.directorateId},divisionId=${savedFilter.divisionId},subdivisionId=${savedFilter.subdivisionId},status=${savedFilter.status},month=${savedFilter.month},year=${savedFilter.year})}"></option>
+                </select>
+                <span class="help-tip" tabindex="0" data-tooltip="тут показаний список збережених вами фільтрів , будь ласка оберіть який фільтр плануєте використовувати">?</span>
+            </div>
+        </div>
         <form sec:authorize="hasRole('ADMIN')" id="bulkApproveForm" method="post" th:action="@{/api/overtime/review/approve-all}" data-bulk-approve hidden>
             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
             <input type="hidden" name="directorateId" th:value="${selectedDirectorateId}">
@@ -98,6 +117,24 @@
             <input type="hidden" name="year" th:value="${selectedMonth.year}">
             <input type="hidden" name="view" th:value="${viewMode}">
         </form>
+
+        <div sec:authorize="hasRole('ADMIN')" class="modal-backdrop" id="saveOvertimeFilterModal" hidden>
+            <section class="modal-panel info-modal">
+                <div class="modal-header"><h2>Зберегти фільтр</h2><button type="button" data-saved-filter-close aria-label="Закрити">×</button></div>
+                <form class="form-stack" method="post" th:action="@{/api/overtime/review/filters}">
+                    <label>Назва фільтра<input name="name" maxlength="100" required placeholder="Наприклад, IT DEV за серпень"></label>
+                    <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
+                    <input type="hidden" name="directorateId" th:value="${selectedDirectorateId}">
+                    <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
+                    <input type="hidden" name="subdivisionId" th:value="${selectedSubdivisionId}">
+                    <input type="hidden" name="status" th:value="${selectedStatus}">
+                    <input type="hidden" name="month" th:value="${selectedMonth.monthValue}">
+                    <input type="hidden" name="year" th:value="${selectedMonth.year}">
+                    <input type="hidden" name="view" th:value="${viewMode}">
+                    <button type="submit">Зберегти</button>
+                </form>
+            </section>
+        </div>
 
         <section th:if="${mode == 'employee'}" class="calendar-shell">
             <div class="calendar-weekdays">

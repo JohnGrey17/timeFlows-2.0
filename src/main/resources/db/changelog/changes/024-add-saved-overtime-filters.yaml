@@ -1,0 +1,65 @@
+databaseChangeLog:
+  - changeSet:
+      id: 024-add-saved-overtime-filters
+      author: codex
+      changes:
+        - createTable:
+            tableName: saved_overtime_filters
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: owner_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_saved_overtime_filter_owner
+                    references: users(id)
+                    deleteCascade: true
+              - column:
+                  name: name
+                  type: varchar(100)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: department_id
+                  type: bigint
+                  constraints:
+                    nullable: false
+              - column:
+                  name: directorate_id
+                  type: bigint
+              - column:
+                  name: division_id
+                  type: bigint
+              - column:
+                  name: subdivision_id
+                  type: bigint
+              - column:
+                  name: status
+                  type: varchar(30)
+              - column:
+                  name: filter_year
+                  type: integer
+                  constraints:
+                    nullable: false
+              - column:
+                  name: filter_month
+                  type: integer
+                  constraints:
+                    nullable: false
+        - addUniqueConstraint:
+            tableName: saved_overtime_filters
+            columnNames: owner_id, name
+            constraintName: uk_saved_overtime_filter_owner_name
+        - createIndex:
+            tableName: saved_overtime_filters
+            indexName: idx_saved_overtime_filter_owner
+            columns:
+              - column:
+                  name: owner_id

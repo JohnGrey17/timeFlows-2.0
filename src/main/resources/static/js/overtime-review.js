@@ -1,4 +1,17 @@
 const reviewModal = document.getElementById("reviewOvertimeModal");
+const savedFilterModal = document.getElementById("saveOvertimeFilterModal");
+document.querySelector("[data-saved-filter-open]")?.addEventListener("click", () => {
+    savedFilterModal.hidden = false;
+    savedFilterModal.querySelector("input[name='name']")?.focus();
+});
+document.querySelector("[data-saved-filter-close]")?.addEventListener("click", () => savedFilterModal.hidden = true);
+savedFilterModal?.addEventListener("click", (event) => {
+    if (event.target === savedFilterModal) savedFilterModal.hidden = true;
+});
+document.querySelector("[data-saved-filter-select]")?.addEventListener("change", (event) => {
+    const selectedOption = event.currentTarget.selectedOptions[0];
+    if (selectedOption?.dataset.url) window.location.assign(selectedOption.dataset.url);
+});
 const showReviewError = (message) => {
     const backdrop = document.createElement("div");
     backdrop.className = "modal-backdrop review-error-modal";
