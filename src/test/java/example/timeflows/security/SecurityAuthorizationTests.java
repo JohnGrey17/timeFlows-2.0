@@ -191,6 +191,36 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void organizationShowsDivisionManagerAndAdminReviewLink() throws Exception {
+        mockMvc.perform(get("/api/organization").with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Керівник:")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "it.manager@vyriy.com")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "/api/overtime/review?mode=division")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("divisionId=")));
+    }
+
+    @Test
+    void sysAdminDoesNotReceiveDivisionReviewLink() throws Exception {
+        mockMvc.perform(get("/api/organization").with(user("admin@vyriy.com").roles("SYS_ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString(
+                                                        "/api/overtime/review?mode=division"))));
+    }
+
+    @Test
     void employeeCannotOpenOrganizationManagement() throws Exception {
         mockMvc.perform(get("/api/organization").with(user("employee@vyriy.com").roles("EMPLOYEE")))
                 .andExpect(status().isForbidden());

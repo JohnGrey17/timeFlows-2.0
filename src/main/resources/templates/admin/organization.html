@@ -101,7 +101,17 @@
                     </details>
                     <div class="company-tree-divisions">
                     <article th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division">
-                        <strong><small>Відділ</small><span th:text="${division.name}"></span></strong>
+                        <strong>
+                            <small>Відділ</small>
+                            <a sec:authorize="hasRole('ADMIN')"
+                               class="company-tree-division-link"
+                               th:href="@{/api/overtime/review(mode='division',departmentId=${department.id},directorateId=${directorate.id},divisionId=${division.id})}"
+                               th:text="${division.name}"
+                               title="Перейти до перевірки перепрацювань цього відділу"></a>
+                            <span sec:authorize="!hasRole('ADMIN')" th:text="${division.name}"></span>
+                        </strong>
+                        <p class="company-tree-manager"
+                           th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') + ' — ' + division.manager.email : 'Керівник не призначений'}"></p>
                         <details class="company-tree-description" th:if="${division.description != null and !division.description.isBlank()}">
                             <summary>Переглянути опис</summary><p th:text="${division.description}"></p>
                         </details>
@@ -130,7 +140,21 @@
                 </article>
                     </div>
                 <div class="company-tree-legacy" th:if="${!department.divisions.isEmpty()}">
-                    <span th:each="division:${department.divisions}" th:if="${division.directorate == null}" th:text="${'Відділ без управління: ' + division.name}"></span>
+                    <article th:each="division:${divisions}"
+                             th:if="${division.department.id == department.id and division.directorate == null}"
+                             class="company-tree-division company-tree-legacy-division">
+                        <strong>
+                            <small>Відділ без управління</small>
+                            <a sec:authorize="hasRole('ADMIN')"
+                               class="company-tree-division-link"
+                               th:href="@{/api/overtime/review(mode='division',departmentId=${department.id},divisionId=${division.id})}"
+                               th:text="${division.name}"
+                               title="Перейти до перевірки перепрацювань цього відділу"></a>
+                            <span sec:authorize="!hasRole('ADMIN')" th:text="${division.name}"></span>
+                        </strong>
+                        <p class="company-tree-manager"
+                           th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') + ' — ' + division.manager.email : 'Керівник не призначений'}"></p>
+                    </article>
                 </div>
                 </div>
             </details>
