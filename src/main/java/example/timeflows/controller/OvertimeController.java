@@ -62,6 +62,19 @@ public class OvertimeController {
         return mapper.toOvertimeResponse(overtimeService.create(authentication.getName(), request));
     }
 
+    @PostMapping("/users/{userId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create overtime for an employee in the manager's division")
+    public OvertimeResponse createForDivisionEmployee(
+            @PathVariable Long userId,
+            @Valid @RequestBody OvertimeRequest request,
+            Authentication authentication) {
+        return mapper.toOvertimeResponse(
+                overtimeService.createForDivisionEmployee(
+                        authentication.getName(), userId, request));
+    }
+
     @PutMapping("/{id}")
     @Operation(summary = "Update current user's pending overtime")
     public OvertimeResponse update(

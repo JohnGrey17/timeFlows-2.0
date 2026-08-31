@@ -180,6 +180,31 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void employeeCannotCreateOvertimeForAnotherDivisionUser() throws Exception {
+        mockMvc.perform(
+                        post("/api/overtimes/users/1")
+                                .with(user("employee@vyriy.com").roles("EMPLOYEE"))
+                                .with(csrf())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(
+                                        "{\"workDate\":\"2026-08-15\",\"hours\":2,\"description\":\"Робота\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminUserManagementShowsDivisionOvertimeTagHelp() throws Exception {
+        mockMvc.perform(get("/api/users").with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("DIVISION OVERTIME")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "Тег працює в зв'язці з ролю менеджер")));
+    }
+
+    @Test
     void adminCanOpenOrganizationManagement() throws Exception {
         mockMvc.perform(get("/api/organization").with(user("admin@vyriy.com").roles("ADMIN")))
                 .andExpect(status().isOk())

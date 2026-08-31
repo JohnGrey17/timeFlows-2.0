@@ -263,6 +263,128 @@ class OvertimeServiceImplTests {
                 .hasMessageContaining("поточного тижня");
     }
 
+    @Test
+    void divisionOvertimeManagerCreatesAdminReadyRequestForOwnEmployee() {
+        overtimeService = serviceAt("2026-09-15T08:00:00Z");
+        Division division = new Division();
+        division.setId(7L);
+        User manager = user(Role.MANAGER, Role.EMPLOYEE);
+        manager.setEmail("manager@vyriy.com");
+        manager.setDivision(division);
+        manager.getTags().add(BusinessTag.DIVISION_OVERTIME);
+        User employee = user(Role.EMPLOYEE);
+        employee.setId(22L);
+        employee.setEmail("employee@vyriy.com");
+        employee.setDivision(division);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+        when(userService.findById(22L)).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        OvertimeRequest request = validRequest();
+        request.setWorkDate(LocalDate.of(2026, 9, 19));
+
+        Overtime created =
+                overtimeService.createForDivisionEmployee(
+                        "manager@vyriy.com", employee.getId(), request);
+
+        assertThat(created.getUser()).isSameAs(employee);
+        assertThat(created.getStatus()).isEqualTo(OvertimeStatus.APPROVED_MANAGER);
+        assertThat(created.getManagerComment())
+                .contains("manager@vyriy.com", "очікує погодження ADMIN");
+    }
+
+    @Test
+    void divisionOvertimeRequiresTagAndEmployeeFromSameDivision() {
+        Division managerDivision = new Division();
+        managerDivision.setId(7L);
+        Division otherDivision = new Division();
+        otherDivision.setId(8L);
+        User manager = user(Role.MANAGER);
+        manager.setDivision(managerDivision);
+        User employee = user(Role.EMPLOYEE);
+        employee.setId(22L);
+        employee.setDivision(otherDivision);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+
+        assertThatThrownBy(
+                        () ->
+                                overtimeService.createForDivisionEmployee(
+                                        "manager@vyriy.com", 22L, validRequest()))
+                .isInstanceOf(OvertimeException.class)
+                .hasMessageContaining("DIVISION_OVERTIME");
+
+        manager.getTags().add(BusinessTag.DIVISION_OVERTIME);
+        when(userService.findById(22L)).thenReturn(employee);
+        assertThatThrownBy(
+                        () ->
+                                overtimeService.createForDivisionEmployee(
+                                        "manager@vyriy.com", 22L, validRequest()))
+                .isInstanceOf(OvertimeException.class)
+                .hasMessageContaining("свого відділу");
+    }
+
+    @Test
+    void divisionOvertimeUsesManagersAllowOverTagForWeekday() {
+        overtimeService = serviceAt("2026-09-14T08:00:00Z");
+        Division division = new Division();
+        division.setId(7L);
+        User manager = user(Role.MANAGER);
+        manager.setEmail("manager@vyriy.com");
+        manager.setDivision(division);
+        manager.getTags().addAll(Set.of(BusinessTag.DIVISION_OVERTIME, BusinessTag.ALLOW_OVER));
+        User employee = user(Role.EMPLOYEE);
+        employee.setId(22L);
+        employee.setEmail("employee@vyriy.com");
+        employee.setDivision(division);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+        when(userService.findById(22L)).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        OvertimeRequest weekday = validRequest();
+        weekday.setWorkDate(LocalDate.of(2026, 9, 16));
+
+        assertThat(
+                        overtimeService
+                                .createForDivisionEmployee(
+                                        "manager@vyriy.com", employee.getId(), weekday)
+                                .getWorkDate())
+                .isEqualTo(LocalDate.of(2026, 9, 16));
+    }
+
+    @Test
+    void divisionOvertimeCreationDatesMatchManagerCalendarPermissions() {
+        overtimeService = serviceAt("2026-09-15T08:00:00Z");
+        User manager = user(Role.MANAGER);
+        manager.getTags().add(BusinessTag.DIVISION_OVERTIME);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+
+        Set<LocalDate> ordinaryDates =
+                overtimeService.divisionOvertimeCreationDates(
+                        "manager@vyriy.com", YearMonth.of(2026, 9));
+
+        assertThat(ordinaryDates)
+                .contains(LocalDate.of(2026, 9, 5), LocalDate.of(2026, 9, 19))
+                .doesNotContain(LocalDate.of(2026, 9, 14), LocalDate.of(2026, 9, 21));
+
+        manager.getTags().add(BusinessTag.ALLOW_OVER);
+        Set<LocalDate> allowOverDates =
+                overtimeService.divisionOvertimeCreationDates(
+                        "manager@vyriy.com", YearMonth.of(2026, 9));
+        assertThat(allowOverDates)
+                .hasSize(30)
+                .contains(
+                        LocalDate.of(2026, 9, 1),
+                        LocalDate.of(2026, 9, 15),
+                        LocalDate.of(2026, 9, 21),
+                        LocalDate.of(2026, 9, 30));
+
+        manager.getTags().remove(BusinessTag.ALLOW_OVER);
+        assertThat(
+                        overtimeService.divisionOvertimeCreationDates(
+                                "manager@vyriy.com", YearMonth.of(2026, 8)))
+                .hasSize(31);
+    }
+
     private OvertimeServiceImpl serviceAt(String instant) {
         return new OvertimeServiceImpl(
                 overtimeRepository,

@@ -2,9 +2,11 @@ package example.timeflows.service;
 
 import example.timeflows.controller.dto.OvertimeRequest;
 import example.timeflows.model.Overtime;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface OvertimeService {
 
@@ -21,6 +23,11 @@ public interface OvertimeService {
     Overtime findById(Long id);
 
     Overtime create(String userEmail, OvertimeRequest request);
+
+    Overtime createForDivisionEmployee(
+            String managerEmail, Long employeeId, OvertimeRequest request);
+
+    Set<LocalDate> divisionOvertimeCreationDates(String managerEmail, YearMonth month);
 
     Overtime update(String userEmail, Long id, OvertimeRequest request);
 

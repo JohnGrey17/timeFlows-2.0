@@ -171,6 +171,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("activePage", "review");
         data.put("admin", admin);
         data.put(
+                "canCreateDivisionOvertime",
+                current.getRoles().contains(Role.MANAGER)
+                        && current.getTags()
+                                .contains(example.timeflows.model.BusinessTag.DIVISION_OVERTIME));
+        data.put(
+                "divisionOvertimeCreationDates",
+                overtimeService.divisionOvertimeCreationDates(email, selected));
+        data.put(
                 "canApproveBonuses",
                 admin
                         || current.getRoles().contains(Role.MANAGER)

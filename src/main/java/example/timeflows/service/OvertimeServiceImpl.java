@@ -17,6 +17,9 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -112,6 +115,58 @@ public class OvertimeServiceImpl implements OvertimeService {
             overtime.setStatus(OvertimeStatus.CHECKING);
         }
         return overtimeRepository.save(overtime);
+    }
+
+    @Override
+    @Transactional
+    public Overtime createForDivisionEmployee(
+            String managerEmail, Long employeeId, OvertimeRequest request) {
+        User manager = userService.findByEmail(managerEmail);
+        if (!manager.getRoles().contains(Role.MANAGER)
+                || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME)) {
+            throw new OvertimeException(
+                    "Створювати перепрацювання за співробітників може лише менеджер із тегом DIVISION_OVERTIME");
+        }
+        User employee = userService.findById(employeeId);
+        if (!employee.isActive()
+                || employee.getDivision() == null
+                || manager.getDivision() == null
+                || !employee.getDivision().getId().equals(manager.getDivision().getId())) {
+            throw new OvertimeException(
+                    "Менеджер може створювати перепрацювання лише за активних співробітників свого відділу");
+        }
+
+        validateDivisionSubmission(request.getWorkDate(), manager);
+        validateHours(request, manager);
+        if (overtimeRepository.existsByUserEmailAndWorkDate(
+                employee.getEmail(), request.getWorkDate())) {
+            throw new OvertimeException(
+                    "На цей день у співробітника вже існує заявка на перепрацювання");
+        }
+
+        Overtime overtime = new Overtime();
+        overtime.setUser(employee);
+        overtime.setWorkDate(request.getWorkDate());
+        overtime.setHours(request.getHours());
+        overtime.setDescription(request.getDescription());
+        overtime.setStatus(OvertimeStatus.APPROVED_MANAGER);
+        overtime.setManagerComment(
+                "Створено менеджером відділу " + manager.getEmail() + "; очікує погодження ADMIN");
+        return overtimeRepository.save(overtime);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<LocalDate> divisionOvertimeCreationDates(String managerEmail, YearMonth month) {
+        User manager = userService.findByEmail(managerEmail);
+        if (!manager.getRoles().contains(Role.MANAGER)
+                || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME)) {
+            return Set.of();
+        }
+        return IntStream.rangeClosed(1, month.lengthOfMonth())
+                .mapToObj(month::atDay)
+                .filter(date -> isDivisionSubmissionDateAllowed(date, manager))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     @Override
@@ -302,29 +357,51 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     private void validateSubmission(LocalDate workDate, User user) {
+        if (isSubmissionDateAllowed(workDate, user)) {
+            return;
+        }
+        if (allowsCurrentWeekOvertime(user)) {
+            throw new OvertimeException(
+                    "З тегом ALLOW_OVER заявку можна створити лише в межах поточного тижня");
+        }
+        throw new OvertimeException(
+                "Заявку можна подати на всі вихідні поточного місяця або на майбутні вихідні");
+    }
+
+    private boolean isSubmissionDateAllowed(LocalDate workDate, User user) {
         ZonedDateTime now = ZonedDateTime.now(clock);
         if (isAugust2026(workDate)) {
-            return;
+            return true;
         }
         if (allowsCurrentWeekOvertime(user)) {
             LocalDate weekStart =
                     now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            LocalDate weekEnd = weekStart.plusDays(6);
-            if (workDate.isBefore(weekStart) || workDate.isAfter(weekEnd)) {
-                throw new OvertimeException(
-                        "З тегом ALLOW_OVER заявку можна створити лише в межах поточного тижня");
-            }
-            return;
+            return !workDate.isBefore(weekStart) && !workDate.isAfter(weekStart.plusDays(6));
         }
         boolean weekend =
                 workDate.getDayOfWeek() == DayOfWeek.SATURDAY
                         || workDate.getDayOfWeek() == DayOfWeek.SUNDAY;
         boolean currentMonth = YearMonth.from(workDate).equals(YearMonth.from(now));
-        boolean future = workDate.isAfter(now.toLocalDate());
-        if (!weekend || (!currentMonth && !future)) {
+        return weekend && (currentMonth || workDate.isAfter(now.toLocalDate()));
+    }
+
+    private void validateDivisionSubmission(LocalDate workDate, User manager) {
+        if (!isDivisionSubmissionDateAllowed(workDate, manager)) {
             throw new OvertimeException(
-                    "Заявку можна подати на всі вихідні поточного місяця або на майбутні вихідні");
+                    "Без тегу ALLOW_OVER менеджер може створювати заявки лише на вихідні поточного місяця або на майбутні вихідні");
         }
+    }
+
+    private boolean isDivisionSubmissionDateAllowed(LocalDate workDate, User manager) {
+        if (isAugust2026(workDate) || allowsCurrentWeekOvertime(manager)) {
+            return true;
+        }
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        boolean weekend =
+                workDate.getDayOfWeek() == DayOfWeek.SATURDAY
+                        || workDate.getDayOfWeek() == DayOfWeek.SUNDAY;
+        boolean currentMonth = YearMonth.from(workDate).equals(YearMonth.from(now));
+        return weekend && (currentMonth || workDate.isAfter(now.toLocalDate()));
     }
 
     private boolean isAugust2026(LocalDate date) {
