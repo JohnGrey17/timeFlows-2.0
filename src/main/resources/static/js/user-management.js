@@ -21,10 +21,11 @@ document.querySelectorAll("[data-user-management-action]").forEach((form) => {
         method: "POST",
         body: new FormData(form),
         credentials: "same-origin",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
         redirect: "follow"
       });
       if (response.ok) {
-        window.location.assign(response.url || window.location.href);
+        window.location.reload();
         return;
       }
       const error = await response.json().catch(() => null);

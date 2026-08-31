@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -23,6 +24,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
@@ -222,20 +224,21 @@ public class UsersPageController {
 
     @PostMapping("/api/users/{id}/organization")
     @PreAuthorize("hasRole('ADMIN')")
-    public String moveUser(
+    public Object moveUser(
             @PathVariable Long id,
             @RequestParam Long targetDivisionId,
             @RequestParam(required = false) Long subdivisionId,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long divisionId,
-            @RequestParam(defaultValue = "department") String groupBy) {
+            @RequestParam(defaultValue = "department") String groupBy,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
         userService.moveToOrganization(id, targetDivisionId, subdivisionId);
-        return usersRedirect(departmentId, divisionId, groupBy);
+        return ajaxOrRedirect(requestedWith, usersRedirect(departmentId, divisionId, groupBy));
     }
 
     @PostMapping("/api/users/{id}/roles")
     @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
-    public String updateRoles(
+    public Object updateRoles(
             @PathVariable Long id,
             @RequestParam(required = false) Set<Role> roles,
             Authentication authentication,
@@ -243,23 +246,29 @@ public class UsersPageController {
             @RequestParam(required = false) Long directorateId,
             @RequestParam(required = false) Long divisionId,
             @RequestParam(required = false) Long subdivisionId,
-            @RequestParam(defaultValue = "department") String groupBy) {
+            @RequestParam(defaultValue = "department") String groupBy,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
         userService.updateRoles(id, roles, authentication.getName());
-        return usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy);
+        return ajaxOrRedirect(
+                requestedWith,
+                usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy));
     }
 
     @PostMapping("/api/users/{id}/tags")
     @PreAuthorize("hasRole('ADMIN')")
-    public String updateTags(
+    public Object updateTags(
             @PathVariable Long id,
             @RequestParam(required = false) Set<BusinessTag> tags,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
             @RequestParam(required = false) Long divisionId,
             @RequestParam(required = false) Long subdivisionId,
-            @RequestParam(defaultValue = "department") String groupBy) {
+            @RequestParam(defaultValue = "department") String groupBy,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
         userService.updateTags(id, tags);
-        return usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy);
+        return ajaxOrRedirect(
+                requestedWith,
+                usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy));
     }
 
     @PostMapping("/api/divisions/{id}/tags")
@@ -304,6 +313,12 @@ public class UsersPageController {
             redirect.append("subdivisionId=").append(subdivisionId).append('&');
         redirect.append("groupBy=").append("role".equals(groupBy) ? "role" : "department");
         return redirect.toString();
+    }
+
+    private Object ajaxOrRedirect(String requestedWith, String redirect) {
+        return "XMLHttpRequest".equals(requestedWith)
+                ? ResponseEntity.noContent().build()
+                : redirect;
     }
 
     private int roleRank(User user) {
