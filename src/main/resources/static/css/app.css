@@ -1374,6 +1374,9 @@ textarea:focus {
 }
 .company-tree-divisions { display: grid; gap: 22px; margin-top: 28px; }
 .company-tree-division { position: relative; padding: 12px; border: 1px solid #edd9cb; border-radius: 11px; background: #fff; }
+.company-tree-division-link { color: var(--accent-strong); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.company-tree-division-link:hover { color: var(--accent); }
+.company-tree-manager { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
 .company-tree-division::before {
     content: ""; position: absolute; top: -22px; left: 50%; width: 2px; height: 22px;
     background: #d9b7a1; transform: translateX(-50%);
@@ -1386,7 +1389,8 @@ textarea:focus {
 }
 .company-tree-subdivision b { font-size: 13px; }
 .company-tree-legacy { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-.company-tree-legacy span { padding: 7px 10px; border-radius: 999px; background: #f5eee9; color: var(--accent-strong); font-weight: 700; }
+.company-tree-legacy-division { width: min(280px, 100%); }
+.company-tree-legacy-division::before { display: none; }
 @media (max-width: 760px) {
     .summary-bonus-create,
     .summary-bonus-admin form:first-child { grid-template-columns: 1fr; }

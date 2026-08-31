@@ -12,7 +12,7 @@ public interface DivisionRepository extends JpaRepository<Division, Long> {
 
     Optional<Division> findByDepartmentIdAndNameIgnoreCase(Long departmentId, String name);
 
-    @EntityGraph(attributePaths = {"department", "directorate", "tags"})
+    @EntityGraph(attributePaths = {"department", "directorate", "manager", "tags"})
     List<Division> findAllByOrderByNameAsc();
 
     @EntityGraph(attributePaths = {"department", "directorate", "manager", "tags"})

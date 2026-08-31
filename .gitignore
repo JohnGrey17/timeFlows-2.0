@@ -47,6 +47,7 @@ TimeFlows_assets_README.md
 *.md
 !README.md
 *.gz
+/commit/
 
 # Local deployment secrets
 .env
