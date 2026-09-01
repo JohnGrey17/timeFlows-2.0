@@ -45,3 +45,5 @@ databaseChangeLog:
       file: db/changelog/changes/023-detach-kpi-quarterly-categories.yaml
   - include:
       file: db/changelog/changes/024-add-saved-overtime-filters.yaml
+  - include:
+      file: db/changelog/changes/025-add-required-password-change.yaml

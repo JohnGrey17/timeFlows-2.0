@@ -393,6 +393,46 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public void resetPasswordByAdmin(Long userId, String temporaryPassword, String actorEmail) {
+        User actor = findByEmail(actorEmail);
+        if (!actor.getRoles().contains(Role.ADMIN)) {
+            throw new UserException("Скинути пароль може лише адміністратор");
+        }
+        validateNewPassword(temporaryPassword);
+        User user = findById(userId);
+        user.setPassword(passwordEncoder.encode(temporaryPassword));
+        user.setPasswordChangeRequired(true);
+        userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void completeRequiredPasswordChange(
+            String email, String newPassword, String confirmPassword) {
+        User user = findByEmail(email);
+        if (!user.isPasswordChangeRequired()) {
+            throw new UserException("Примусова зміна пароля для користувача не потрібна");
+        }
+        validateNewPassword(newPassword);
+        if (!newPassword.equals(confirmPassword)) {
+            throw new UserException("Підтвердження пароля не збігається");
+        }
+        if (passwordEncoder.matches(newPassword, user.getPassword())) {
+            throw new UserException("Новий пароль має відрізнятися від тимчасового");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangeRequired(false);
+        userRepository.save(user);
+    }
+
+    private void validateNewPassword(String password) {
+        if (password == null || password.length() < 6) {
+            throw new UserException("Пароль має містити щонайменше 6 символів");
+        }
+    }
+
     private void assertUniqueUser(User user) {
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new UserException("Користувач з таким email вже існує");

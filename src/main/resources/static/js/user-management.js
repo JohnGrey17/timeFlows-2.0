@@ -11,6 +11,17 @@ const showUserManagementError = (message, title = "Не вдалося вико�
   document.body.appendChild(backdrop);
 };
 
+document.querySelectorAll("[data-open-password-reset]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const dialog = document.getElementById(button.dataset.openPasswordReset);
+    if (dialog) dialog.showModal();
+  });
+});
+
+document.querySelectorAll("[data-close-password-reset]").forEach((button) => {
+  button.addEventListener("click", () => button.closest("dialog")?.close());
+});
+
 document.querySelectorAll("[data-user-management-action]").forEach((form) => {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

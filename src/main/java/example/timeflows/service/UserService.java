@@ -55,4 +55,8 @@ public interface UserService {
 
     void changePassword(
             String email, String currentPassword, String newPassword, String confirmPassword);
+
+    void resetPasswordByAdmin(Long userId, String temporaryPassword, String actorEmail);
+
+    void completeRequiredPasswordChange(String email, String newPassword, String confirmPassword);
 }

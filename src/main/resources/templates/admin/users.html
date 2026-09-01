@@ -159,20 +159,57 @@
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}"><input type="hidden" name="divisionId" th:value="${selectedDivisionId}"><input type="hidden" name="groupBy" th:value="${groupBy}">
                             <button type="submit" class="danger-button">Деактивувати</button>
                         </form>
-                        <form sec:authorize="hasRole('ADMIN')"
-                              th:if="${user.id != currentUser.id}"
-                              th:action="@{/api/users/{id}/mfa/reset(id=${user.id})}"
-                              method="post"
-                              class="inline-form">
-                            <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
-                            <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
-                            <input type="hidden" name="groupBy" th:value="${groupBy}">
-                            <button type="submit" class="danger-button" onclick="return confirm('Скинути MFA користувача? Наступний вхід вимагатиме нового QR-коду.')">Скинути MFA</button>
-                        </form>
-                        <div sec:authorize="hasRole('ADMIN')" th:if="${user.id == currentUser.id}" class="disabled-admin-actions">
+                        <div sec:authorize="hasRole('ADMIN')" th:if="${user.id == currentUser.id}" class="disabled-admin-actions self-admin-actions">
                             <button type="button" class="danger-button" disabled title="Не можна деактивувати власний обліковий запис">Деактивувати</button>
-                            <button type="button" class="danger-button" disabled title="Адміністратор не може самостійно скинути власну MFA">Скинути MFA</button>
                         </div>
+                        <div sec:authorize="hasRole('ADMIN')"
+                             class="credential-actions"
+                             th:classappend="${user.id == currentUser.id} ? ' credential-actions-self' : ''">
+                            <form th:if="${user.id != currentUser.id}"
+                                  th:action="@{/api/users/{id}/mfa/reset(id=${user.id})}"
+                                  method="post">
+                                <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
+                                <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
+                                <input type="hidden" name="groupBy" th:value="${groupBy}">
+                                <button type="submit" class="danger-button" onclick="return confirm('Скинути MFA користувача? Наступний вхід вимагатиме нового QR-коду.')">Скинути MFA</button>
+                            </form>
+                            <button th:if="${user.id == currentUser.id}"
+                                    type="button"
+                                    class="danger-button"
+                                    disabled
+                                    title="Адміністратор не може самостійно скинути власну MFA">Скинути MFA</button>
+                            <button type="button"
+                                    class="danger-button"
+                                    th:attr="data-open-password-reset=${'password-reset-' + user.id}">Скинути пароль</button>
+                        </div>
+                        <dialog sec:authorize="hasRole('ADMIN')"
+                                class="modal-panel decision-modal"
+                                th:id="${'password-reset-' + user.id}">
+                            <form th:action="@{/api/users/{id}/password/reset(id=${user.id})}"
+                                  method="post"
+                                  class="form-stack"
+                                  data-user-management-action
+                                  data-error-title="Не вдалося скинути пароль">
+                                <div class="modal-header">
+                                    <h2>Скинути пароль</h2>
+                                    <button type="button" data-close-password-reset aria-label="Закрити">×</button>
+                                </div>
+                                <p>Установіть тимчасовий пароль для <strong th:text="${user.email}">user@vyriy.com</strong>. Після входу користувач муситиме створити новий пароль.</p>
+                                <label>
+                                    Тимчасовий пароль
+                                    <input type="password" name="temporaryPassword" minlength="6" autocomplete="new-password" required>
+                                </label>
+                                <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
+                                <input type="hidden" name="directorateId" th:value="${selectedDirectorateId}">
+                                <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
+                                <input type="hidden" name="subdivisionId" th:value="${selectedSubdivisionId}">
+                                <input type="hidden" name="groupBy" th:value="${groupBy}">
+                                <div class="modal-actions">
+                                    <button type="button" data-close-password-reset>Скасувати</button>
+                                    <button type="submit" class="danger-button">Зберегти тимчасовий пароль</button>
+                                </div>
+                            </form>
+                        </dialog>
                     </td>
                 </tr>
                 </tbody>

@@ -1234,6 +1234,16 @@ textarea:focus {
 .help-tip:focus-visible::after { z-index: 201; }
 .disabled-admin-actions { display: grid; gap: 8px; }
 .disabled-admin-actions button:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.credential-actions { display: flex; align-items: stretch; gap: 8px; margin-bottom: 8px; }
+.credential-actions form { display: flex; margin: 0; }
+.credential-actions button { min-height: 36px; white-space: nowrap; }
+.credential-actions button:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.self-admin-actions { width: 140px; margin-bottom: 8px; }
+.self-admin-actions button { width: 140px; min-height: 32px; padding: 5px 8px; }
+.credential-actions-self { flex-direction: column; width: 140px; }
+.credential-actions-self form,
+.credential-actions-self button { width: 140px; }
+.credential-actions-self button { min-height: 32px; padding: 5px 8px; }
 .title-help-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .employee-short-name { display: flex; flex-direction: column; gap: 2px; line-height: 1.15; overflow-wrap: anywhere; }
 .error-message { max-width: 100%; white-space: normal; overflow-wrap: anywhere; word-break: break-word; }

@@ -45,6 +45,7 @@ public class SecurityConfig {
                                                 "/",
                                                 "/login",
                                                 "/api/register",
+                                                "/api/password/required-change",
                                                 "/api/mfa/**",
                                                 "/css/**",
                                                 "/js/**",

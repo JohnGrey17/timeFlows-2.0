@@ -177,6 +177,63 @@ class UserServiceImplTests {
     }
 
     @Test
+    void adminResetRequiresAdminAndMarksPasswordAsTemporary() {
+        User employee = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
+        User admin = user(2L, "admin@vyriy.com", Role.ADMIN);
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+        when(userRepository.findWithDivisionById(employee.getId()))
+                .thenReturn(Optional.of(employee));
+        when(passwordEncoder.encode("temporary-password")).thenReturn("temporary-encoded");
+
+        service.resetPasswordByAdmin(employee.getId(), "temporary-password", admin.getEmail());
+
+        assertThat(employee.getPassword()).isEqualTo("temporary-encoded");
+        assertThat(employee.isPasswordChangeRequired()).isTrue();
+        verify(userRepository).save(employee);
+    }
+
+    @Test
+    void nonAdminCannotResetPassword() {
+        User employee = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
+        when(userRepository.findByEmail(employee.getEmail())).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(
+                        () ->
+                                service.resetPasswordByAdmin(
+                                        employee.getId(),
+                                        "temporary-password",
+                                        employee.getEmail()))
+                .isInstanceOf(UserException.class);
+        verify(userRepository, never()).save(employee);
+    }
+
+    @Test
+    void requiredPasswordChangeRejectsTemporaryPasswordAndClearsFlag() {
+        User employee = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
+        employee.setPassword("temporary-encoded");
+        employee.setPasswordChangeRequired(true);
+        when(userRepository.findByEmail(employee.getEmail())).thenReturn(Optional.of(employee));
+        when(passwordEncoder.matches("temporary-password", "temporary-encoded")).thenReturn(true);
+
+        assertThatThrownBy(
+                        () ->
+                                service.completeRequiredPasswordChange(
+                                        employee.getEmail(),
+                                        "temporary-password",
+                                        "temporary-password"))
+                .isInstanceOf(UserException.class);
+
+        when(passwordEncoder.matches("new-secure-password", "temporary-encoded")).thenReturn(false);
+        when(passwordEncoder.encode("new-secure-password")).thenReturn("new-encoded");
+        service.completeRequiredPasswordChange(
+                employee.getEmail(), "new-secure-password", "new-secure-password");
+
+        assertThat(employee.getPassword()).isEqualTo("new-encoded");
+        assertThat(employee.isPasswordChangeRequired()).isFalse();
+        verify(userRepository).save(employee);
+    }
+
+    @Test
     void salaryProfileAndDeleteOperationsPersistChanges() {
         User user = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
         when(userRepository.findWithDivisionById(1L)).thenReturn(Optional.of(user));

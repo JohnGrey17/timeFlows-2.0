@@ -2,6 +2,7 @@ package example.timeflows.controller;
 
 import example.timeflows.controller.dto.LoginRequest;
 import example.timeflows.controller.dto.RegisterRequest;
+import example.timeflows.controller.dto.RequiredPasswordChangeRequest;
 import example.timeflows.exception.UserException;
 import example.timeflows.security.JwtAuthenticationFilter;
 import example.timeflows.security.JwtService;
@@ -26,12 +27,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 
 @Controller
 public class AuthController {
+
+    private static final String PASSWORD_CHANGE_COOKIE = "TIMEFLOWS_PASSWORD_CHANGE_PENDING";
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -92,6 +96,14 @@ public class AuthController {
                             new UsernamePasswordAuthenticationToken(
                                     loginRequest.getEmail(), loginRequest.getPassword()));
             example.timeflows.model.User domainUser = mfaService.user(authentication.getName());
+            if (domainUser.isPasswordChangeRequired()) {
+                String pendingToken =
+                        jwtService.generatePasswordChangePendingToken(authentication.getName());
+                response.addHeader(
+                        HttpHeaders.SET_COOKIE,
+                        pendingCookie(PASSWORD_CHANGE_COOKIE, pendingToken).toString());
+                return "redirect:/api/password/required-change";
+            }
             if (mfaEnabled && (domainUser.isMfaEnabled() || mfaService.isRequired(domainUser))) {
                 String pendingToken = jwtService.generateMfaPendingToken(authentication.getName());
                 response.addHeader(
@@ -114,6 +126,73 @@ public class AuthController {
         } catch (BadCredentialsException exception) {
             model.addAttribute("loginError", "Невірний email або пароль");
             return "auth/login";
+        }
+    }
+
+    @GetMapping("/api/password/required-change")
+    public String requiredPasswordChangePage(
+            @CookieValue(name = PASSWORD_CHANGE_COOKIE, required = false) String pendingToken,
+            Model model) {
+        String email = requiredPasswordChangeEmail(pendingToken);
+        if (email == null) {
+            return "redirect:/api/login?passwordChangeExpired";
+        }
+        model.addAttribute("email", email);
+        model.addAttribute("requiredPasswordChangeRequest", new RequiredPasswordChangeRequest());
+        return "auth/required-password-change";
+    }
+
+    @PostMapping("/api/password/required-change")
+    public String completeRequiredPasswordChange(
+            @CookieValue(name = PASSWORD_CHANGE_COOKIE, required = false) String pendingToken,
+            @Valid @ModelAttribute RequiredPasswordChangeRequest requiredPasswordChangeRequest,
+            BindingResult bindingResult,
+            Model model,
+            HttpServletResponse response) {
+        String email = requiredPasswordChangeEmail(pendingToken);
+        if (email == null) {
+            return "redirect:/api/login?passwordChangeExpired";
+        }
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("email", email);
+            return "auth/required-password-change";
+        }
+        try {
+            userService.completeRequiredPasswordChange(
+                    email,
+                    requiredPasswordChangeRequest.getNewPassword(),
+                    requiredPasswordChangeRequest.getConfirmPassword());
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE,
+                    ResponseCookie.from(PASSWORD_CHANGE_COOKIE, "")
+                            .httpOnly(true)
+                            .sameSite("Lax")
+                            .path("/")
+                            .maxAge(Duration.ZERO)
+                            .build()
+                            .toString());
+            example.timeflows.model.User user = mfaService.user(email);
+            if (mfaEnabled && (user.isMfaEnabled() || mfaService.isRequired(user))) {
+                response.addHeader(
+                        HttpHeaders.SET_COOKIE,
+                        pendingCookie(
+                                        "TIMEFLOWS_MFA_PENDING",
+                                        jwtService.generateMfaPendingToken(email))
+                                .toString());
+                return user.isMfaEnabled()
+                        ? "redirect:/api/mfa/challenge"
+                        : "redirect:/api/mfa/setup";
+            }
+            UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+            response.addHeader(
+                    HttpHeaders.SET_COOKIE,
+                    createJwtCookie(jwtService.generateToken(userDetails), jwtExpiration)
+                            .toString());
+            return "redirect:/api/dashboard";
+        } catch (UserException exception) {
+            model.addAttribute("email", email);
+            model.addAttribute("passwordChangeError", exception.getMessage());
+            return "auth/required-password-change";
         }
     }
 
@@ -185,5 +264,24 @@ public class AuthController {
                 .path("/")
                 .maxAge(maxAge)
                 .build();
+    }
+
+    private ResponseCookie pendingCookie(String name, String token) {
+        return ResponseCookie.from(name, token)
+                .httpOnly(true)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofMinutes(15))
+                .build();
+    }
+
+    private String requiredPasswordChangeEmail(String token) {
+        try {
+            if (token == null || !jwtService.isPasswordChangePendingToken(token)) return null;
+            String email = jwtService.extractUsername(token);
+            return userService.findByEmail(email).isPasswordChangeRequired() ? email : null;
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 }

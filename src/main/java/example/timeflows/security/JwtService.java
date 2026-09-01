@@ -33,6 +33,10 @@ public class JwtService {
         return generate(username, Duration.ofMinutes(15), "MFA_PENDING");
     }
 
+    public String generatePasswordChangePendingToken(String username) {
+        return generate(username, Duration.ofMinutes(15), "PASSWORD_CHANGE_PENDING");
+    }
+
     private String generate(String username, Duration lifetime, String type) {
         Instant now = Instant.now();
         return Jwts.builder()
@@ -57,6 +61,11 @@ public class JwtService {
 
     public boolean isMfaPendingToken(String token) {
         return "MFA_PENDING".equals(extractClaims(token).get("type", String.class))
+                && !isExpired(token);
+    }
+
+    public boolean isPasswordChangePendingToken(String token) {
+        return "PASSWORD_CHANGE_PENDING".equals(extractClaims(token).get("type", String.class))
                 && !isExpired(token);
     }
 

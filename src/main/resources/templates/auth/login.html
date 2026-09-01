@@ -16,6 +16,7 @@
         <p class="success-message" th:if="${param.registered}">Реєстрація успішна. Увійдіть у систему.</p>
         <p class="success-message" th:if="${param.logout}">Ви вийшли з системи.</p>
         <p class="error-message" th:if="${param.mfaExpired}">MFA-сесія завершилася. Введіть email і пароль ще раз.</p>
+        <p class="error-message" th:if="${param.passwordChangeExpired}">Сесія зміни пароля завершилася. Увійдіть за тимчасовим паролем ще раз.</p>
         <p class="error-message" th:if="${loginError}" th:text="${loginError}"></p>
 
         <form th:action="@{/api/login}" th:object="${loginRequest}" method="post" class="form-stack">

@@ -294,6 +294,24 @@ public class UsersPageController {
         return usersRedirect(departmentId, divisionId, groupBy);
     }
 
+    @PostMapping("/api/users/{id}/password/reset")
+    @PreAuthorize("hasRole('ADMIN')")
+    public Object resetPassword(
+            @PathVariable Long id,
+            @RequestParam String temporaryPassword,
+            Authentication authentication,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(defaultValue = "department") String groupBy,
+            @RequestHeader(value = "X-Requested-With", required = false) String requestedWith) {
+        userService.resetPasswordByAdmin(id, temporaryPassword, authentication.getName());
+        return ajaxOrRedirect(
+                requestedWith,
+                usersRedirect(departmentId, directorateId, divisionId, subdivisionId, groupBy));
+    }
+
     private String usersRedirect(Long departmentId, Long divisionId, String groupBy) {
         return usersRedirect(departmentId, null, divisionId, null, groupBy);
     }
