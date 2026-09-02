@@ -157,9 +157,10 @@
         <div th:if="${viewMode == 'summary' && canSeeQuarterKpiPool}" class="quarter-kpi-pool">Поточний KPI-пул за <span th:text="${'Q'+currentQuarterNumber+' '+selectedMonth.year}">Q3 2026</span>: <strong th:text="${currentQuarterKpiPool}">0</strong></div>
         <section th:if="${viewMode == 'summary'}" class="table-panel financial-summary-wrap">
             <table class="data-table financial-summary-table">
-                <thead><tr class="financial-group-row"><th rowspan="2">Співробітник</th><th class="bonus-category-group" th:colspan="${#lists.size(categories)+(hasProjectManagers ? 1 : 0)+(projectManagerView ? 0 : 1)}">Бонуси</th><th rowspan="2">Години перепрацювань</th></tr><tr class="financial-category-row"><th th:each="category:${categories}" th:text="${category.name}">Категорія</th><th th:if="${hasProjectManagers}">KPI</th><th th:unless="${projectManagerView}">Квартальний бонус</th></tr></thead>
-                <tbody><tr th:each="row:${divisionRows}">
-                    <td><strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong></td>
+                <thead><tr class="financial-group-row"><th rowspan="2" class="row-number-column">№</th><th rowspan="2" class="employee-column" th:text="${'Співробітники = ' + #lists.size(divisionRows)}">Співробітники = 0</th><th class="bonus-category-group" th:colspan="${#lists.size(categories)+(hasProjectManagers ? 1 : 0)+(projectManagerView ? 0 : 1)}">Бонуси</th><th rowspan="2">Години перепрацювань</th></tr><tr class="financial-category-row"><th th:each="category:${categories}" th:text="${category.name}">Категорія</th><th th:if="${hasProjectManagers}">KPI</th><th th:unless="${projectManagerView}">Квартальний бонус</th></tr></thead>
+                <tbody><tr th:each="row,rowStat:${divisionRows}">
+                    <td class="row-number-column" th:text="${rowStat.count}">1</td>
+                    <td class="employee-column"><strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong></td>
                     <td th:each="category:${categories}"><button th:unless="${row.user().tags.contains(T(example.timeflows.model.BusinessTag).PROJECT_MANAGER)}" type="button" class="summary-amount-button" th:data-summary-modal="${'categorySummary-'+row.user().id+'-'+category.id}"><span th:text="${categoryTotalsByUser.get(row.user().id).get(category.id)}">0</span><small class="summary-count-badge" th:if="${categoryCountsByUser.get(row.user().id).get(category.id) > 1}" th:text="${'Записів: '+categoryCountsByUser.get(row.user().id).get(category.id)}">Записів: 3</small></button><span th:if="${row.user().tags.contains(T(example.timeflows.model.BusinessTag).PROJECT_MANAGER)}">—</span></td>
                     <td th:if="${hasProjectManagers}"><button th:if="${projectManagerUserIds.contains(row.user().id)}" type="button" class="summary-amount-button" th:data-summary-modal="${'typeSummary-'+row.user().id+'-KPI'}"><span th:text="${typeTotalsByUser.get(row.user().id).get(T(example.timeflows.model.BonusType).KPI)}">0</span><small class="summary-count-badge" th:if="${typeCountsByUser.get(row.user().id).get(T(example.timeflows.model.BonusType).KPI) > 1}" th:text="${'Записів: '+typeCountsByUser.get(row.user().id).get(T(example.timeflows.model.BonusType).KPI)}"></small></button><span th:unless="${projectManagerUserIds.contains(row.user().id)}">—</span></td>
                     <td th:unless="${projectManagerView}"><button type="button" class="summary-amount-button" th:data-summary-modal="${'typeSummary-'+row.user().id+'-QUARTERLY'}"><span th:text="${typeTotalsByUser.get(row.user().id).get(T(example.timeflows.model.BonusType).QUARTERLY)}">0</span></button></td>
@@ -193,18 +194,21 @@
             </th:block>
         </section>
         <section th:if="${viewMode == 'matrix'}" class="table-panel overtime-matrix-wrap">
+            <div class="overtime-selection-count">Співробітники = <strong th:text="${#lists.size(divisionRows)}">0</strong></div>
             <table class="data-table overtime-matrix">
                 <thead>
                 <tr>
-                    <th>Користувач</th>
+                    <th class="row-number-column">№</th>
+                    <th class="employee-column">Користувач</th>
                     <th th:each="header : ${dayHeaders}"><span th:text="${header.day()}">1</span><small class="weekday-label" th:text="${header.weekday()}">пн</small></th>
                     <th class="bonus-column">Бонуси</th>
                     <th class="payment-column">Години перепрацювань</th>
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:each="row : ${divisionRows}">
-                    <td>
+                <tr th:each="row,rowStat : ${divisionRows}">
+                    <td class="row-number-column" th:text="${rowStat.count}">1</td>
+                    <td class="employee-column">
                         <strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong>
                     </td>
                     <td th:each="day : ${row.days()}" class="overtime-info-trigger"

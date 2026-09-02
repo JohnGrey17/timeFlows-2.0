@@ -502,6 +502,10 @@ class SecurityAuthorizationTests {
                                         org.hamcrest.Matchers.containsString(
                                                 "financial-summary-table")))
                 .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("Співробітники = ")))
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("row-number-column")))
+                .andExpect(
                         content()
                                 .string(
                                         org.hamcrest.Matchers.not(
@@ -513,6 +517,29 @@ class SecurityAuthorizationTests {
                                         org.hamcrest.Matchers.not(
                                                 org.hamcrest.Matchers.containsString(
                                                         "Сума до сплати"))));
+    }
+
+    @Test
+    void overtimeCalendarShowsFilteredEmployeeCountAndRowNumbers() throws Exception {
+        mockMvc.perform(
+                        get("/api/overtime/review")
+                                .param("departmentId", "1")
+                                .param("divisionId", "1")
+                                .param("view", "matrix")
+                                .param("year", "2026")
+                                .param("month", "8")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "overtime-selection-count")))
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("Співробітники = ")))
+                .andExpect(
+                        content()
+                                .string(org.hamcrest.Matchers.containsString("row-number-column")));
     }
 
     @Test

@@ -1271,6 +1271,16 @@ textarea:focus {
 .financial-summary-table th:first-child,
 .financial-summary-table td:first-child { position: sticky; left: 0; z-index: 1; min-width: 130px; background: #fff; }
 .financial-summary-table td { min-width: 112px; text-align: center; }
+.financial-summary-table th.row-number-column,
+.financial-summary-table td.row-number-column { position: sticky; left: 0; z-index: 2; width: 44px; min-width: 44px; text-align: center; background: #fff; }
+.financial-summary-table th.employee-column,
+.financial-summary-table td.employee-column { position: sticky; left: 44px; z-index: 1; min-width: 150px; background: #fff; }
+.overtime-selection-count { padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 800; }
+.overtime-selection-count strong { color: var(--text); }
+.overtime-matrix th.row-number-column,
+.overtime-matrix td.row-number-column { width: 44px; min-width: 44px; text-align: center; }
+.overtime-matrix th.employee-column,
+.overtime-matrix td.employee-column { width: 150px; min-width: 150px; }
 .summary-amount-button { min-width: 82px; min-height: 36px; padding: 6px 10px; color: var(--accent-strong); background: #fff1e9; box-shadow: none; }
 .summary-detail-modal .modal-panel { width: min(680px, calc(100vw - 32px)); }
 .summary-detail-modal { z-index: 100; }
@@ -1313,11 +1323,15 @@ textarea:focus {
 .financial-group-row th { vertical-align: middle; text-align: center; }
 .financial-group-row .bonus-category-group { color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-strong)); font-size: 14px; letter-spacing: .2px; }
 .financial-category-row th { text-align: center; background: #fff3eb; }
-.overtime-matrix { min-width: 1750px; }
+.overtime-matrix { min-width: 1794px; }
 .overtime-matrix th:not(:first-child),
 .overtime-matrix td:not(:first-child) { width: 32px; min-width: 32px; padding-inline: 4px; }
 .overtime-matrix .bonus-column { width: 86px; min-width: 86px !important; }
 .overtime-matrix .payment-column { width: 128px; min-width: 128px !important; }
+.overtime-matrix th.row-number-column,
+.overtime-matrix td.row-number-column { width: 44px; min-width: 44px; padding-inline: 4px; text-align: center; }
+.overtime-matrix th.employee-column,
+.overtime-matrix td.employee-column { width: 150px; min-width: 150px; padding-inline: 12px; font-size: 12px; text-align: left; }
 
 /* Help messages always open to the right of their question mark. */
 .help-tip::after,
