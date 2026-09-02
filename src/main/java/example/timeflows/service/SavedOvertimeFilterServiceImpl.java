@@ -26,6 +26,7 @@ public class SavedOvertimeFilterServiceImpl implements SavedOvertimeFilterServic
     private final DirectorateRepository directorates;
     private final DivisionRepository divisions;
     private final SubdivisionRepository subdivisions;
+    private final AccessPolicy accessPolicy;
 
     public SavedOvertimeFilterServiceImpl(
             SavedOvertimeFilterRepository filters,
@@ -33,13 +34,15 @@ public class SavedOvertimeFilterServiceImpl implements SavedOvertimeFilterServic
             DepartmentRepository departments,
             DirectorateRepository directorates,
             DivisionRepository divisions,
-            SubdivisionRepository subdivisions) {
+            SubdivisionRepository subdivisions,
+            AccessPolicy accessPolicy) {
         this.filters = filters;
         this.userService = userService;
         this.departments = departments;
         this.directorates = directorates;
         this.divisions = divisions;
         this.subdivisions = subdivisions;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
@@ -96,7 +99,7 @@ public class SavedOvertimeFilterServiceImpl implements SavedOvertimeFilterServic
 
     private User requireAdmin(String email) {
         User user = userService.findByEmail(email);
-        if (!user.getRoles().contains(Role.ADMIN)) {
+        if (!user.getRoles().contains(Role.ADMIN) && !accessPolicy.isAbsolut(user)) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Збережені фільтри доступні лише адміністратору");
         }

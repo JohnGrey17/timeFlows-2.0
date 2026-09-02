@@ -28,16 +28,33 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private final DivisionRepository divisionRepository;
     private final PasswordEncoder passwordEncoder;
     private final SubdivisionRepository subdivisionRepository;
+    private final AccessPolicy accessPolicy;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public UserServiceImpl(
+            UserRepository userRepository,
+            DivisionRepository divisionRepository,
+            SubdivisionRepository subdivisionRepository,
+            PasswordEncoder passwordEncoder,
+            AccessPolicy accessPolicy) {
+        this.userRepository = userRepository;
+        this.divisionRepository = divisionRepository;
+        this.subdivisionRepository = subdivisionRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.accessPolicy = accessPolicy;
+    }
 
     public UserServiceImpl(
             UserRepository userRepository,
             DivisionRepository divisionRepository,
             SubdivisionRepository subdivisionRepository,
             PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.divisionRepository = divisionRepository;
-        this.subdivisionRepository = subdivisionRepository;
-        this.passwordEncoder = passwordEncoder;
+        this(
+                userRepository,
+                divisionRepository,
+                subdivisionRepository,
+                passwordEncoder,
+                new AccessPolicy(true));
     }
 
     @Override
@@ -57,6 +74,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                                         java.util.LinkedHashSet::new));
         if (user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             authorities.add("ROLE_SYS_ADMIN");
+        }
+        if (accessPolicy.isAbsolut(user)) {
+            authorities.add("ROLE_ABSOLUT");
         }
 
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())

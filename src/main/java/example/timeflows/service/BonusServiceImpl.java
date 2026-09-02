@@ -18,14 +18,17 @@ public class BonusServiceImpl implements BonusService {
     private final BonusRepository repository;
     private final BonusCategoryRepository categoryRepository;
     private final UserService userService;
+    private final AccessPolicy accessPolicy;
 
     public BonusServiceImpl(
             BonusRepository repository,
             BonusCategoryRepository categoryRepository,
-            UserService userService) {
+            UserService userService,
+            AccessPolicy accessPolicy) {
         this.repository = repository;
         this.categoryRepository = categoryRepository;
         this.userService = userService;
+        this.accessPolicy = accessPolicy;
     }
 
     @Transactional(readOnly = true)
@@ -142,8 +145,14 @@ public class BonusServiceImpl implements BonusService {
 
     @Transactional
     public Bonus decide(Long id, BonusStatus status, String comment) {
+        return decide(id, status, comment, false);
+    }
+
+    @Override
+    @Transactional
+    public Bonus decide(Long id, BonusStatus status, String comment, boolean allowFinal) {
         Bonus b = find(id);
-        assertPending(b);
+        if (!allowFinal) assertPending(b);
         b.setStatus(status);
         b.setAdminComment(comment);
         b.setUpdatedAt(LocalDateTime.now());
@@ -162,7 +171,7 @@ public class BonusServiceImpl implements BonusService {
             throw new IllegalArgumentException("Оберіть хоча б одного отримувача");
         }
         User creator = userService.findByEmail(creatorEmail);
-        if (!creator.getRoles().contains(Role.ADMIN)) {
+        if (!creator.getRoles().contains(Role.ADMIN) && !accessPolicy.isAbsolut(creator)) {
             throw new IllegalArgumentException("Квартальний бонус розподіляє лише ADMIN");
         }
         if (!findQuarterlyDistribution(year, quarter).isEmpty()) {
@@ -242,7 +251,7 @@ public class BonusServiceImpl implements BonusService {
     @Transactional
     public int resetQuarterlyDistribution(int year, int quarter, String actorEmail) {
         User actor = userService.findByEmail(actorEmail);
-        if (!actor.getRoles().contains(Role.ADMIN)) {
+        if (!actor.getRoles().contains(Role.ADMIN) && !accessPolicy.isAbsolut(actor)) {
             throw new IllegalArgumentException("Скинути розподіл може лише ADMIN");
         }
         List<Bonus> distribution = findQuarterlyDistribution(year, quarter);
@@ -344,6 +353,7 @@ public class BonusServiceImpl implements BonusService {
     }
 
     private void validateTypeAccess(BonusType type, User creator, User target) {
+        if (accessPolicy.isAbsolut(creator)) return;
         boolean targetProjectManager =
                 hasEffectiveTag(target, BusinessTag.PROJECT_MANAGER)
                         && !target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD);

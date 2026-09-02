@@ -34,21 +34,21 @@ public class DepartmentController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Get all departments")
     public List<DepartmentResponse> findAll() {
         return mapper.toDepartmentResponses(departmentService.findAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Get department by id")
     public DepartmentResponse findById(@PathVariable Long id) {
         return mapper.toDepartmentResponse(departmentService.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create department")
     public DepartmentResponse create(@Valid @RequestBody DepartmentRequest request) {
@@ -56,7 +56,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @Operation(summary = "Update department")
     public DepartmentResponse update(
             @PathVariable Long id, @Valid @RequestBody DepartmentRequest request) {
@@ -65,7 +65,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete department")
     public void delete(@PathVariable Long id) {

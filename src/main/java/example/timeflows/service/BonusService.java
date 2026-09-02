@@ -37,6 +37,8 @@ public interface BonusService {
 
     Bonus decide(Long id, BonusStatus status, String comment);
 
+    Bonus decide(Long id, BonusStatus status, String comment, boolean allowFinal);
+
     List<Bonus> distributeQuarterly(
             int year, int quarter, Long categoryId, Set<Long> userIds, String creatorEmail);
 

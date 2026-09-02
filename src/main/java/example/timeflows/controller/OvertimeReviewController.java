@@ -1,11 +1,13 @@
 package example.timeflows.controller;
 
+import example.timeflows.controller.dto.OvertimeRequest;
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
 import example.timeflows.service.OvertimeReviewExcelService;
 import example.timeflows.service.OvertimeReviewPageService;
 import example.timeflows.service.OvertimeService;
 import example.timeflows.service.SavedOvertimeFilterService;
+import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.springframework.http.ContentDisposition;
@@ -17,6 +19,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -40,7 +43,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review/export")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     public ResponseEntity<byte[]> export(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
@@ -79,7 +82,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     public String review(
             @RequestParam(defaultValue = "division") String mode,
             @RequestParam(defaultValue = "matrix") String view,
@@ -118,7 +121,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/filters")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String saveFilter(
             @RequestParam String name,
             @RequestParam Long departmentId,
@@ -160,7 +163,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     public String approve(
             @RequestParam Long overtimeId,
             @RequestParam(required = false) String comment,
@@ -190,7 +193,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/approve-all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String approveAll(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
@@ -237,7 +240,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     public String reject(
             @RequestParam Long overtimeId,
             @RequestParam String comment,
@@ -264,6 +267,35 @@ public class OvertimeReviewController {
                 view,
                 mode,
                 userId);
+    }
+
+    @PostMapping("/api/overtime/review/absolut/update")
+    @PreAuthorize("hasRole('ABSOLUT')")
+    public String updateAsAbsolut(
+            @RequestParam Long overtimeId,
+            @Valid @ModelAttribute OvertimeRequest request,
+            Authentication authentication) {
+        overtimeService.updateAsAbsolut(authentication.getName(), overtimeId, request);
+        return "redirect:/api/overtime/review";
+    }
+
+    @PostMapping("/api/overtime/review/absolut/delete")
+    @PreAuthorize("hasRole('ABSOLUT')")
+    public String deleteAsAbsolut(@RequestParam Long overtimeId, Authentication authentication) {
+        overtimeService.deleteAsAbsolut(authentication.getName(), overtimeId);
+        return "redirect:/api/overtime/review";
+    }
+
+    @PostMapping("/api/overtime/review/absolut/status")
+    @PreAuthorize("hasRole('ABSOLUT')")
+    public String setStatusAsAbsolut(
+            @RequestParam Long overtimeId,
+            @RequestParam OvertimeStatus targetStatus,
+            @RequestParam(required = false) String comment,
+            Authentication authentication) {
+        overtimeService.setStatusAsAbsolut(
+                authentication.getName(), overtimeId, targetStatus, comment);
+        return "redirect:/api/overtime/review";
     }
 
     private String reviewRedirect(

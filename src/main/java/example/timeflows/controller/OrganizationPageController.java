@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
 public class OrganizationPageController {
 
     private final DepartmentService departmentService;

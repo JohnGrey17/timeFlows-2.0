@@ -50,7 +50,7 @@ class UserServiceImplTests {
         User user = user(1L, "employee@vyriy.com", Role.EMPLOYEE);
         user.setPassword("encoded");
         user.setActive(false);
-        user.setTags(new LinkedHashSet<>(Set.of(BusinessTag.SYS_ADMIN)));
+        user.setTags(new LinkedHashSet<>(Set.of(BusinessTag.SYS_ADMIN, BusinessTag.ABSOLUT)));
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
 
         var details = service.loadUserByUsername(user.getEmail());
@@ -59,7 +59,7 @@ class UserServiceImplTests {
         assertThat(details.isEnabled()).isFalse();
         assertThat(details.getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder("ROLE_EMPLOYEE", "ROLE_SYS_ADMIN");
+                .containsExactlyInAnyOrder("ROLE_EMPLOYEE", "ROLE_SYS_ADMIN", "ROLE_ABSOLUT");
     }
 
     @Test

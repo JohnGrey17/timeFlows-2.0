@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
 public class BonusController {
     private final BonusService bonusService;
     private final UserService userService;
@@ -27,6 +27,7 @@ public class BonusController {
     private final SubdivisionService subdivisionService;
     private final OvertimeViewService overtimeViewService;
     private final ManagementAccessService accessService;
+    private final AccessPolicy accessPolicy;
 
     public BonusController(
             BonusService bonusService,
@@ -36,7 +37,8 @@ public class BonusController {
             DirectorateService directorateService,
             SubdivisionService subdivisionService,
             OvertimeViewService overtimeViewService,
-            ManagementAccessService accessService) {
+            ManagementAccessService accessService,
+            AccessPolicy accessPolicy) {
         this.bonusService = bonusService;
         this.userService = userService;
         this.departmentService = departmentService;
@@ -45,6 +47,7 @@ public class BonusController {
         this.subdivisionService = subdivisionService;
         this.overtimeViewService = overtimeViewService;
         this.accessService = accessService;
+        this.accessPolicy = accessPolicy;
     }
 
     @GetMapping("/api/bonuses")
@@ -63,7 +66,7 @@ public class BonusController {
         assertCanOpenBonusModule(current);
         YearMonth selected =
                 year == null || month == null ? YearMonth.now() : YearMonth.of(year, month);
-        boolean admin = current.getRoles().contains(Role.ADMIN);
+        boolean admin = current.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(current);
         boolean sysAdmin = current.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId = departmentId;
         Long effectiveDivisionId = divisionId;
@@ -175,8 +178,9 @@ public class BonusController {
                         : List.of());
         model.addAttribute("selectedStatus", status);
         model.addAttribute("admin", admin);
+        model.addAttribute("absolut", accessPolicy.isAbsolut(current));
         model.addAttribute("sysAdmin", sysAdmin);
-        model.addAttribute("canApproveBonuses", !sysAdmin);
+        model.addAttribute("canApproveBonuses", !sysAdmin || accessPolicy.isAbsolut(current));
         return "manager/bonuses";
     }
 
@@ -308,7 +312,8 @@ public class BonusController {
             @RequestParam(required = false) String returnTo,
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
-        bonusService.decide(id, BonusStatus.APPROVED, comment);
+        User actor = userService.findByEmail(auth.getName());
+        bonusService.decide(id, BonusStatus.APPROVED, comment, accessPolicy.isAbsolut(actor));
         return redirect(returnTo);
     }
 
@@ -320,12 +325,13 @@ public class BonusController {
             @RequestParam(required = false) String returnTo,
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
-        bonusService.decide(id, BonusStatus.REJECTED, comment);
+        User actor = userService.findByEmail(auth.getName());
+        bonusService.decide(id, BonusStatus.REJECTED, comment, accessPolicy.isAbsolut(actor));
         return redirect(returnTo);
     }
 
     @PostMapping("/api/bonus-categories")
-    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
     public String createCategory(
             @RequestParam String name,
             @RequestParam(defaultValue = "MONTHLY") BonusType type,
@@ -339,7 +345,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonus-categories/{id}/update")
-    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
     public String updateCategory(
             @PathVariable Long id,
             @RequestParam String name,
@@ -354,7 +360,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonus-categories/{id}/delete")
-    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
     public String deleteCategory(@PathVariable Long id, RedirectAttributes ra) {
         try {
             bonusService.deleteCategory(id);
@@ -365,7 +371,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonuses/quarterly/distribute")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String distributeQuarterly(
             @RequestParam int year,
             @RequestParam int quarter,
@@ -397,7 +403,7 @@ public class BonusController {
     }
 
     @GetMapping("/api/bonuses/quarterly/summary")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @ResponseBody
     public Map<String, Object> quarterlySummary(@RequestParam int year, @RequestParam int quarter) {
         List<Bonus> distribution = bonusService.findQuarterlyDistribution(year, quarter);
@@ -414,7 +420,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonuses/quarterly/reset")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String resetQuarterly(
             @RequestParam int year,
             @RequestParam int quarter,
@@ -456,7 +462,8 @@ public class BonusController {
     }
 
     private void assertCanApproveBonuses(User user) {
-        if (!user.getRoles().contains(Role.ADMIN)
+        if (!accessPolicy.isAbsolut(user)
+                && !user.getRoles().contains(Role.ADMIN)
                 && !user.getRoles().contains(Role.MANAGER)
                 && !user.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
             throw new AccessDeniedException("Погоджувати бонуси може ADMIN, MANAGER або PM LEAD");
@@ -464,7 +471,8 @@ public class BonusController {
     }
 
     private void assertCanOpenBonusModule(User user) {
-        if (!user.getRoles().contains(Role.ADMIN)
+        if (!accessPolicy.isAbsolut(user)
+                && !user.getRoles().contains(Role.ADMIN)
                 && !user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException("Модуль керування бонусами доступний лише ADMIN");
         }

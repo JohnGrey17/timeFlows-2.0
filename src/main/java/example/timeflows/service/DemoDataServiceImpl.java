@@ -88,7 +88,7 @@ public class DemoDataServiceImpl implements DemoDataService {
                         initialAdminPassword,
                         it,
                         null,
-                        Set.of(),
+                        Set.of(BusinessTag.ABSOLUT),
                         new BigDecimal("5000.00"),
                         Role.ADMIN,
                         Role.EMPLOYEE);

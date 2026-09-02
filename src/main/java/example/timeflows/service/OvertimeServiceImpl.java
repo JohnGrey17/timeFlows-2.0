@@ -31,17 +31,30 @@ public class OvertimeServiceImpl implements OvertimeService {
     private final OvertimeRepository overtimeRepository;
     private final UserService userService;
     private final Clock clock;
+    private final AccessPolicy accessPolicy;
 
     @org.springframework.beans.factory.annotation.Autowired
-    public OvertimeServiceImpl(OvertimeRepository overtimeRepository, UserService userService) {
-        this(overtimeRepository, userService, Clock.system(ZoneId.of("Europe/Kyiv")));
+    public OvertimeServiceImpl(
+            OvertimeRepository overtimeRepository,
+            UserService userService,
+            AccessPolicy accessPolicy) {
+        this(overtimeRepository, userService, Clock.system(ZoneId.of("Europe/Kyiv")), accessPolicy);
     }
 
     public OvertimeServiceImpl(
             OvertimeRepository overtimeRepository, UserService userService, Clock clock) {
+        this(overtimeRepository, userService, clock, new AccessPolicy(true));
+    }
+
+    public OvertimeServiceImpl(
+            OvertimeRepository overtimeRepository,
+            UserService userService,
+            Clock clock,
+            AccessPolicy accessPolicy) {
         this.overtimeRepository = overtimeRepository;
         this.userService = userService;
         this.clock = clock;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
@@ -122,16 +135,20 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime createForDivisionEmployee(
             String managerEmail, Long employeeId, OvertimeRequest request) {
         User manager = userService.findByEmail(managerEmail);
-        if (!manager.getRoles().contains(Role.MANAGER)
-                || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME)) {
+        if (!accessPolicy.isAbsolut(manager)
+                && (!manager.getRoles().contains(Role.MANAGER)
+                        || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME))) {
             throw new OvertimeException(
                     "Створювати перепрацювання за співробітників може лише менеджер із тегом DIVISION_OVERTIME");
         }
         User employee = userService.findById(employeeId);
         if (!employee.isActive()
-                || employee.getDivision() == null
-                || manager.getDivision() == null
-                || !employee.getDivision().getId().equals(manager.getDivision().getId())) {
+                || (!accessPolicy.isAbsolut(manager)
+                        && (employee.getDivision() == null
+                                || manager.getDivision() == null
+                                || !employee.getDivision()
+                                        .getId()
+                                        .equals(manager.getDivision().getId())))) {
             throw new OvertimeException(
                     "Менеджер може створювати перепрацювання лише за активних співробітників свого відділу");
         }
@@ -159,8 +176,9 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional(readOnly = true)
     public Set<LocalDate> divisionOvertimeCreationDates(String managerEmail, YearMonth month) {
         User manager = userService.findByEmail(managerEmail);
-        if (!manager.getRoles().contains(Role.MANAGER)
-                || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME)) {
+        if (!accessPolicy.isAbsolut(manager)
+                && (!manager.getRoles().contains(Role.MANAGER)
+                        || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME))) {
             return Set.of();
         }
         return IntStream.rangeClosed(1, month.lengthOfMonth())
@@ -198,6 +216,61 @@ public class OvertimeServiceImpl implements OvertimeService {
         Overtime overtime = findByIdForUser(id, userEmail);
         assertOwnerCanChange(userEmail, overtime);
         overtimeRepository.delete(overtime);
+    }
+
+    @Override
+    @Transactional
+    public Overtime updateAsAbsolut(String actorEmail, Long id, OvertimeRequest request) {
+        requireAbsolut(actorEmail);
+        Overtime overtime = findById(id);
+        if (request.getWorkDate() == null) {
+            throw new OvertimeException("Оберіть дату перепрацювання");
+        }
+        if (request.getHours() == null || request.getHours() <= 0 || request.getHours() > 14.0) {
+            throw new OvertimeException("Кількість годин має бути більшою за 0 і не більшою за 14");
+        }
+        overtimeRepository
+                .findByUserEmailAndWorkDate(overtime.getUser().getEmail(), request.getWorkDate())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(
+                        existing -> {
+                            throw new OvertimeException(
+                                    "На вибрану дату у користувача вже існує перепрацювання");
+                        });
+        overtime.setWorkDate(request.getWorkDate());
+        overtime.setHours(request.getHours());
+        overtime.setDescription(request.getDescription());
+        overtime.setUpdatedAt(LocalDateTime.now(clock));
+        return overtimeRepository.save(overtime);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAsAbsolut(String actorEmail, Long id) {
+        requireAbsolut(actorEmail);
+        overtimeRepository.delete(findById(id));
+    }
+
+    @Override
+    @Transactional
+    public Overtime setStatusAsAbsolut(
+            String actorEmail, Long id, OvertimeStatus status, String comment) {
+        requireAbsolut(actorEmail);
+        if (status == null) throw new OvertimeException("Оберіть статус перепрацювання");
+        Overtime overtime = findById(id);
+        overtime.setStatus(status);
+        overtime.setManagerComment(comment);
+        overtime.setUpdatedAt(LocalDateTime.now(clock));
+        return overtimeRepository.save(overtime);
+    }
+
+    private User requireAbsolut(String actorEmail) {
+        User actor = userService.findByEmail(actorEmail);
+        if (!accessPolicy.isAbsolut(actor)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Операція доступна лише користувачу з тегом ABSOLUT");
+        }
+        return actor;
     }
 
     @Override
@@ -241,7 +314,10 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime approve(Long id, String managerComment, String reviewerEmail) {
         User reviewer = assertCanReview(id, reviewerEmail);
         Overtime overtime = findById(id);
-        if (reviewer.getRoles().contains(Role.ADMIN)) {
+        if (accessPolicy.isAbsolut(reviewer) && isChecking(overtime.getStatus())) {
+            return approve(id, managerComment);
+        }
+        if (reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer)) {
             if (overtime.getStatus() != OvertimeStatus.APPROVED_MANAGER) {
                 throw new OvertimeException("ADMIN фінально погоджує лише заявку APPROVED_MANAGER");
             }
@@ -258,7 +334,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     public int approveAll(
             java.util.Collection<Long> ids, String managerComment, String reviewerEmail) {
         User reviewer = userService.findByEmail(reviewerEmail);
-        if (!reviewer.getRoles().contains(Role.ADMIN)) {
+        if (!reviewer.getRoles().contains(Role.ADMIN) && !accessPolicy.isAbsolut(reviewer)) {
             throw new OvertimeException("Масове погодження доступне лише адміністратору");
         }
         int approved = 0;
@@ -305,7 +381,7 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private User assertCanReview(Long overtimeId, String reviewerEmail) {
         User reviewer = userService.findByEmail(reviewerEmail);
-        if (reviewer.getRoles().contains(Role.ADMIN)) {
+        if (reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer)) {
             return reviewer;
         }
         Overtime overtime = findById(overtimeId);
@@ -393,7 +469,9 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     private boolean isDivisionSubmissionDateAllowed(LocalDate workDate, User manager) {
-        if (isAugust2026(workDate) || allowsCurrentWeekOvertime(manager)) {
+        if (accessPolicy.isAbsolut(manager)
+                || isAugust2026(workDate)
+                || allowsCurrentWeekOvertime(manager)) {
             return true;
         }
         ZonedDateTime now = ZonedDateTime.now(clock);

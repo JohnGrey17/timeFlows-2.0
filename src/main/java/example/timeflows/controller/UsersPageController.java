@@ -4,6 +4,7 @@ import example.timeflows.exception.UserException;
 import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
+import example.timeflows.service.AccessPolicy;
 import example.timeflows.service.DepartmentService;
 import example.timeflows.service.DirectorateService;
 import example.timeflows.service.DivisionService;
@@ -37,6 +38,7 @@ public class UsersPageController {
     private final MfaService mfaService;
     private final SubdivisionService subdivisionService;
     private final DirectorateService directorateService;
+    private final AccessPolicy accessPolicy;
 
     public UsersPageController(
             UserService userService,
@@ -45,7 +47,8 @@ public class UsersPageController {
             DirectorateService directorateService,
             SubdivisionService subdivisionService,
             ManagementAccessService accessService,
-            MfaService mfaService) {
+            MfaService mfaService,
+            AccessPolicy accessPolicy) {
         this.userService = userService;
         this.departmentService = departmentService;
         this.divisionService = divisionService;
@@ -53,6 +56,7 @@ public class UsersPageController {
         this.subdivisionService = subdivisionService;
         this.accessService = accessService;
         this.mfaService = mfaService;
+        this.accessPolicy = accessPolicy;
     }
 
     @GetMapping("/api/users")
@@ -66,13 +70,15 @@ public class UsersPageController {
             Authentication authentication,
             Model model) {
         User currentUser = userService.findByEmail(authentication.getName());
-        if (!currentUser.getRoles().contains(Role.ADMIN)
+        if (!accessPolicy.isAbsolut(currentUser)
+                && !currentUser.getRoles().contains(Role.ADMIN)
                 && !currentUser.getRoles().contains(Role.MANAGER)
                 && !currentUser.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException(
                     "Керування користувачами доступне лише адміністратору або менеджеру");
         }
-        boolean admin = currentUser.getRoles().contains(Role.ADMIN);
+        boolean admin =
+                currentUser.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(currentUser);
         boolean globalUserManager = admin || currentUser.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId =
                 globalUserManager
@@ -159,7 +165,7 @@ public class UsersPageController {
     }
 
     @GetMapping("/api/users/deactivated")
-    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
     public String deactivatedUsers(Authentication authentication, Model model) {
         model.addAttribute("currentUser", userService.findByEmail(authentication.getName()));
         model.addAttribute("users", userService.findDeactivatedUsers());
@@ -168,7 +174,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/salary")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     public String updateSalary(
             @PathVariable Long id,
             @RequestParam BigDecimal salary,
@@ -187,7 +193,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SYS_ADMIN','ABSOLUT')")
     public String deactivate(
             @PathVariable Long id,
             @RequestParam String reason,
@@ -212,7 +218,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/divisions/{divisionId}/manager")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String assignManager(
             @PathVariable Long divisionId,
             @RequestParam Long userId,
@@ -223,7 +229,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/organization")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public Object moveUser(
             @PathVariable Long id,
             @RequestParam Long targetDivisionId,
@@ -237,7 +243,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/roles")
-    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
     public Object updateRoles(
             @PathVariable Long id,
             @RequestParam(required = false) Set<Role> roles,
@@ -255,7 +261,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/tags")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public Object updateTags(
             @PathVariable Long id,
             @RequestParam(required = false) Set<BusinessTag> tags,
@@ -272,7 +278,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/divisions/{id}/tags")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String updateDivisionTags(
             @PathVariable Long id,
             @RequestParam(required = false) Set<BusinessTag> tags,
@@ -283,7 +289,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/mfa/reset")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String resetMfa(
             @PathVariable Long id,
             Authentication authentication,
@@ -295,7 +301,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/password/reset")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public Object resetPassword(
             @PathVariable Long id,
             @RequestParam String temporaryPassword,

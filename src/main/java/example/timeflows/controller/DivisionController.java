@@ -35,21 +35,21 @@ public class DivisionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Get all divisions")
     public List<DivisionSummaryResponse> findAll() {
         return mapper.toDivisionSummaries(divisionService.findAll());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Get division by id")
     public DivisionResponse findById(@PathVariable Long id) {
         return mapper.toDivisionResponse(divisionService.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create division")
     public DivisionResponse create(@Valid @RequestBody DivisionRequest request) {
@@ -58,7 +58,7 @@ public class DivisionController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @Operation(summary = "Update division")
     public DivisionResponse update(
             @PathVariable Long id, @Valid @RequestBody DivisionRequest request) {
@@ -67,7 +67,7 @@ public class DivisionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete division")
     public void delete(@PathVariable Long id) {

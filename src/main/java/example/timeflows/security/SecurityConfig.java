@@ -56,7 +56,7 @@ public class SecurityConfig {
                                                 "/swagger-ui.html",
                                                 "/swagger-ui/**",
                                                 "/v3/api-docs/**")
-                                        .hasRole("ADMIN")
+                                        .hasAnyRole("ADMIN", "ABSOLUT")
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(

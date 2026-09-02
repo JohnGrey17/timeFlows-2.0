@@ -30,6 +30,7 @@ public class DemoEnvironmentInitializer
                             "timeflows.mfa.encryption-key",
                             "test-only-mfa-encryption-key-32-bytes"),
                     Map.entry("timeflows.mfa.issuer", "timeFlows-demo"),
+                    Map.entry("timeflows.access.absolut-enabled", "true"),
                     Map.entry("timeflows.bootstrap.admin-password", "test-only-admin-password"));
 
     @Override

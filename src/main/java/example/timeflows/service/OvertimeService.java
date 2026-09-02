@@ -33,6 +33,16 @@ public interface OvertimeService {
 
     void delete(String userEmail, Long id);
 
+    Overtime updateAsAbsolut(String actorEmail, Long id, OvertimeRequest request);
+
+    void deleteAsAbsolut(String actorEmail, Long id);
+
+    Overtime setStatusAsAbsolut(
+            String actorEmail,
+            Long id,
+            example.timeflows.model.OvertimeStatus status,
+            String comment);
+
     Overtime resubmit(String userEmail, Long id, OvertimeRequest request);
 
     Overtime approve(Long id, String managerComment);

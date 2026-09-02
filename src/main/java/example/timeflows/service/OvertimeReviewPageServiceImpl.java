@@ -29,6 +29,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
     private final SubdivisionService subdivisionService;
     private final BonusService bonusService;
     private final OvertimeViewService overtimeViewService;
+    private final AccessPolicy accessPolicy;
 
     public OvertimeReviewPageServiceImpl(
             OvertimeService overtimeService,
@@ -38,7 +39,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             DivisionService divisionService,
             SubdivisionService subdivisionService,
             BonusService bonusService,
-            OvertimeViewService overtimeViewService) {
+            OvertimeViewService overtimeViewService,
+            AccessPolicy accessPolicy) {
         this.overtimeService = overtimeService;
         this.userService = userService;
         this.departmentService = departmentService;
@@ -47,6 +49,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         this.subdivisionService = subdivisionService;
         this.bonusService = bonusService;
         this.overtimeViewService = overtimeViewService;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
@@ -65,7 +68,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             Long userId,
             Long openBonusUserId) {
         User current = userService.findByEmail(email);
-        boolean admin = current.getRoles().contains(Role.ADMIN);
+        boolean absolut = accessPolicy.isAbsolut(current);
+        boolean admin = current.getRoles().contains(Role.ADMIN) || absolut;
         YearMonth selected = overtimeViewService.resolveMonth(year, month);
         boolean employeeMode = "employee".equals(mode) && userId != null;
         User requestedUser = employeeMode ? userService.findById(userId) : null;
@@ -152,15 +156,17 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("selectedStatus", status);
         data.put(
                 "overtimeStatuses",
-                admin
-                        ? List.of(
-                                OvertimeStatus.APPROVED_MANAGER,
-                                OvertimeStatus.DECLINED,
-                                OvertimeStatus.APPROVED_ADMIN)
-                        : List.of(
-                                OvertimeStatus.CHECKING,
-                                OvertimeStatus.APPROVED_MANAGER,
-                                OvertimeStatus.DECLINED));
+                absolut
+                        ? List.of(OvertimeStatus.values())
+                        : admin
+                                ? List.of(
+                                        OvertimeStatus.APPROVED_MANAGER,
+                                        OvertimeStatus.DECLINED,
+                                        OvertimeStatus.APPROVED_ADMIN)
+                                : List.of(
+                                        OvertimeStatus.CHECKING,
+                                        OvertimeStatus.APPROVED_MANAGER,
+                                        OvertimeStatus.DECLINED));
         data.put("selectedUserId", selectedUserId);
         data.put("selectedUserDisplay", displayName(selectedUser));
         data.put("selectedMonth", selected);
@@ -170,11 +176,15 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("viewMode", "summary".equals(view) ? "summary" : "matrix");
         data.put("activePage", "review");
         data.put("admin", admin);
+        data.put("absolut", absolut);
         data.put(
                 "canCreateDivisionOvertime",
-                current.getRoles().contains(Role.MANAGER)
-                        && current.getTags()
-                                .contains(example.timeflows.model.BusinessTag.DIVISION_OVERTIME));
+                accessPolicy.isAbsolut(current)
+                        || (current.getRoles().contains(Role.MANAGER)
+                                && current.getTags()
+                                        .contains(
+                                                example.timeflows.model.BusinessTag
+                                                        .DIVISION_OVERTIME)));
         data.put(
                 "divisionOvertimeCreationDates",
                 overtimeService.divisionOvertimeCreationDates(email, selected));
@@ -187,8 +197,10 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                         example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD));
         data.put(
                 "canManageKpi",
-                current.getTags()
-                        .contains(example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD));
+                accessPolicy.isAbsolut(current)
+                        || current.getTags()
+                                .contains(
+                                        example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD));
         boolean projectManagerView =
                 !users.isEmpty() && users.stream().allMatch(this::canReceiveKpi);
         boolean hasProjectManagers = users.stream().anyMatch(this::canReceiveKpi);
@@ -250,7 +262,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             data.put("employeeBonuses", bonusService.findUserMonth(selectedUserId, selected));
         }
         addDivisionData(
-                data, users, effectiveDepartment, effectiveDivision, status, selected, admin);
+                data,
+                users,
+                effectiveDepartment,
+                effectiveDivision,
+                status,
+                selected,
+                admin,
+                absolut);
         return data;
     }
 
@@ -261,7 +280,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             Long divisionId,
             OvertimeStatus status,
             YearMonth month,
-            boolean admin) {
+            boolean admin,
+            boolean absolut) {
         if (departmentId == null) return;
         List<Overtime> overtimes =
                 divisionId != null
@@ -273,7 +293,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                         .filter(overtime -> userIds.contains(overtime.getUser().getId()))
                         .filter(
                                 overtime ->
-                                        !admin
+                                        absolut
+                                                || !admin
                                                 || overtime.getStatus()
                                                         == OvertimeStatus.APPROVED_MANAGER
                                                 || overtime.getStatus()

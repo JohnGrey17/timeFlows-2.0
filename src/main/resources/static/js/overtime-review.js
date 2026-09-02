@@ -47,6 +47,12 @@ function reviewJsonHeaders() {
     if (csrfCookie) headers["X-XSRF-TOKEN"] = decodeURIComponent(csrfCookie.substring("XSRF-TOKEN=".length));
     return headers;
 }
+function reviewFormHeaders() {
+    const headers = {};
+    const csrfCookie = document.cookie.split("; ").find((cookie) => cookie.startsWith("XSRF-TOKEN="));
+    if (csrfCookie) headers["X-XSRF-TOKEN"] = decodeURIComponent(csrfCookie.substring("XSRF-TOKEN=".length));
+    return headers;
+}
 const savedFilterModal = document.getElementById("saveOvertimeFilterModal");
 document.querySelector("[data-saved-filter-open]")?.addEventListener("click", () => {
     savedFilterModal.hidden = false;
@@ -71,6 +77,33 @@ const showReviewError = (message) => {
     backdrop.addEventListener("click", (event) => { if (event.target === backdrop) close(); });
     document.body.append(backdrop);
 };
+if (reviewModal?.dataset.absolut === "true") {
+    reviewModal.querySelector(".overtime-details")?.insertAdjacentHTML("afterend", `
+        <div class="modal-review-actions" data-absolut-actions>
+            <form method="post" action="/api/overtime/review/absolut/update">
+                <input type="hidden" name="overtimeId" data-decision-overtime-id>
+                <label>Дата<input type="date" name="workDate" required></label>
+                <label>Години<input type="number" name="hours" min="0.01" max="14" step="0.01" required></label>
+                <label>Опис<input name="description" maxlength="1000" required></label>
+                <button type="submit">Зберегти зміни</button>
+            </form>
+            <form method="post" action="/api/overtime/review/absolut/status">
+                <input type="hidden" name="overtimeId" data-decision-overtime-id>
+                <label>Статус<select name="targetStatus" required>
+                    <option value="CHECKING">CHECKING</option><option value="PENDING">PENDING</option>
+                    <option value="APPROVED_MANAGER">APPROVED_MANAGER</option>
+                    <option value="APPROVED_ADMIN">APPROVED_ADMIN</option><option value="APPROVED">APPROVED</option>
+                    <option value="DECLINED">DECLINED</option><option value="REJECTED">REJECTED</option>
+                </select></label>
+                <label>Коментар<input name="comment" maxlength="1000"></label>
+                <button type="submit">Змінити статус</button>
+            </form>
+            <form method="post" action="/api/overtime/review/absolut/delete" data-confirm-delete>
+                <input type="hidden" name="overtimeId" data-decision-overtime-id>
+                <button type="submit" class="danger-button">Видалити перепрацювання</button>
+            </form>
+        </div>`);
+}
 document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''])").forEach((cell) => cell.addEventListener("click", (event) => {
     if (event.target.closest("form")) return;
     if (!reviewModal.querySelector("[data-info-resubmission]")) {
@@ -80,6 +113,14 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
     const values = {user: cell.dataset.user, date: cell.dataset.date, hours: cell.dataset.hours, description: cell.dataset.description, status: cell.dataset.status, comment: cell.dataset.comment || "—", resubmission: cell.dataset.resubmissionReason || "—"};
     Object.entries(values).forEach(([key, value]) => { const target = reviewModal.querySelector(`[data-info-${key}]`); if (target) target.textContent = value; });
     reviewModal.querySelectorAll("[data-decision-overtime-id]").forEach((input) => input.value = cell.dataset.overtimeId);
+    const absolutActions = reviewModal.querySelector("[data-absolut-actions]");
+    if (absolutActions) {
+        absolutActions.querySelector("[name='workDate']").value = cell.dataset.date;
+        absolutActions.querySelector("[name='hours']").value = cell.dataset.hours;
+        absolutActions.querySelector("[name='description']").value = cell.dataset.description;
+        absolutActions.querySelector("[name='targetStatus']").value = cell.dataset.status;
+        absolutActions.querySelector("[name='comment']").value = cell.dataset.comment || "";
+    }
     const admin = reviewModal.dataset.admin === "true";
     const canReview = admin ? cell.dataset.status === "APPROVED_MANAGER" : cell.dataset.status === "CHECKING";
     reviewModal.querySelector("[data-review-actions]").hidden = !canReview;
@@ -87,17 +128,23 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
 }));
 document.querySelector("[data-review-close]")?.addEventListener("click", () => reviewModal.hidden = true);
 reviewModal?.addEventListener("click", (event) => { if (event.target === reviewModal) reviewModal.hidden = true; });
-reviewModal?.querySelectorAll("[data-review-actions] form").forEach((form) => form.addEventListener("submit", async (event) => {
+reviewModal?.querySelectorAll("[data-review-actions] form, [data-absolut-actions] form").forEach((form) => form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const response = await fetch(form.action, {method: "POST", body: new FormData(form)});
-    if (response.ok) {
-        window.location.assign(response.url || "/api/overtime/review");
-        return;
+    if (form.hasAttribute("data-confirm-delete") && !window.confirm("Видалити це перепрацювання?")) return;
+    try {
+        const response = await fetch(form.action, {method: "POST", body: new FormData(form), headers: reviewFormHeaders()});
+        if (response.ok) {
+            window.location.assign(response.url || "/api/overtime/review");
+            return;
+        }
+        let message;
+        try { message = (await response.json()).message; } catch (_) { message = `Помилка HTTP ${response.status}`; }
+        reviewModal.hidden = true;
+        showReviewError(message);
+    } catch (error) {
+        reviewModal.hidden = true;
+        showReviewError(error?.message);
     }
-    let message;
-    try { message = (await response.json()).message; } catch (_) { message = `Помилка HTTP ${response.status}`; }
-    reviewModal.hidden = true;
-    showReviewError(message);
 }));
 document.querySelector("[data-bulk-approve]")?.addEventListener("submit", async (event) => {
     event.preventDefault();

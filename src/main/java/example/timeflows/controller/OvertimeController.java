@@ -63,7 +63,7 @@ public class OvertimeController {
     }
 
     @PostMapping("/users/{userId}")
-    @PreAuthorize("hasRole('MANAGER')")
+    @PreAuthorize("hasAnyRole('MANAGER','ABSOLUT')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create overtime for an employee in the manager's division")
     public OvertimeResponse createForDivisionEmployee(
@@ -104,7 +104,7 @@ public class OvertimeController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Approve overtime")
     public OvertimeResponse approve(
             @PathVariable Long id,
@@ -115,7 +115,7 @@ public class OvertimeController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @Operation(summary = "Reject overtime")
     public OvertimeResponse reject(
             @PathVariable Long id,

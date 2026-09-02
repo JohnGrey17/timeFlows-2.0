@@ -10,10 +10,13 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
 
     private final UserService userService;
     private final BonusService bonusService;
+    private final AccessPolicy accessPolicy;
 
-    public ManagementAccessServiceImpl(UserService userService, BonusService bonusService) {
+    public ManagementAccessServiceImpl(
+            UserService userService, BonusService bonusService, AccessPolicy accessPolicy) {
         this.userService = userService;
         this.bonusService = bonusService;
+        this.accessPolicy = accessPolicy;
     }
 
     @Override
@@ -28,7 +31,8 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
 
     @Override
     public void assertCanManage(User actor, User target) {
-        if (!actor.getRoles().contains(Role.ADMIN)
+        if (!accessPolicy.isAbsolut(actor)
+                && !actor.getRoles().contains(Role.ADMIN)
                 && !actor.getDivision().getId().equals(target.getDivision().getId())) {
             throw new UserException("Керівник може працювати лише зі своїм відділом");
         }

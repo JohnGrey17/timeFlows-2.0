@@ -15,8 +15,8 @@
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER','ABSOLUT') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a class="active" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
@@ -103,12 +103,12 @@
                     <article th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division">
                         <strong>
                             <small>Відділ</small>
-                            <a sec:authorize="hasRole('ADMIN')"
+                            <a sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
                                class="company-tree-division-link"
                                th:href="@{/api/overtime/review(mode='division',departmentId=${department.id},directorateId=${directorate.id},divisionId=${division.id})}"
                                th:text="${division.name}"
                                title="Перейти до перевірки перепрацювань цього відділу"></a>
-                            <span sec:authorize="!hasRole('ADMIN')" th:text="${division.name}"></span>
+                            <span sec:authorize="!hasAnyRole('ADMIN','ABSOLUT')" th:text="${division.name}"></span>
                         </strong>
                         <p class="company-tree-manager"
                            th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') + ' — ' + division.manager.email : 'Керівник не призначений'}"></p>
@@ -145,12 +145,12 @@
                              class="company-tree-division company-tree-legacy-division">
                         <strong>
                             <small>Відділ без управління</small>
-                            <a sec:authorize="hasRole('ADMIN')"
+                            <a sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
                                class="company-tree-division-link"
                                th:href="@{/api/overtime/review(mode='division',departmentId=${department.id},divisionId=${division.id})}"
                                th:text="${division.name}"
                                title="Перейти до перевірки перепрацювань цього відділу"></a>
-                            <span sec:authorize="!hasRole('ADMIN')" th:text="${division.name}"></span>
+                            <span sec:authorize="!hasAnyRole('ADMIN','ABSOLUT')" th:text="${division.name}"></span>
                         </strong>
                         <p class="company-tree-manager"
                            th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') + ' — ' + division.manager.email : 'Керівник не призначений'}"></p>

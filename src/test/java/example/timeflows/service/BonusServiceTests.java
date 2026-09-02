@@ -27,7 +27,9 @@ class BonusServiceTests {
 
     @BeforeEach
     void setup() {
-        service = new BonusServiceImpl(repository, categoryRepository, userService);
+        service =
+                new BonusServiceImpl(
+                        repository, categoryRepository, userService, new AccessPolicy(true));
     }
 
     @Test
@@ -45,6 +47,18 @@ class BonusServiceTests {
         when(repository.findById(1L)).thenReturn(Optional.of(b));
         assertThatThrownBy(() -> service.update(1L, 1L, BigDecimal.TEN, "x", false))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void absolutCanReplaceFinalBonusDecision() {
+        Bonus bonus = bonus(BonusStatus.REJECTED);
+        when(repository.findById(1L)).thenReturn(Optional.of(bonus));
+        when(repository.save(bonus)).thenReturn(bonus);
+
+        Bonus result = service.decide(1L, BonusStatus.APPROVED, "Виправлено", true);
+
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThat(result.getAdminComment()).isEqualTo("Виправлено");
     }
 
     @Test
@@ -136,6 +150,36 @@ class BonusServiceTests {
         assertThat(result.getType()).isEqualTo(BonusType.KPI);
         assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
         assertThat(result.getCategory()).isNull();
+    }
+
+    @Test
+    void absolutCreatesKpiForProjectManagerInAnotherDivision() {
+        Division creatorDivision = new Division();
+        creatorDivision.setId(5L);
+        Division targetDivision = new Division();
+        targetDivision.setId(6L);
+        User absolut = new User();
+        absolut.setDivision(creatorDivision);
+        absolut.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.ABSOLUT)));
+        User target = new User();
+        target.setDivision(targetDivision);
+        target.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER)));
+        when(userService.findById(1L)).thenReturn(target);
+        when(userService.findByEmail("absolut@vyriy.com")).thenReturn(absolut);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        1L,
+                        null,
+                        BonusType.KPI,
+                        BigDecimal.TEN,
+                        "Cross-division KPI",
+                        "absolut@vyriy.com");
+
+        assertThat(result.getType()).isEqualTo(BonusType.KPI);
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThat(result.getUser()).isSameAs(target);
     }
 
     @Test

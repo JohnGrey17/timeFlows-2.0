@@ -15,10 +15,10 @@
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER','ABSOLUT') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a class="active" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form">
@@ -38,23 +38,23 @@
             </div>
         </header>
 
-        <div class="toolbar-split" sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+        <div class="toolbar-split" sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
             <form class="calendar-toolbar" method="get" th:action="@{/api/users}">
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Департамент
                     <select name="departmentId" data-organization-department data-auto-submit>
                         <option value="">Всі департаменти</option>
                         <option th:each="department:${departments}" th:value="${department.id}" th:selected="${department.id == selectedDepartmentId}" th:text="${department.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Управління
                     <select name="directorateId" data-organization-directorate>
                         <option value="">Всі управління</option>
                         <option th:each="directorate:${directorates}" th:value="${directorate.id}" th:data-department-id="${directorate.department.id}" th:selected="${directorate.id == selectedDirectorateId}" th:text="${directorate.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Відділ
                     <select name="divisionId" data-organization-division>
                         <option value="">Всі відділи</option>
@@ -65,14 +65,14 @@
                                 th:text="${division.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Підвідділ
                     <select name="subdivisionId" data-organization-subdivision>
                         <option value="">Всі підвідділи</option>
                         <option th:each="subdivision:${filterSubdivisions}" th:value="${subdivision.id}" th:data-division-id="${subdivision.division.id}" th:selected="${subdivision.id == selectedSubdivisionId}" th:text="${subdivision.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')">
+                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Групувати
                     <select name="groupBy" data-filter-auto-submit>
                         <option value="department" th:selected="${groupBy == 'department'}">За відділом</option>
@@ -80,7 +80,7 @@
                     </select>
                 </label>
             </form>
-            <a class="link-button" sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:href="@{/api/users/deactivated}">Деактивовані користувачі</a>
+            <a class="link-button" sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/users/deactivated}">Деактивовані користувачі</a>
         </div>
 
         <section class="table-panel">
@@ -104,7 +104,7 @@
                     </td>
                     <td th:text="${user.division.department.name + ' / ' + user.division.name + (user.subdivision == null ? '' : ' / ' + user.subdivision.name)}">Структура</td>
                     <td>
-                        <form sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN')" th:action="@{/api/users/{id}/roles(id=${user.id})}" method="post" class="permission-editor" data-user-management-action data-error-title="Не вдалося змінити ролі">
+                        <form sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:action="@{/api/users/{id}/roles(id=${user.id})}" method="post" class="permission-editor" data-user-management-action data-error-title="Не вдалося змінити ролі">
                             <label th:each="role:${T(example.timeflows.model.Role).values()}"><span class="permission-name"><span th:text="${role}"></span><span class="help-tip help-tip-small" tabindex="0" th:attr="data-tooltip=${role.name() == 'MANAGER' ? 'Роль керівника відділу: підтвердження заявок на перепрацювання у своєму відділі та нарахування бонусів.' : (role.name() == 'ADMIN' ? 'Адміністратор системи з доступом до повного функціоналу: перепрацювання, бонуси та квартальні бонуси.' : 'Користувач із базовими правами, зокрема створення заявок на перепрацювання.')} ">?</span></span><input type="checkbox" name="roles" th:value="${role}" th:checked="${user.roles.contains(role)}" th:disabled="${#authorization.expression('hasRole(''SYS_ADMIN'')') and role.name() == 'ADMIN'}"></label>
                             <input sec:authorize="hasRole('SYS_ADMIN')" th:if="${user.roles.contains(T(example.timeflows.model.Role).ADMIN)}" type="hidden" name="roles" value="ADMIN">
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}"><input type="hidden" name="directorateId" th:value="${selectedDirectorateId}"><input type="hidden" name="divisionId" th:value="${selectedDivisionId}"><input type="hidden" name="subdivisionId" th:value="${selectedSubdivisionId}"><input type="hidden" name="groupBy" th:value="${groupBy}">
@@ -112,18 +112,19 @@
                         </form>
                     </td>
                     <td>
-                        <form sec:authorize="hasRole('ADMIN')" th:action="@{/api/users/{id}/tags(id=${user.id})}" method="post" class="permission-editor" data-user-management-action data-error-title="Не вдалося змінити теги">
+                        <form sec:authorize="hasAnyRole('ADMIN','ABSOLUT')" th:action="@{/api/users/{id}/tags(id=${user.id})}" method="post" class="permission-editor" data-user-management-action data-error-title="Не вдалося змінити теги">
                             <label><span class="permission-name">PM <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Отримує KPI, але не може отримувати звичайні та квартальні бонуси.">?</span></span><input type="checkbox" name="tags" value="PROJECT_MANAGER" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).PROJECT_MANAGER)}"></label>
                             <label><span class="permission-name">PM LEAD <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Може нараховувати KPI користувачам із тегом PM. Сам не отримує KPI, але може отримувати звичайні та квартальні бонуси.">?</span></span><input type="checkbox" name="tags" value="PROJECT_MANAGER_LEAD" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).PROJECT_MANAGER_LEAD)}"></label>
                             <label><span class="permission-name">ALLOW_OVER <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Дозволяє створювати заявки на перепрацювання у будь-який день у межах дозволеного періоду.">?</span></span><input type="checkbox" name="tags" value="ALLOW_OVER" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).ALLOW_OVER)}"></label>
                             <label><span class="permission-name">DIVISION OVERTIME <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Тег працює в зв'язці з ролю менеджер і дає змогу менеджеру робити заявки на перепрацювання самостійно за користувачів свого відділу. всі створені заявки автоматично потрапляють на затверження ажміністратора.">?</span></span><input type="checkbox" name="tags" value="DIVISION_OVERTIME" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).DIVISION_OVERTIME)}"></label>
                             <label><span class="permission-name">SYS_ADMIN <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Керує користувачами, ролями (крім ADMIN), оргструктурою та категоріями бонусів. Не погоджує перепрацювання або бонуси.">?</span></span><input type="checkbox" name="tags" value="SYS_ADMIN" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).SYS_ADMIN)}"></label>
+                            <label><span class="permission-name">ABSOLUT <span class="help-tip help-tip-small" tabindex="0" data-tooltip="Тимчасовий повний доступ до користувачів, перепрацювань, бонусів і KPI незалежно від відділу.">?</span></span><input type="checkbox" name="tags" value="ABSOLUT" th:checked="${user.tags.contains(T(example.timeflows.model.BusinessTag).ABSOLUT)}"></label>
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}"><input type="hidden" name="directorateId" th:value="${selectedDirectorateId}"><input type="hidden" name="divisionId" th:value="${selectedDivisionId}"><input type="hidden" name="subdivisionId" th:value="${selectedSubdivisionId}"><input type="hidden" name="groupBy" th:value="${groupBy}">
                             <button type="submit">Зберегти теги</button>
                         </form>
                     </td>
                     <td>
-                        <form sec:authorize="hasRole('ADMIN')"
+                        <form sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
                               th:action="@{/api/users/{id}/organization(id=${user.id})}"
                               method="post"
                               class="inline-form organization-assignment"
@@ -150,7 +151,7 @@
                         </form>
                     </td>
                     <td>
-                        <form sec:authorize="hasAnyRole('ADMIN','MANAGER','SYS_ADMIN')"
+                        <form sec:authorize="hasAnyRole('ADMIN','MANAGER','SYS_ADMIN','ABSOLUT')"
                               th:if="${user.id != currentUser.id and (#authorization.expression('hasRole(''ADMIN'')') or #authorization.expression('hasRole(''MANAGER'')') or !user.roles.contains(T(example.timeflows.model.Role).ADMIN))}"
                               th:action="@{/api/users/{id}/deactivate(id=${user.id})}"
                               method="post"
@@ -159,10 +160,10 @@
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}"><input type="hidden" name="divisionId" th:value="${selectedDivisionId}"><input type="hidden" name="groupBy" th:value="${groupBy}">
                             <button type="submit" class="danger-button">Деактивувати</button>
                         </form>
-                        <div sec:authorize="hasRole('ADMIN')" th:if="${user.id == currentUser.id}" class="disabled-admin-actions self-admin-actions">
+                        <div sec:authorize="hasAnyRole('ADMIN','ABSOLUT')" th:if="${user.id == currentUser.id}" class="disabled-admin-actions self-admin-actions">
                             <button type="button" class="danger-button" disabled title="Не можна деактивувати власний обліковий запис">Деактивувати</button>
                         </div>
-                        <div sec:authorize="hasRole('ADMIN')"
+                        <div sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
                              class="credential-actions"
                              th:classappend="${user.id == currentUser.id} ? ' credential-actions-self' : ''">
                             <form th:if="${user.id != currentUser.id}"
@@ -182,7 +183,7 @@
                                     class="danger-button"
                                     th:attr="data-open-password-reset=${'password-reset-' + user.id}">Скинути пароль</button>
                         </div>
-                        <dialog sec:authorize="hasRole('ADMIN')"
+                        <dialog sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
                                 class="modal-panel decision-modal"
                                 th:id="${'password-reset-' + user.id}">
                             <form th:action="@{/api/users/{id}/password/reset(id=${user.id})}"

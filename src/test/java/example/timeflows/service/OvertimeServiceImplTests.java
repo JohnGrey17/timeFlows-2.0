@@ -426,6 +426,28 @@ class OvertimeServiceImplTests {
     }
 
     @Test
+    void absolutCanEditAndDeleteFinalOvertime() {
+        User actor = new User();
+        actor.setTags(new LinkedHashSet<>(Set.of(BusinessTag.ABSOLUT)));
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_ADMIN);
+        OvertimeRequest request = validRequest();
+        request.setHours(9.5);
+        request.setDescription("Виправлений опис");
+        when(userService.findByEmail("absolut@vyriy.com")).thenReturn(actor);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime updated = overtimeService.updateAsAbsolut("absolut@vyriy.com", 1L, request);
+
+        assertThat(updated.getStatus()).isEqualTo(OvertimeStatus.APPROVED_ADMIN);
+        assertThat(updated.getHours()).isEqualTo(9.5);
+        assertThat(updated.getDescription()).isEqualTo("Виправлений опис");
+
+        overtimeService.deleteAsAbsolut("absolut@vyriy.com", 1L);
+        verify(overtimeRepository).delete(overtime);
+    }
+
+    @Test
     void resubmitRejectedOvertimeReturnsItToPending() {
         Overtime overtime = overtime(OvertimeStatus.REJECTED);
         when(overtimeRepository.findByIdAndUserEmail(1L, "employee@vyriy.com"))
