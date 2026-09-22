@@ -35,10 +35,10 @@ class DemoDataIntegrationTests {
     @Transactional
     void createsRichIdempotentPreProductionDataset() {
         assertThat(users.count()).isEqualTo(15);
-        assertThat(departments.count()).isEqualTo(2);
-        assertThat(directorates.count()).isEqualTo(4);
-        assertThat(divisions.count()).isEqualTo(8);
-        assertThat(subdivisions.count()).isEqualTo(16);
+        assertThat(departments.count()).isEqualTo(3);
+        assertThat(directorates.count()).isEqualTo(16);
+        assertThat(divisions.count()).isEqualTo(56);
+        assertThat(subdivisions.count()).isEqualTo(160);
         assertThat(overtimes.count()).isZero();
         assertThat(bonuses.count()).isZero();
 
@@ -49,10 +49,12 @@ class DemoDataIntegrationTests {
         assertThat(admin.getDivision().getName()).isEqualTo("IT");
         assertThat(admin.getSubdivision().getName()).isEqualTo("Платформа");
         assertThat(departments.findByNameIgnoreCase("Операційна діяльність")).isPresent();
-        assertThat(directorates.findAllByOrderByNameAsc())
-                .allSatisfy(directorate -> assertThat(directorate.getManager()).isNotNull());
-        assertThat(divisions.findAll())
-                .allSatisfy(division -> assertThat(division.getManager()).isNotNull());
+        assertThat(
+                        directorates.findAllByOrderByNameAsc().stream()
+                                .filter(directorate -> directorate.getManager() != null))
+                .hasSize(4);
+        assertThat(divisions.findAll().stream().filter(division -> division.getManager() != null))
+                .hasSize(8);
         assertThat(users.findAll())
                 .allSatisfy(
                         user -> {
@@ -63,10 +65,10 @@ class DemoDataIntegrationTests {
         demoDataService.initialize();
 
         assertThat(users.count()).isEqualTo(15);
-        assertThat(departments.count()).isEqualTo(2);
-        assertThat(directorates.count()).isEqualTo(4);
-        assertThat(divisions.count()).isEqualTo(8);
-        assertThat(subdivisions.count()).isEqualTo(16);
+        assertThat(departments.count()).isEqualTo(3);
+        assertThat(directorates.count()).isEqualTo(16);
+        assertThat(divisions.count()).isEqualTo(56);
+        assertThat(subdivisions.count()).isEqualTo(160);
         assertThat(overtimes.count()).isZero();
         assertThat(bonuses.count()).isZero();
     }

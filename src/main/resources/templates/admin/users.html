@@ -132,12 +132,34 @@
                               class="inline-form organization-assignment"
                               data-user-management-action
                               data-error-title="Не вдалося перенести користувача">
+                            <label><span>Департамент</span>
+                            <select required data-assignment-department>
+                                <option value="">Оберіть департамент</option>
+                                <option th:each="department:${departments}"
+                                        th:value="${department.id}"
+                                        th:selected="${department.id == user.division.department.id}"
+                                        th:text="${department.name}"></option>
+                            </select></label>
+                            <label><span>Управління</span>
+                            <select data-assignment-directorate>
+                                <option value="">Без управління</option>
+                                <option th:each="directorate:${allDirectorates}"
+                                        th:value="${directorate.id}"
+                                        th:data-department-id="${directorate.department.id}"
+                                        th:selected="${user.division.directorate != null and directorate.id == user.division.directorate.id}"
+                                        th:text="${directorate.name}"></option>
+                            </select></label>
+                            <label><span>Відділ</span>
                             <select name="targetDivisionId" required data-assignment-division>
+                                <option value="">Оберіть відділ</option>
                                 <option th:each="division:${allDivisions}"
                                         th:value="${division.id}"
+                                        th:data-department-id="${division.department.id}"
+                                        th:data-directorate-id="${division.directorate == null ? '' : division.directorate.id}"
                                         th:selected="${division.id == user.division.id}"
-                                        th:text="${division.department.name + ' / ' + division.name}"></option>
-                            </select>
+                                        th:text="${division.name}"></option>
+                            </select></label>
+                            <label><span>Підвідділ</span>
                             <select name="subdivisionId" data-assignment-subdivision>
                                 <option value="">Без підвідділу</option>
                                 <option th:each="subdivision:${allSubdivisions}"
@@ -145,7 +167,7 @@
                                         th:data-division-id="${subdivision.division.id}"
                                         th:selected="${user.subdivision != null and subdivision.id == user.subdivision.id}"
                                         th:text="${subdivision.name}"></option>
-                            </select>
+                            </select></label>
                             <input type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
                             <input type="hidden" name="divisionId" th:value="${selectedDivisionId}">
                             <input type="hidden" name="groupBy" th:value="${groupBy}">

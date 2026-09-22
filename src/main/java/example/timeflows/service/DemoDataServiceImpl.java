@@ -108,6 +108,8 @@ public class DemoDataServiceImpl implements DemoDataService {
         Subdivision office = subdivision(administration, "Офіс");
         Subdivision documentation = subdivision(administration, "Документообіг");
 
+        createLargeOrganizationForInterfaceTesting();
+
         User admin =
                 user(
                         "serhii.hainovskyi@vyriy.com",
@@ -206,6 +208,34 @@ public class DemoDataServiceImpl implements DemoDataService {
         directorateManager(operations, nataliia);
         directorateManager(people, maksym);
         retireLegacyAdmin(admin.getId());
+    }
+
+    private void createLargeOrganizationForInterfaceTesting() {
+        Department testDepartment = department("Тестовий великий департамент");
+        for (int directorateNumber = 1; directorateNumber <= 12; directorateNumber++) {
+            Directorate directorate =
+                    directorate(
+                            testDepartment,
+                            "Тестове управління " + String.format("%02d", directorateNumber));
+            for (int divisionNumber = 1; divisionNumber <= 4; divisionNumber++) {
+                Division division =
+                        division(
+                                testDepartment,
+                                directorate,
+                                String.format(
+                                        "Відділ %02d.%02d",
+                                        directorateNumber, divisionNumber));
+                for (int subdivisionNumber = 1;
+                        subdivisionNumber <= 3;
+                        subdivisionNumber++) {
+                    subdivision(
+                            division,
+                            String.format(
+                                    "Підвідділ %02d.%02d.%02d",
+                                    directorateNumber, divisionNumber, subdivisionNumber));
+                }
+            }
+        }
     }
 
     private User demoUser(
