@@ -190,6 +190,7 @@ public class UsersPageController {
         model.addAttribute("activePage", "users");
         model.addAttribute("groupBy", groupBy);
         model.addAttribute("allDivisions", admin ? divisionService.findAll() : List.of());
+        model.addAttribute("allDirectorates", admin ? directorateService.findAll() : List.of());
         model.addAttribute("allSubdivisions", admin ? subdivisionService.findAll() : List.of());
         return "admin/users";
     }

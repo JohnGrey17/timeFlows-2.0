@@ -1364,7 +1364,7 @@ textarea:focus {
 .company-tree-root::-webkit-details-marker { display: none; }
 .company-tree-toggle { font-size: 20px; line-height: 1; transition: transform .2s ease; }
 .company-tree-department[open] > .company-tree-root .company-tree-toggle { transform: rotate(180deg); }
-.company-tree-content { position: relative; min-width: min-content; padding-top: 34px; }
+.company-tree-content { position: relative; min-width: 100%; padding-top: 34px; }
 .company-tree-content::before {
     content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 34px;
     background: #d9b7a1; transform: translateX(-50%);
@@ -1396,6 +1396,17 @@ textarea:focus {
     border: 1px solid #ead8cb; border-radius: 13px; background: #fffaf7;
     box-shadow: 0 9px 24px rgba(102, 65, 38, .07); text-align: center;
 }
+.company-tree-directorate-summary {
+    display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px;
+    cursor: pointer; list-style: none;
+}
+.company-tree-directorate-summary::-webkit-details-marker { display: none; }
+.company-tree-directorate-summary > span:first-child { display: grid; gap: 3px; }
+.company-tree-directorate-summary b { font-size: 16px; }
+.company-tree-directorate-toggle { color: var(--accent-strong); font-size: 18px; line-height: 1; transition: transform .2s ease; }
+.company-tree-directorate[open] > .company-tree-directorate-summary { margin-bottom: 9px; }
+.company-tree-directorate[open] > .company-tree-directorate-summary .company-tree-directorate-toggle { transform: rotate(180deg); }
+.company-tree-directorate-content { min-width: 0; }
 .company-tree-directorate::before {
     content: ""; position: absolute; top: -30px; left: 50%; width: 2px; height: 30px;
     background: #d9b7a1; transform: translateX(-50%);
@@ -1441,6 +1452,11 @@ textarea:focus {
 .company-tree-legacy { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .company-tree-legacy-division { width: min(280px, 100%); }
 .company-tree-legacy-division::before { display: none; }
+.organization-assignment { display: grid; grid-template-columns: 1fr; gap: 7px; min-width: 190px; }
+.organization-assignment label { display: grid; gap: 3px; color: var(--muted); font-size: 10px; font-weight: 800; }
+.organization-assignment select,
+.organization-assignment button { width: 100%; min-width: 0; min-height: 34px; padding: 6px 9px; font-size: 12px; }
+.organization-assignment button { margin-top: 2px; }
 @media (max-width: 760px) {
     .summary-bonus-create,
     .summary-bonus-admin form:first-child { grid-template-columns: 1fr; }

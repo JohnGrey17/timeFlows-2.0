@@ -89,8 +89,12 @@
                         </details>
                     </div>
                     <div class="company-tree-directorates">
-                <article th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate">
-                    <h3><small>Управління</small><span th:text="${directorate.name}"></span></h3>
+                <details th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate">
+                    <summary class="company-tree-directorate-summary">
+                        <span><small>Управління</small><b th:text="${directorate.name}"></b></span>
+                        <span class="company-tree-directorate-toggle" aria-hidden="true">⌄</span>
+                    </summary>
+                    <div class="company-tree-directorate-content">
                     <p class="company-tree-manager"
                        th:text="${directorate.manager != null ? 'Керівник управління: ' + (directorate.manager.lastName ?: '') + ' ' + (directorate.manager.firstName ?: '') + ' — ' + directorate.manager.email : 'Керівник управління не призначений'}"></p>
                     <form th:action="@{/api/organization/directorates/{id}/manager(id=${directorate.id})}" method="post" class="inline-form manager-assignment-form" data-manager-assignment>
@@ -172,7 +176,8 @@
                         </details>
                     </article>
                     </div>
-                </article>
+                    </div>
+                </details>
                     </div>
                 <div class="company-tree-legacy" th:if="${!department.divisions.isEmpty()}">
                     <article th:each="division:${divisions}"
