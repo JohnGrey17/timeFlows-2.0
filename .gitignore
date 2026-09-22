@@ -37,6 +37,7 @@ out/
 .vscode/
 
 ### Local project notes and credentials ###
+testusers.md
 userfrendly.md
 workflow.md
 user.md

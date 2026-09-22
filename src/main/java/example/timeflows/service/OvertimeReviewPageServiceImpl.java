@@ -70,11 +70,21 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         User current = userService.findByEmail(email);
         boolean absolut = accessPolicy.isAbsolut(current);
         boolean admin = current.getRoles().contains(Role.ADMIN) || absolut;
+        boolean directorateManager = current.getRoles().contains(Role.DIRECTORATE_MANAGER);
+        boolean divisionManager = current.getRoles().contains(Role.MANAGER);
         YearMonth selected = overtimeViewService.resolveMonth(year, month);
         boolean employeeMode = "employee".equals(mode) && userId != null;
         User requestedUser = employeeMode ? userService.findById(userId) : null;
         if (requestedUser != null
                 && !admin
+                && !(directorateManager
+                        && requestedUser.getDivision().getDirectorate() != null
+                        && current.getDivision().getDirectorate() != null
+                        && requestedUser
+                                .getDivision()
+                                .getDirectorate()
+                                .getId()
+                                .equals(current.getDivision().getDirectorate().getId()))
                 && !requestedUser.getDivision().getId().equals(current.getDivision().getId())) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Немає доступу до перепрацювань цього користувача");
@@ -90,15 +100,26 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         Long effectiveDivision =
                 requestedUser != null
                         ? requestedUser.getDivision().getId()
-                        : admin ? divisionId : current.getDivision().getId();
+                        : admin || directorateManager ? divisionId : current.getDivision().getId();
         Long effectiveDirectorate =
                 requestedUser != null && requestedUser.getDivision().getDirectorate() != null
                         ? requestedUser.getDivision().getDirectorate().getId()
-                        : admin ? directorateId : null;
+                        : admin
+                                ? directorateId
+                                : current.getDivision().getDirectorate() != null
+                                        ? current.getDivision().getDirectorate().getId()
+                                        : null;
         Long effectiveSubdivision =
                 requestedUser != null && requestedUser.getSubdivision() != null
                         ? requestedUser.getSubdivision().getId()
-                        : admin ? subdivisionId : null;
+                        : admin || directorateManager || divisionManager ? subdivisionId : null;
+        validateManagerScope(
+                current,
+                admin,
+                directorateManager,
+                effectiveDirectorate,
+                effectiveDivision,
+                effectiveSubdivision);
         List<User> users =
                 requestedUser != null
                         ? List.of(requestedUser)
@@ -130,21 +151,21 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                         : List.of(current.getDivision().getDepartment()));
         data.put(
                 "directorates",
-                admin ? directorateService.findByDepartment(effectiveDepartment) : List.of());
+                admin || directorateManager
+                        ? directorateService.findByDepartment(effectiveDepartment)
+                        : List.of());
         data.put(
                 "divisions",
-                admin
+                admin || directorateManager
                         ? (effectiveDirectorate == null
                                 ? divisionService.findByDepartment(effectiveDepartment)
                                 : divisionService.findByDirectorate(effectiveDirectorate))
                         : List.of(current.getDivision()));
         data.put(
                 "subdivisions",
-                admin
-                        ? (effectiveDivision == null
-                                ? List.of()
-                                : subdivisionService.findByDivision(effectiveDivision))
-                        : List.of());
+                effectiveDivision == null
+                        ? List.of()
+                        : subdivisionService.findByDivision(effectiveDivision));
         data.put("users", users);
         data.put(
                 "selectedDivision",
@@ -153,6 +174,13 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("selectedDirectorateId", effectiveDirectorate);
         data.put("selectedSubdivisionId", effectiveSubdivision);
         data.put("selectedDepartmentId", effectiveDepartment);
+        data.put(
+                "organizationPath",
+                organizationPath(
+                        effectiveDepartment,
+                        effectiveDirectorate,
+                        effectiveDivision,
+                        effectiveSubdivision));
         data.put("selectedStatus", status);
         data.put(
                 "overtimeStatuses",
@@ -163,10 +191,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                         OvertimeStatus.APPROVED_MANAGER,
                                         OvertimeStatus.DECLINED,
                                         OvertimeStatus.APPROVED_ADMIN)
-                                : List.of(
-                                        OvertimeStatus.CHECKING,
-                                        OvertimeStatus.APPROVED_MANAGER,
-                                        OvertimeStatus.DECLINED));
+                                : directorateManager
+                                        ? List.of(
+                                                OvertimeStatus.APPROVED_MANAGER,
+                                                OvertimeStatus.DECLINED)
+                                        : List.of(
+                                                OvertimeStatus.CHECKING,
+                                                OvertimeStatus.APPROVED_MANAGER,
+                                                OvertimeStatus.DECLINED));
         data.put("selectedUserId", selectedUserId);
         data.put("selectedUserDisplay", displayName(selectedUser));
         data.put("selectedMonth", selected);
@@ -176,6 +208,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("viewMode", "summary".equals(view) ? "summary" : "matrix");
         data.put("activePage", "review");
         data.put("admin", admin);
+        data.put("directorateManager", directorateManager);
+        data.put("divisionManager", divisionManager);
         data.put("absolut", absolut);
         data.put(
                 "canCreateDivisionOvertime",
@@ -188,13 +222,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put(
                 "divisionOvertimeCreationDates",
                 overtimeService.divisionOvertimeCreationDates(email, selected));
-        data.put(
-                "canApproveBonuses",
-                admin
-                        || current.getRoles().contains(Role.MANAGER)
-                        || current.getTags()
-                                .contains(
-                                        example.timeflows.model.BusinessTag.PROJECT_MANAGER_LEAD));
+        data.put("canApproveBonuses", current.getRoles().contains(Role.DIRECTORATE_MANAGER));
         data.put(
                 "canManageKpi",
                 accessPolicy.isAbsolut(current)
@@ -269,8 +297,57 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                 status,
                 selected,
                 admin,
+                directorateManager,
                 absolut);
         return data;
+    }
+
+    private void validateManagerScope(
+            User current,
+            boolean admin,
+            boolean directorateManager,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId) {
+        if (admin) return;
+        if (directorateManager && divisionId != null) {
+            var division = divisionService.findById(divisionId);
+            if (division.getDirectorate() == null
+                    || !division.getDirectorate().getId().equals(directorateId)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Відділ не належить до управління керівника");
+            }
+        }
+        if (subdivisionId != null) {
+            var subdivision = subdivisionService.findById(subdivisionId);
+            if (divisionId == null || !subdivision.getDivision().getId().equals(divisionId)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "Напрям не належить до вибраного відділу");
+            }
+        }
+        if (!directorateManager
+                && divisionId != null
+                && !divisionId.equals(current.getDivision().getId())) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Керівник може переглядати лише свій відділ");
+        }
+    }
+
+    private String organizationPath(
+            Long departmentId, Long directorateId, Long divisionId, Long subdivisionId) {
+        StringBuilder path = new StringBuilder(departmentService.findById(departmentId).getName());
+        if (directorateId != null) {
+            path.append(" / ").append(directorateService.findById(directorateId).getName());
+        }
+        if (divisionId != null) {
+            path.append(" / ").append(divisionService.findById(divisionId).getName());
+        } else if (directorateId != null) {
+            path.append(" / Всі відділи");
+        }
+        if (subdivisionId != null) {
+            path.append(" / ").append(subdivisionService.findById(subdivisionId).getName());
+        }
+        return path.toString();
     }
 
     private void addDivisionData(
@@ -281,6 +358,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             OvertimeStatus status,
             YearMonth month,
             boolean admin,
+            boolean directorateManager,
             boolean absolut) {
         if (departmentId == null) return;
         List<Overtime> overtimes =
@@ -294,7 +372,13 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                         .filter(
                                 overtime ->
                                         absolut
-                                                || !admin
+                                                || (directorateManager
+                                                        && (overtime.getStatus()
+                                                                        == OvertimeStatus
+                                                                                .APPROVED_MANAGER
+                                                                || overtime.getStatus()
+                                                                        == OvertimeStatus.DECLINED))
+                                                || (!admin && !directorateManager)
                                                 || overtime.getStatus()
                                                         == OvertimeStatus.APPROVED_MANAGER
                                                 || overtime.getStatus()
@@ -408,7 +492,9 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
     }
 
     private boolean isFinalApproved(OvertimeStatus status) {
-        return status == OvertimeStatus.APPROVED_ADMIN || status == OvertimeStatus.APPROVED;
+        return status == OvertimeStatus.APPROVED_DIRECTORATE
+                || status == OvertimeStatus.APPROVED_ADMIN
+                || status == OvertimeStatus.APPROVED;
     }
 
     private Map<Long, Map<Long, BigDecimal>> categoryTotals(

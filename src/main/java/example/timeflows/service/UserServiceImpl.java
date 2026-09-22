@@ -7,6 +7,7 @@ import example.timeflows.model.Division;
 import example.timeflows.model.Role;
 import example.timeflows.model.Subdivision;
 import example.timeflows.model.User;
+import example.timeflows.repository.DirectorateRepository;
 import example.timeflows.repository.DivisionRepository;
 import example.timeflows.repository.SubdivisionRepository;
 import example.timeflows.repository.UserRepository;
@@ -26,6 +27,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     private final UserRepository userRepository;
     private final DivisionRepository divisionRepository;
+    private final DirectorateRepository directorateRepository;
     private final PasswordEncoder passwordEncoder;
     private final SubdivisionRepository subdivisionRepository;
     private final AccessPolicy accessPolicy;
@@ -34,11 +36,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserServiceImpl(
             UserRepository userRepository,
             DivisionRepository divisionRepository,
+            DirectorateRepository directorateRepository,
             SubdivisionRepository subdivisionRepository,
             PasswordEncoder passwordEncoder,
             AccessPolicy accessPolicy) {
         this.userRepository = userRepository;
         this.divisionRepository = divisionRepository;
+        this.directorateRepository = directorateRepository;
         this.subdivisionRepository = subdivisionRepository;
         this.passwordEncoder = passwordEncoder;
         this.accessPolicy = accessPolicy;
@@ -52,6 +56,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         this(
                 userRepository,
                 divisionRepository,
+                null,
                 subdivisionRepository,
                 passwordEncoder,
                 new AccessPolicy(true));
@@ -269,6 +274,42 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
+    public User assignDirectorateManager(Long directorateId, Long userId) {
+        var directorate =
+                directorateRepository
+                        .findById(directorateId)
+                        .orElseThrow(() -> new UserException("Управління не знайдено"));
+        User user = findById(userId);
+        if (!user.isActive()) {
+            throw new UserException(
+                    "Деактивованого користувача не можна призначити керівником управління");
+        }
+        if (user.getDivision() == null
+                || user.getDivision().getDirectorate() == null
+                || !user.getDivision().getDirectorate().getId().equals(directorateId)) {
+            throw new UserException("Керівник управління має належати до вибраного управління");
+        }
+        directorateRepository
+                .findByManagerId(userId)
+                .filter(existing -> !existing.getId().equals(directorateId))
+                .ifPresent(
+                        existing -> {
+                            throw new UserException(
+                                    "Користувач вже є керівником іншого управління");
+                        });
+        User previousManager = directorate.getManager();
+        directorate.setManager(user);
+        user.getRoles().add(Role.DIRECTORATE_MANAGER);
+        directorateRepository.save(directorate);
+        if (previousManager != null && !previousManager.getId().equals(userId)) {
+            previousManager.getRoles().remove(Role.DIRECTORATE_MANAGER);
+            userRepository.save(previousManager);
+        }
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
     public User moveToOrganization(Long userId, Long divisionId, Long subdivisionId) {
         User user = findById(userId);
         Division targetDivision = findDivision(divisionId);
@@ -343,6 +384,18 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         } else if (assignedManager && !requestsManager) {
             user.getDivision().setManager(null);
             divisionRepository.save(user.getDivision());
+        }
+        boolean assignedDirectorateManager =
+                user.getDivision() != null
+                        && user.getDivision().getDirectorate() != null
+                        && user.getDivision().getDirectorate().getManager() != null
+                        && user.getDivision().getDirectorate().getManager().getId().equals(userId);
+        boolean requestsDirectorateManager = requested.contains(Role.DIRECTORATE_MANAGER);
+        if (requestsDirectorateManager && !assignedDirectorateManager) {
+            assignDirectorateManager(user.getDivision().getDirectorate().getId(), userId);
+        } else if (assignedDirectorateManager && !requestsDirectorateManager) {
+            user.getDivision().getDirectorate().setManager(null);
+            directorateRepository.save(user.getDivision().getDirectorate());
         }
         user.setRoles(requested);
         return userRepository.save(user);

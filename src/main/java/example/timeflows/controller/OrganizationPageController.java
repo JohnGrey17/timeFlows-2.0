@@ -56,6 +56,7 @@ public class OrganizationPageController {
         model.addAttribute("directorates", directorateService.findAll());
         model.addAttribute("divisions", divisions);
         model.addAttribute("subdivisions", subdivisionService.findAll());
+        model.addAttribute("activeUsers", userService.findActiveUsers());
         model.addAttribute("activePage", "organization");
         return "admin/organization";
     }
@@ -171,6 +172,28 @@ public class OrganizationPageController {
     public String deleteDirectorate(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         return organizationAction(
                 () -> directorateService.delete(id), "Управління видалено", redirectAttributes);
+    }
+
+    @PostMapping("/api/organization/directorates/{id}/manager")
+    public String assignDirectorateManager(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            RedirectAttributes redirectAttributes) {
+        return organizationAction(
+                () -> userService.assignDirectorateManager(id, userId),
+                "Керівника управління призначено",
+                redirectAttributes);
+    }
+
+    @PostMapping("/api/organization/divisions/{id}/manager")
+    public String assignDivisionManager(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            RedirectAttributes redirectAttributes) {
+        return organizationAction(
+                () -> userService.assignDivisionManager(id, userId),
+                "Керівника відділу призначено",
+                redirectAttributes);
     }
 
     @PostMapping("/api/organization/divisions/{id}/update")

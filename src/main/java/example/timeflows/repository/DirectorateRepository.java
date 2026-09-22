@@ -14,6 +14,8 @@ public interface DirectorateRepository extends JpaRepository<Directorate, Long> 
 
     boolean existsByIdAndDivisionsUsersActiveTrue(Long id);
 
+    Optional<Directorate> findByManagerId(Long managerId);
+
     @EntityGraph(attributePaths = {"department", "manager"})
     List<Directorate> findAllByOrderByNameAsc();
 

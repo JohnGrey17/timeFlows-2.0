@@ -628,7 +628,7 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void adminCanApproveAndRejectPendingBonusFromBonusModule() throws Exception {
+    void adminCannotApproveOrRejectPendingBonusFromBonusModule() throws Exception {
         example.timeflows.model.Bonus bonus =
                 bonusRepository.findAll().stream()
                         .filter(b -> b.getStatus() == example.timeflows.model.BonusStatus.PENDING)
@@ -639,17 +639,14 @@ class SecurityAuthorizationTests {
                             post("/api/bonuses/{id}/approve", bonus.getId())
                                     .with(csrf())
                                     .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
-                    .andExpect(status().is3xxRedirection());
-
-            bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
-            bonusRepository.save(bonus);
+                    .andExpect(status().isForbidden());
 
             mockMvc.perform(
                             post("/api/bonuses/{id}/reject", bonus.getId())
                                     .with(csrf())
                                     .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE"))
                                     .param("comment", "Відхилено адміністратором"))
-                    .andExpect(status().is3xxRedirection());
+                    .andExpect(status().isForbidden());
         } finally {
             bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
             bonus.setAdminComment(null);

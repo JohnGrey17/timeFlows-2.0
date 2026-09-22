@@ -15,7 +15,7 @@
         <div class="sidebar-brand">timeFlows</div>
         <nav class="side-nav" aria-label="Основна навігація">
             <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
-            <a sec:authorize="hasAnyRole('ADMIN','MANAGER','ABSOLUT') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT') and !hasRole('SYS_ADMIN')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
             <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a class="active" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
@@ -38,8 +38,10 @@
             </div>
         </header>
 
-        <div class="toolbar-split" sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
+        <div class="toolbar-split" sec:authorize="hasAnyRole('ADMIN','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')">
             <form class="calendar-toolbar" method="get" th:action="@{/api/users}">
+                <input sec:authorize="hasRole('DIRECTORATE_MANAGER') and !hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" type="hidden" name="departmentId" th:value="${selectedDepartmentId}">
+                <input sec:authorize="hasRole('DIRECTORATE_MANAGER') and !hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" type="hidden" name="directorateId" th:value="${selectedDirectorateId}">
                 <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
                     Департамент
                     <select name="departmentId" data-organization-department data-auto-submit>
@@ -54,7 +56,7 @@
                         <option th:each="directorate:${directorates}" th:value="${directorate.id}" th:data-department-id="${directorate.department.id}" th:selected="${directorate.id == selectedDirectorateId}" th:text="${directorate.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
+                <label sec:authorize="hasAnyRole('ADMIN','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')">
                     Відділ
                     <select name="divisionId" data-organization-division>
                         <option value="">Всі відділи</option>
@@ -65,14 +67,14 @@
                                 th:text="${division.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
+                <label sec:authorize="hasAnyRole('ADMIN','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')">
                     Підвідділ
                     <select name="subdivisionId" data-organization-subdivision>
                         <option value="">Всі підвідділи</option>
                         <option th:each="subdivision:${filterSubdivisions}" th:value="${subdivision.id}" th:data-division-id="${subdivision.division.id}" th:selected="${subdivision.id == selectedSubdivisionId}" th:text="${subdivision.name}"></option>
                     </select>
                 </label>
-                <label sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')">
+                <label sec:authorize="hasAnyRole('ADMIN','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')">
                     Групувати
                     <select name="groupBy" data-filter-auto-submit>
                         <option value="department" th:selected="${groupBy == 'department'}">За відділом</option>
@@ -151,8 +153,8 @@
                         </form>
                     </td>
                     <td>
-                        <form sec:authorize="hasAnyRole('ADMIN','MANAGER','SYS_ADMIN','ABSOLUT')"
-                              th:if="${user.id != currentUser.id and (#authorization.expression('hasRole(''ADMIN'')') or #authorization.expression('hasRole(''MANAGER'')') or !user.roles.contains(T(example.timeflows.model.Role).ADMIN))}"
+                        <form sec:authorize="hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')"
+                              th:if="${user.id != currentUser.id and (#authorization.expression('hasRole(''ADMIN'')') or #authorization.expression('hasRole(''MANAGER'')') or #authorization.expression('hasRole(''DIRECTORATE_MANAGER'')') or !user.roles.contains(T(example.timeflows.model.Role).ADMIN))}"
                               th:action="@{/api/users/{id}/deactivate(id=${user.id})}"
                               method="post"
                               class="inline-form">

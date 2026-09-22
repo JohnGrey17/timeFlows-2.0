@@ -90,7 +90,8 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
                 byDate.values().stream()
                         .filter(
                                 o ->
-                                        o.getStatus() == OvertimeStatus.APPROVED_ADMIN
+                                        o.getStatus() == OvertimeStatus.APPROVED_DIRECTORATE
+                                                || o.getStatus() == OvertimeStatus.APPROVED_ADMIN
                                                 || o.getStatus() == OvertimeStatus.APPROVED)
                         .map(o -> BigDecimal.valueOf(o.getHours()))
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -115,7 +116,8 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
                 byDate.values().stream()
                         .filter(
                                 o ->
-                                        o.getStatus() == OvertimeStatus.APPROVED_ADMIN
+                                        o.getStatus() == OvertimeStatus.APPROVED_DIRECTORATE
+                                                || o.getStatus() == OvertimeStatus.APPROVED_ADMIN
                                                 || o.getStatus() == OvertimeStatus.APPROVED)
                         .sorted(Comparator.comparing(Overtime::getWorkDate))
                         .map(
@@ -158,7 +160,7 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
                 switch (overtime.getStatus()) {
                     case CHECKING, PENDING -> "status-pending";
                     case APPROVED_MANAGER -> "status-manager";
-                    case APPROVED_ADMIN, APPROVED -> "status-approved";
+                    case APPROVED_DIRECTORATE, APPROVED_ADMIN, APPROVED -> "status-approved";
                     case DECLINED, REJECTED -> "status-rejected";
                 };
         return ("has-overtime " + statusClass + " " + pastClass).trim();

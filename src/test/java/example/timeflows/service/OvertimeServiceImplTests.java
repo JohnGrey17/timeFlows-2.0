@@ -264,7 +264,7 @@ class OvertimeServiceImplTests {
     }
 
     @Test
-    void divisionOvertimeManagerCreatesAdminReadyRequestForOwnEmployee() {
+    void divisionOvertimeManagerCreatesDirectorateReadyRequestForOwnEmployee() {
         overtimeService = serviceAt("2026-09-15T08:00:00Z");
         Division division = new Division();
         division.setId(7L);
@@ -290,7 +290,7 @@ class OvertimeServiceImplTests {
         assertThat(created.getUser()).isSameAs(employee);
         assertThat(created.getStatus()).isEqualTo(OvertimeStatus.APPROVED_MANAGER);
         assertThat(created.getManagerComment())
-                .contains("manager@vyriy.com", "очікує погодження ADMIN");
+                .contains("manager@vyriy.com", "очікує погодження керівника управління");
     }
 
     @Test

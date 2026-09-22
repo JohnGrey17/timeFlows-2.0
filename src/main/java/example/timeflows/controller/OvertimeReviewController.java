@@ -43,7 +43,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review/export")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public ResponseEntity<byte[]> export(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
@@ -82,7 +82,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String review(
             @RequestParam(defaultValue = "division") String mode,
             @RequestParam(defaultValue = "matrix") String view,
@@ -163,7 +163,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String approve(
             @RequestParam Long overtimeId,
             @RequestParam(required = false) String comment,
@@ -193,7 +193,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/approve-all")
-    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','DIRECTORATE_MANAGER','ABSOLUT')")
     public String approveAll(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
@@ -224,7 +224,7 @@ public class OvertimeReviewController {
                         page.getOrDefault("filteredOvertimes", java.util.List.of());
         overtimeService.approveAll(
                 overtimes.stream().map(Overtime::getId).toList(),
-                "Погоджено адміністратором масово",
+                "Погоджено масово",
                 authentication.getName());
         return reviewRedirect(
                 departmentId,
@@ -240,7 +240,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String reject(
             @RequestParam Long overtimeId,
             @RequestParam String comment,

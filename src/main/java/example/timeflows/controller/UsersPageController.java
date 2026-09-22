@@ -73,6 +73,7 @@ public class UsersPageController {
         if (!accessPolicy.isAbsolut(currentUser)
                 && !currentUser.getRoles().contains(Role.ADMIN)
                 && !currentUser.getRoles().contains(Role.MANAGER)
+                && !currentUser.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 && !currentUser.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException(
                     "Керування користувачами доступне лише адміністратору або менеджеру");
@@ -80,14 +81,41 @@ public class UsersPageController {
         boolean admin =
                 currentUser.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(currentUser);
         boolean globalUserManager = admin || currentUser.getTags().contains(BusinessTag.SYS_ADMIN);
+        boolean directorateManager =
+                currentUser.getRoles().contains(Role.DIRECTORATE_MANAGER) && !globalUserManager;
+        Long ownDirectorateId =
+                currentUser.getDivision().getDirectorate() == null
+                        ? null
+                        : currentUser.getDivision().getDirectorate().getId();
+        if (directorateManager && ownDirectorateId == null) {
+            throw new AccessDeniedException("Керівник управління не прив'язаний до управління");
+        }
         Long effectiveDepartmentId =
                 globalUserManager
                         ? departmentId
                         : currentUser.getDivision().getDepartment().getId();
         Long effectiveDivisionId =
-                globalUserManager ? divisionId : currentUser.getDivision().getId();
-        Long effectiveDirectorateId = globalUserManager ? directorateId : null;
-        Long effectiveSubdivisionId = globalUserManager ? subdivisionId : null;
+                globalUserManager || directorateManager
+                        ? divisionId
+                        : currentUser.getDivision().getId();
+        Long effectiveDirectorateId =
+                globalUserManager ? directorateId : directorateManager ? ownDirectorateId : null;
+        Long effectiveSubdivisionId =
+                globalUserManager || directorateManager ? subdivisionId : null;
+        if (directorateManager && effectiveDivisionId != null) {
+            var selectedDivision = divisionService.findById(effectiveDivisionId);
+            if (selectedDivision.getDirectorate() == null
+                    || !selectedDivision.getDirectorate().getId().equals(ownDirectorateId)) {
+                throw new AccessDeniedException("Відділ не належить до управління керівника");
+            }
+        }
+        if (effectiveSubdivisionId != null) {
+            var selectedSubdivision = subdivisionService.findById(effectiveSubdivisionId);
+            if (effectiveDivisionId == null
+                    || !selectedSubdivision.getDivision().getId().equals(effectiveDivisionId)) {
+                throw new AccessDeniedException("Напрям не належить до вибраного відділу");
+            }
+        }
         List<User> users =
                 effectiveSubdivisionId != null
                         ? userService.findActiveUsersBySubdivision(effectiveSubdivisionId)
@@ -126,7 +154,7 @@ public class UsersPageController {
                         : List.of(currentUser.getDivision().getDepartment()));
         model.addAttribute(
                 "divisions",
-                globalUserManager
+                globalUserManager || directorateManager
                         ? (effectiveDepartmentId == null
                                 ? List.of()
                                 : divisionService.findByDepartment(effectiveDepartmentId))
@@ -139,20 +167,22 @@ public class UsersPageController {
                 "directorates",
                 globalUserManager && effectiveDepartmentId != null
                         ? directorateService.findByDepartment(effectiveDepartmentId)
-                        : List.of());
+                        : directorateManager
+                                ? List.of(currentUser.getDivision().getDirectorate())
+                                : List.of());
         model.addAttribute(
                 "filterDivisions",
-                globalUserManager && effectiveDirectorateId != null
+                (globalUserManager || directorateManager) && effectiveDirectorateId != null
                         ? divisionService.findByDirectorate(effectiveDirectorateId)
                         : List.of());
         model.addAttribute(
                 "filterSubdivisions",
-                globalUserManager && effectiveDivisionId != null
+                (globalUserManager || directorateManager) && effectiveDivisionId != null
                         ? subdivisionService.findByDivision(effectiveDivisionId)
                         : List.of());
         model.addAttribute(
                 "selectedDivision",
-                globalUserManager
+                globalUserManager || directorateManager
                         ? (effectiveDivisionId == null
                                 ? null
                                 : divisionService.findById(effectiveDivisionId))
@@ -174,7 +204,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/salary")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String updateSalary(
             @PathVariable Long id,
             @RequestParam BigDecimal salary,
@@ -193,7 +223,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','SYS_ADMIN','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')")
     public String deactivate(
             @PathVariable Long id,
             @RequestParam String reason,

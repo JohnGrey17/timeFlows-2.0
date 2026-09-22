@@ -152,7 +152,13 @@ public class BonusServiceImpl implements BonusService {
     @Transactional
     public Bonus decide(Long id, BonusStatus status, String comment, boolean allowFinal) {
         Bonus b = find(id);
-        if (!allowFinal) assertPending(b);
+        if (status == BonusStatus.CANCELLED) {
+            if (!allowFinal || b.getStatus() != BonusStatus.APPROVED) {
+                throw new IllegalArgumentException("Скасувати можна лише погоджений бонус");
+            }
+        } else {
+            assertPending(b);
+        }
         b.setStatus(status);
         b.setAdminComment(comment);
         b.setUpdatedAt(LocalDateTime.now());
