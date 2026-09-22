@@ -74,11 +74,39 @@ public class DemoDataServiceImpl implements DemoDataService {
             throw new IllegalStateException(
                     "INITIAL_ADMIN_PASSWORD is required when demo data bootstrap is enabled");
         }
-        Department department = department("Масштабування");
-        Directorate technical = directorate(department, "Технічне управління");
-        Division it = division(department, technical, "IT");
-        removeUnusedSeedDivision(department, "Архітектори");
-        removeUnusedSeedDivision(department, "Аналітики");
+        Department scaling = department("Масштабування");
+        Directorate technical = directorate(scaling, "Технічне управління");
+        Directorate commercial = directorate(scaling, "Комерційне управління");
+        Division it = division(scaling, technical, "IT");
+        Division data = division(scaling, technical, "Дані та автоматизація");
+        Division sales = division(scaling, commercial, "Продажі");
+        Division marketing = division(scaling, commercial, "Маркетинг");
+        Subdivision platform = subdivision(it, "Платформа");
+        Subdivision support = subdivision(it, "Підтримка");
+        Subdivision analytics = subdivision(data, "Аналітика");
+        Subdivision integrations = subdivision(data, "Інтеграції");
+        Subdivision b2b = subdivision(sales, "B2B");
+        Subdivision b2g = subdivision(sales, "B2G");
+        Subdivision content = subdivision(marketing, "Контент");
+        Subdivision performance = subdivision(marketing, "Performance-маркетинг");
+        removeUnusedSeedDivision(scaling, "Архітектори");
+        removeUnusedSeedDivision(scaling, "Аналітики");
+
+        Department operationsDepartment = department("Операційна діяльність");
+        Directorate operations = directorate(operationsDepartment, "Операційне управління");
+        Directorate people = directorate(operationsDepartment, "Управління персоналом");
+        Division logistics = division(operationsDepartment, operations, "Логістика");
+        Division procurement = division(operationsDepartment, operations, "Закупівлі");
+        Division hr = division(operationsDepartment, people, "HR");
+        Division administration = division(operationsDepartment, people, "Адміністративний відділ");
+        Subdivision planning = subdivision(logistics, "Планування");
+        Subdivision fleet = subdivision(logistics, "Автопарк");
+        Subdivision suppliers = subdivision(procurement, "Постачальники");
+        Subdivision contracts = subdivision(procurement, "Договори");
+        Subdivision recruiting = subdivision(hr, "Рекрутинг");
+        Subdivision learning = subdivision(hr, "Навчання та розвиток");
+        Subdivision office = subdivision(administration, "Офіс");
+        Subdivision documentation = subdivision(administration, "Документообіг");
 
         User admin =
                 user(
@@ -87,14 +115,122 @@ public class DemoDataServiceImpl implements DemoDataService {
                         "Hainovskyi",
                         initialAdminPassword,
                         it,
-                        null,
+                        platform,
                         Set.of(BusinessTag.ABSOLUT),
                         new BigDecimal("5000.00"),
                         Role.ADMIN,
                         Role.EMPLOYEE);
         admin.setPassword(passwordEncoder.encode(initialAdminPassword));
         users.save(admin);
+
+        User olena =
+                demoUser(
+                        "olena.koval@vyriy.com",
+                        "Олена",
+                        "Коваль",
+                        it,
+                        platform,
+                        Role.MANAGER,
+                        Role.DIRECTORATE_MANAGER);
+        demoUser("ihor.melnyk@vyriy.com", "Ігор", "Мельник", it, support);
+        User taras =
+                demoUser(
+                        "taras.bondar@vyriy.com", "Тарас", "Бондар", data, analytics, Role.MANAGER);
+        demoUser("maria.shevchenko@vyriy.com", "Марія", "Шевченко", data, integrations);
+        User andrii =
+                demoUser(
+                        "andrii.tkachenko@vyriy.com",
+                        "Андрій",
+                        "Ткаченко",
+                        sales,
+                        b2b,
+                        Role.MANAGER,
+                        Role.DIRECTORATE_MANAGER);
+        demoUser("oleksii.kravets@vyriy.com", "Олексій", "Кравець", sales, b2g);
+        User sofia =
+                demoUser(
+                        "sofia.moroz@vyriy.com",
+                        "Софія",
+                        "Мороз",
+                        marketing,
+                        content,
+                        Role.MANAGER);
+        demoUser("dmytro.oliinyk@vyriy.com", "Дмитро", "Олійник", marketing, performance);
+        User nataliia =
+                demoUser(
+                        "nataliia.kozak@vyriy.com",
+                        "Наталія",
+                        "Козак",
+                        logistics,
+                        planning,
+                        Role.MANAGER,
+                        Role.DIRECTORATE_MANAGER);
+        demoUser("roman.levchenko@vyriy.com", "Роман", "Левченко", logistics, fleet);
+        User bohdan =
+                demoUser(
+                        "bohdan.polishchuk@vyriy.com",
+                        "Богдан",
+                        "Поліщук",
+                        procurement,
+                        suppliers,
+                        Role.MANAGER);
+        demoUser("yuliia.mazur@vyriy.com", "Юлія", "Мазур", procurement, contracts);
+        User maksym =
+                demoUser(
+                        "maksym.rudenko@vyriy.com",
+                        "Максим",
+                        "Руденко",
+                        hr,
+                        recruiting,
+                        Role.MANAGER,
+                        Role.DIRECTORATE_MANAGER);
+        User kateryna =
+                demoUser(
+                        "kateryna.lisova@vyriy.com",
+                        "Катерина",
+                        "Лісова",
+                        administration,
+                        office,
+                        Role.MANAGER);
+
+        manager(it, olena);
+        manager(data, taras);
+        manager(sales, andrii);
+        manager(marketing, sofia);
+        manager(logistics, nataliia);
+        manager(procurement, bohdan);
+        manager(hr, maksym);
+        manager(administration, kateryna);
+        directorateManager(technical, olena);
+        directorateManager(commercial, andrii);
+        directorateManager(operations, nataliia);
+        directorateManager(people, maksym);
         retireLegacyAdmin(admin.getId());
+    }
+
+    private User demoUser(
+            String email,
+            String firstName,
+            String lastName,
+            Division division,
+            Subdivision subdivision,
+            Role... additionalRoles) {
+        LinkedHashSet<Role> roles = new LinkedHashSet<>();
+        roles.add(Role.EMPLOYEE);
+        roles.addAll(Set.of(additionalRoles));
+        User demoUser =
+                user(
+                        email,
+                        firstName,
+                        lastName,
+                        initialAdminPassword,
+                        division,
+                        subdivision,
+                        Set.of(),
+                        new BigDecimal("1800.00"),
+                        roles.toArray(Role[]::new));
+        demoUser.setPassword(passwordEncoder.encode(initialAdminPassword));
+        return users.save(demoUser);
     }
 
     private User user(
@@ -129,6 +265,11 @@ public class DemoDataServiceImpl implements DemoDataService {
     private void manager(Division division, User manager) {
         division.setManager(manager);
         divisions.save(division);
+    }
+
+    private void directorateManager(Directorate directorate, User manager) {
+        directorate.setManager(manager);
+        directorates.save(directorate);
     }
 
     private void retireLegacyAdmin(Long replacementAdminId) {

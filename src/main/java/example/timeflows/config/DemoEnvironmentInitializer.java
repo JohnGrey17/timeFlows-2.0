@@ -31,7 +31,7 @@ public class DemoEnvironmentInitializer
                             "test-only-mfa-encryption-key-32-bytes"),
                     Map.entry("timeflows.mfa.issuer", "timeFlows-demo"),
                     Map.entry("timeflows.access.absolut-enabled", "true"),
-                    Map.entry("timeflows.bootstrap.admin-password", "test-only-admin-password"));
+                    Map.entry("timeflows.bootstrap.admin-password", "111"));
 
     @Override
     public void initialize(ConfigurableApplicationContext applicationContext) {

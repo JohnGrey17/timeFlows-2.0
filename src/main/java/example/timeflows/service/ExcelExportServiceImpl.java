@@ -179,6 +179,9 @@ public class ExcelExportServiceImpl implements ExcelExportService {
                                 .filter(
                                         overtime ->
                                                 overtime.getStatus()
+                                                                == OvertimeStatus
+                                                                        .APPROVED_DIRECTORATE
+                                                        || overtime.getStatus()
                                                                 == OvertimeStatus.APPROVED_ADMIN
                                                         || overtime.getStatus()
                                                                 == OvertimeStatus.APPROVED)
@@ -251,6 +254,9 @@ public class ExcelExportServiceImpl implements ExcelExportService {
                                 .filter(
                                         overtime ->
                                                 overtime.getStatus()
+                                                                == OvertimeStatus
+                                                                        .APPROVED_DIRECTORATE
+                                                        || overtime.getStatus()
                                                                 == OvertimeStatus.APPROVED_ADMIN
                                                         || overtime.getStatus()
                                                                 == OvertimeStatus.APPROVED)

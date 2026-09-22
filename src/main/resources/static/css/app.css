@@ -1392,7 +1392,7 @@ textarea:focus {
     height: 2px; background: #d9b7a1; transform: translateX(-50%);
 }
 .company-tree-directorate {
-    position: relative; width: 300px; flex: 0 0 300px; padding: 15px;
+    position: relative; width: auto; min-width: 300px; flex: 0 0 auto; padding: 15px;
     border: 1px solid #ead8cb; border-radius: 13px; background: #fffaf7;
     box-shadow: 0 9px 24px rgba(102, 65, 38, .07); text-align: center;
 }
@@ -1405,17 +1405,34 @@ textarea:focus {
 .company-tree-directorate small, .company-tree-division small, .company-tree-subdivision small {
     color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase;
 }
-.company-tree-divisions { display: grid; gap: 22px; margin-top: 28px; }
-.company-tree-division { position: relative; padding: 12px; border: 1px solid #edd9cb; border-radius: 11px; background: #fff; }
+.company-tree-divisions { display: flex; align-items: flex-start; justify-content: center; flex-wrap: nowrap; gap: 22px; margin-top: 28px; }
+.company-tree-division { position: relative; width: 300px; flex: 0 0 300px; padding: 12px; border: 1px solid #edd9cb; border-radius: 11px; background: #fff; }
 .company-tree-division-link { color: var(--accent-strong); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .company-tree-division-link:hover { color: var(--accent); }
 .company-tree-manager { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.manager-assignment-form { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 8px; }
+.manager-assignment-form > label,
+.manager-assignment-form > button { width: 100%; min-width: 0; }
+.manager-assignment-form > label { position: relative; }
+.manager-search-options {
+    position: absolute; z-index: 20; top: 100%; left: 0; right: 0; max-height: 190px;
+    overflow-y: auto; border: 1px solid #dfc5b4; border-radius: 0 0 9px 9px;
+    background: #fff; box-shadow: 0 10px 20px rgba(102, 65, 38, .16); text-align: left;
+}
+.manager-search-option {
+    display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 0;
+    background: #fff; color: var(--text); font-size: 12px; font-weight: 600; text-align: left;
+}
+.manager-search-option:hover, .manager-search-option:focus { background: #fff0e7; color: var(--accent-strong); transform: none; }
+.manager-search-empty { display: block; padding: 9px 10px; color: var(--muted); font-size: 12px; }
 .company-tree-division::before {
     content: ""; position: absolute; top: -22px; left: 50%; width: 2px; height: 22px;
     background: #d9b7a1; transform: translateX(-50%);
 }
-.company-tree-subdivisions { display: grid; gap: 16px; margin-top: 22px; }
-.company-tree-subdivision { position: relative; padding: 9px; border-radius: 9px; background: #f5eee9; }
+.company-tree-subdivisions-details { margin-top: 14px; }
+.company-tree-subdivisions-details > summary { color: var(--accent-strong); cursor: pointer; font-size: 12px; font-weight: 750; }
+.company-tree-subdivisions { display: flex; align-items: flex-start; justify-content: center; gap: 10px; margin-top: 18px; }
+.company-tree-subdivision { position: relative; width: calc(50% - 5px); min-width: 0; padding: 9px; border-radius: 9px; background: #f5eee9; }
 .company-tree-subdivision::before {
     content: ""; position: absolute; top: -16px; left: 50%; width: 2px; height: 16px;
     background: #d9b7a1; transform: translateX(-50%);

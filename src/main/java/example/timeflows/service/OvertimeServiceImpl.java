@@ -121,6 +121,9 @@ public class OvertimeServiceImpl implements OvertimeService {
         if (user.getRoles().contains(Role.ADMIN)) {
             overtime.setStatus(OvertimeStatus.APPROVED_ADMIN);
             overtime.setManagerComment("Автоматично погоджено для адміністратора");
+        } else if (user.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            overtime.setStatus(OvertimeStatus.APPROVED_DIRECTORATE);
+            overtime.setManagerComment("Автоматично погоджено для керівника управління");
         } else if (user.getRoles().contains(Role.MANAGER)) {
             overtime.setStatus(OvertimeStatus.APPROVED_MANAGER);
             overtime.setManagerComment("Автоматично погоджено для керівника відділу");
@@ -168,7 +171,9 @@ public class OvertimeServiceImpl implements OvertimeService {
         overtime.setDescription(request.getDescription());
         overtime.setStatus(OvertimeStatus.APPROVED_MANAGER);
         overtime.setManagerComment(
-                "Створено менеджером відділу " + manager.getEmail() + "; очікує погодження ADMIN");
+                "Створено керівником відділу "
+                        + manager.getEmail()
+                        + "; очікує погодження керівника управління");
         return overtimeRepository.save(overtime);
     }
 
@@ -314,14 +319,24 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime approve(Long id, String managerComment, String reviewerEmail) {
         User reviewer = assertCanReview(id, reviewerEmail);
         Overtime overtime = findById(id);
-        if (accessPolicy.isAbsolut(reviewer) && isChecking(overtime.getStatus())) {
-            return approve(id, managerComment);
-        }
         if (reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer)) {
+            if (isChecking(overtime.getStatus())) {
+                return approve(id, managerComment);
+            }
             if (overtime.getStatus() != OvertimeStatus.APPROVED_MANAGER) {
-                throw new OvertimeException("ADMIN фінально погоджує лише заявку APPROVED_MANAGER");
+                throw new OvertimeException("Фінально погодити можна лише заявку APPROVED_MANAGER");
             }
             overtime.setStatus(OvertimeStatus.APPROVED_ADMIN);
+            overtime.setManagerComment(managerComment);
+            overtime.setUpdatedAt(LocalDateTime.now(clock));
+            return overtimeRepository.save(overtime);
+        }
+        if (reviewer.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            if (overtime.getStatus() != OvertimeStatus.APPROVED_MANAGER) {
+                throw new OvertimeException(
+                        "Керівник управління фінально погоджує лише заявку APPROVED_MANAGER");
+            }
+            overtime.setStatus(OvertimeStatus.APPROVED_DIRECTORATE);
             overtime.setManagerComment(managerComment);
             overtime.setUpdatedAt(LocalDateTime.now(clock));
             return overtimeRepository.save(overtime);
@@ -334,15 +349,21 @@ public class OvertimeServiceImpl implements OvertimeService {
     public int approveAll(
             java.util.Collection<Long> ids, String managerComment, String reviewerEmail) {
         User reviewer = userService.findByEmail(reviewerEmail);
-        if (!reviewer.getRoles().contains(Role.ADMIN) && !accessPolicy.isAbsolut(reviewer)) {
-            throw new OvertimeException("Масове погодження доступне лише адміністратору");
+        if (!reviewer.getRoles().contains(Role.ADMIN)
+                && !reviewer.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                && !accessPolicy.isAbsolut(reviewer)) {
+            throw new OvertimeException(
+                    "Масове фінальне погодження доступне керівнику управління або адміністратору");
         }
         int approved = 0;
         for (Long id : ids.stream().distinct().toList()) {
             Overtime overtime = findById(id);
             if (!canAdminApprove(overtime)) continue;
             assertCanReview(id, reviewerEmail);
-            overtime.setStatus(OvertimeStatus.APPROVED_ADMIN);
+            overtime.setStatus(
+                    reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer)
+                            ? OvertimeStatus.APPROVED_ADMIN
+                            : OvertimeStatus.APPROVED_DIRECTORATE);
             overtime.setManagerComment(managerComment);
             overtime.setUpdatedAt(LocalDateTime.now(clock));
             overtimeRepository.save(overtime);
@@ -385,6 +406,25 @@ public class OvertimeServiceImpl implements OvertimeService {
             return reviewer;
         }
         Overtime overtime = findById(overtimeId);
+        if (reviewer.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            if (reviewer.getDivision() == null
+                    || reviewer.getDivision().getDirectorate() == null
+                    || overtime.getUser().getDivision().getDirectorate() == null
+                    || !reviewer.getDivision()
+                            .getDirectorate()
+                            .getId()
+                            .equals(overtime.getUser().getDivision().getDirectorate().getId())
+                    || reviewer.getDivision().getDirectorate().getManager() == null
+                    || !reviewer.getDivision()
+                            .getDirectorate()
+                            .getManager()
+                            .getId()
+                            .equals(reviewer.getId())) {
+                throw new example.timeflows.exception.UserException(
+                        "Керівник управління може погоджувати заявки лише свого управління");
+            }
+            return reviewer;
+        }
         if (!overtime.getUser().getDivision().getId().equals(reviewer.getDivision().getId())) {
             throw new example.timeflows.exception.UserException(
                     "Керівник може переглядати тільки overtime свого відділу");
@@ -492,6 +532,8 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private OvertimeStatus initialStatus(User user) {
         if (user.getRoles().contains(Role.ADMIN)) return OvertimeStatus.APPROVED_ADMIN;
+        if (user.getRoles().contains(Role.DIRECTORATE_MANAGER))
+            return OvertimeStatus.APPROVED_DIRECTORATE;
         if (user.getRoles().contains(Role.MANAGER)) return OvertimeStatus.APPROVED_MANAGER;
         return OvertimeStatus.CHECKING;
     }

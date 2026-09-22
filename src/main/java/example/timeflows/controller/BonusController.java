@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
 public class BonusController {
     private final BonusService bonusService;
     private final UserService userService;
@@ -67,11 +67,30 @@ public class BonusController {
         YearMonth selected =
                 year == null || month == null ? YearMonth.now() : YearMonth.of(year, month);
         boolean admin = current.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(current);
+        boolean directorateManager = current.getRoles().contains(Role.DIRECTORATE_MANAGER);
         boolean sysAdmin = current.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId = departmentId;
         Long effectiveDivisionId = divisionId;
         Long effectiveDirectorateId = directorateId;
         Long effectiveSubdivisionId = subdivisionId;
+        if (directorateManager && !admin) {
+            if (current.getDivision() == null || current.getDivision().getDirectorate() == null) {
+                throw new AccessDeniedException("Керівник управління не прив'язаний до управління");
+            }
+            effectiveDepartmentId = current.getDivision().getDepartment().getId();
+            effectiveDirectorateId = current.getDivision().getDirectorate().getId();
+            if (effectiveDivisionId != null
+                    && (divisionService.findById(effectiveDivisionId).getDirectorate() == null
+                            || !divisionService
+                                    .findById(effectiveDivisionId)
+                                    .getDirectorate()
+                                    .getId()
+                                    .equals(effectiveDirectorateId))) {
+                throw new AccessDeniedException("Відділ не належить управлінню керівника");
+            }
+        }
+        final Long scopedDepartmentId = effectiveDepartmentId;
+        final Long scopedDirectorateId = effectiveDirectorateId;
         List<Bonus> bonuses =
                 effectiveDivisionId != null
                         ? bonusService.findDivisionMonth(effectiveDivisionId, selected)
@@ -85,7 +104,7 @@ public class BonusController {
                                                     .getDivision()
                                                     .getDepartment()
                                                     .getId()
-                                                    .equals(effectiveDepartmentId))
+                                                    .equals(scopedDepartmentId))
                             .toList();
         if (effectiveDirectorateId != null)
             bonuses =
@@ -97,7 +116,7 @@ public class BonusController {
                                                             .getDivision()
                                                             .getDirectorate()
                                                             .getId()
-                                                            .equals(effectiveDirectorateId))
+                                                            .equals(scopedDirectorateId))
                             .toList();
         if (effectiveSubdivisionId != null)
             bonuses =
@@ -180,7 +199,8 @@ public class BonusController {
         model.addAttribute("admin", admin);
         model.addAttribute("absolut", accessPolicy.isAbsolut(current));
         model.addAttribute("sysAdmin", sysAdmin);
-        model.addAttribute("canApproveBonuses", !sysAdmin || accessPolicy.isAbsolut(current));
+        model.addAttribute(
+                "canApproveBonuses", current.getRoles().contains(Role.DIRECTORATE_MANAGER));
         return "manager/bonuses";
     }
 
@@ -313,7 +333,8 @@ public class BonusController {
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
-        bonusService.decide(id, BonusStatus.APPROVED, comment, accessPolicy.isAbsolut(actor));
+        assertBonusInActorDirectorate(actor, bonusService.find(id));
+        bonusService.decide(id, BonusStatus.APPROVED, comment, false);
         return redirect(returnTo);
     }
 
@@ -326,7 +347,18 @@ public class BonusController {
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
-        bonusService.decide(id, BonusStatus.REJECTED, comment, accessPolicy.isAbsolut(actor));
+        assertBonusInActorDirectorate(actor, bonusService.find(id));
+        bonusService.decide(id, BonusStatus.REJECTED, comment, false);
+        return redirect(returnTo);
+    }
+
+    @PostMapping("/api/bonuses/{id}/cancel")
+    @PreAuthorize("hasRole('ADMIN')")
+    public String cancel(
+            @PathVariable Long id,
+            @RequestParam(required = false) String comment,
+            @RequestParam(required = false) String returnTo) {
+        bonusService.decide(id, BonusStatus.CANCELLED, comment, true);
         return redirect(returnTo);
     }
 
@@ -462,17 +494,33 @@ public class BonusController {
     }
 
     private void assertCanApproveBonuses(User user) {
-        if (!accessPolicy.isAbsolut(user)
-                && !user.getRoles().contains(Role.ADMIN)
-                && !user.getRoles().contains(Role.MANAGER)
-                && !user.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
-            throw new AccessDeniedException("Погоджувати бонуси може ADMIN, MANAGER або PM LEAD");
+        if (!user.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                || user.getDivision() == null
+                || user.getDivision().getDirectorate() == null
+                || user.getDivision().getDirectorate().getManager() == null
+                || !user.getDivision().getDirectorate().getManager().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Погоджувати бонуси може лише керівник управління");
+        }
+    }
+
+    private void assertBonusInActorDirectorate(User actor, Bonus bonus) {
+        if (actor.getDivision() == null
+                || actor.getDivision().getDirectorate() == null
+                || bonus.getUser().getDivision() == null
+                || bonus.getUser().getDivision().getDirectorate() == null
+                || !actor.getDivision()
+                        .getDirectorate()
+                        .getId()
+                        .equals(bonus.getUser().getDivision().getDirectorate().getId())) {
+            throw new AccessDeniedException(
+                    "Керівник управління погоджує бонуси лише свого управління");
         }
     }
 
     private void assertCanOpenBonusModule(User user) {
         if (!accessPolicy.isAbsolut(user)
                 && !user.getRoles().contains(Role.ADMIN)
+                && !user.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 && !user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException("Модуль керування бонусами доступний лише ADMIN");
         }

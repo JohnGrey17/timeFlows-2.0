@@ -33,6 +33,15 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
     public void assertCanManage(User actor, User target) {
         if (!accessPolicy.isAbsolut(actor)
                 && !actor.getRoles().contains(Role.ADMIN)
+                && !(actor.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                        && actor.getDivision() != null
+                        && actor.getDivision().getDirectorate() != null
+                        && target.getDivision() != null
+                        && target.getDivision().getDirectorate() != null
+                        && actor.getDivision()
+                                .getDirectorate()
+                                .getId()
+                                .equals(target.getDivision().getDirectorate().getId()))
                 && !actor.getDivision().getId().equals(target.getDivision().getId())) {
             throw new UserException("Керівник може працювати лише зі своїм відділом");
         }

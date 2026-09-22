@@ -50,15 +50,25 @@ class BonusServiceTests {
     }
 
     @Test
-    void absolutCanReplaceFinalBonusDecision() {
-        Bonus bonus = bonus(BonusStatus.REJECTED);
+    void adminCanCancelApprovedBonus() {
+        Bonus bonus = bonus(BonusStatus.APPROVED);
         when(repository.findById(1L)).thenReturn(Optional.of(bonus));
         when(repository.save(bonus)).thenReturn(bonus);
 
-        Bonus result = service.decide(1L, BonusStatus.APPROVED, "Виправлено", true);
+        Bonus result = service.decide(1L, BonusStatus.CANCELLED, "Скасовано", true);
 
-        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
-        assertThat(result.getAdminComment()).isEqualTo("Виправлено");
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.CANCELLED);
+        assertThat(result.getAdminComment()).isEqualTo("Скасовано");
+    }
+
+    @Test
+    void cannotCancelPendingOrRejectedBonus() {
+        Bonus pending = bonus(BonusStatus.PENDING);
+        when(repository.findById(1L)).thenReturn(Optional.of(pending));
+
+        assertThatThrownBy(() -> service.decide(1L, BonusStatus.CANCELLED, "x", true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("погоджений");
     }
 
     @Test

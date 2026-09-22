@@ -122,7 +122,10 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
         absolutActions.querySelector("[name='comment']").value = cell.dataset.comment || "";
     }
     const admin = reviewModal.dataset.admin === "true";
-    const canReview = admin ? cell.dataset.status === "APPROVED_MANAGER" : cell.dataset.status === "CHECKING";
+    const directorateManager = reviewModal.dataset.directorateManager === "true";
+    const canReview = admin || directorateManager
+        ? cell.dataset.status === "APPROVED_MANAGER"
+        : cell.dataset.status === "CHECKING";
     reviewModal.querySelector("[data-review-actions]").hidden = !canReview;
     reviewModal.hidden = false;
 }));

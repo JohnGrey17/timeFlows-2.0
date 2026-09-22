@@ -3,6 +3,7 @@ package example.timeflows.model;
 public enum OvertimeStatus {
     CHECKING,
     APPROVED_MANAGER,
+    APPROVED_DIRECTORATE,
     APPROVED_ADMIN,
     DECLINED,
     /**

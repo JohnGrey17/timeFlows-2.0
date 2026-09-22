@@ -33,12 +33,12 @@ class DemoDataIntegrationTests {
 
     @Test
     @Transactional
-    void createsMinimalIdempotentPreProductionDataset() {
-        assertThat(users.count()).isEqualTo(1);
-        assertThat(departments.count()).isEqualTo(1);
-        assertThat(directorates.count()).isEqualTo(1);
-        assertThat(divisions.count()).isEqualTo(1);
-        assertThat(subdivisions.count()).isZero();
+    void createsRichIdempotentPreProductionDataset() {
+        assertThat(users.count()).isEqualTo(15);
+        assertThat(departments.count()).isEqualTo(2);
+        assertThat(directorates.count()).isEqualTo(4);
+        assertThat(divisions.count()).isEqualTo(8);
+        assertThat(subdivisions.count()).isEqualTo(16);
         assertThat(overtimes.count()).isZero();
         assertThat(bonuses.count()).isZero();
 
@@ -47,15 +47,26 @@ class DemoDataIntegrationTests {
         assertThat(admin.getDivision().getDepartment().getName()).isEqualTo("Масштабування");
         assertThat(admin.getDivision().getDirectorate().getName()).isEqualTo("Технічне управління");
         assertThat(admin.getDivision().getName()).isEqualTo("IT");
-        assertThat(admin.getSubdivision()).isNull();
+        assertThat(admin.getSubdivision().getName()).isEqualTo("Платформа");
+        assertThat(departments.findByNameIgnoreCase("Операційна діяльність")).isPresent();
+        assertThat(directorates.findAllByOrderByNameAsc())
+                .allSatisfy(directorate -> assertThat(directorate.getManager()).isNotNull());
+        assertThat(divisions.findAll())
+                .allSatisfy(division -> assertThat(division.getManager()).isNotNull());
+        assertThat(users.findAll())
+                .allSatisfy(
+                        user -> {
+                            assertThat(user.getDivision()).isNotNull();
+                            assertThat(user.getSubdivision()).isNotNull();
+                        });
 
         demoDataService.initialize();
 
-        assertThat(users.count()).isEqualTo(1);
-        assertThat(departments.count()).isEqualTo(1);
-        assertThat(directorates.count()).isEqualTo(1);
-        assertThat(divisions.count()).isEqualTo(1);
-        assertThat(subdivisions.count()).isZero();
+        assertThat(users.count()).isEqualTo(15);
+        assertThat(departments.count()).isEqualTo(2);
+        assertThat(directorates.count()).isEqualTo(4);
+        assertThat(divisions.count()).isEqualTo(8);
+        assertThat(subdivisions.count()).isEqualTo(16);
         assertThat(overtimes.count()).isZero();
         assertThat(bonuses.count()).isZero();
     }
