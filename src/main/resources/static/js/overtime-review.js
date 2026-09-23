@@ -24,12 +24,6 @@ function reviewJsonHeaders() {
     if (csrfCookie) headers["X-XSRF-TOKEN"] = decodeURIComponent(csrfCookie.substring("XSRF-TOKEN=".length));
     return headers;
 }
-function reviewFormHeaders() {
-    const headers = {};
-    const csrfCookie = document.cookie.split("; ").find((cookie) => cookie.startsWith("XSRF-TOKEN="));
-    if (csrfCookie) headers["X-XSRF-TOKEN"] = decodeURIComponent(csrfCookie.substring("XSRF-TOKEN=".length));
-    return headers;
-}
 const savedFilterModal = document.getElementById("saveOvertimeFilterModal");
 document.querySelector("[data-saved-filter-open]")?.addEventListener("click", () => {
     savedFilterModal.hidden = false;
@@ -108,24 +102,11 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
 }));
 document.querySelector("[data-review-close]")?.addEventListener("click", () => reviewModal.hidden = true);
 reviewModal?.addEventListener("click", (event) => { if (event.target === reviewModal) reviewModal.hidden = true; });
-reviewModal?.querySelectorAll("[data-review-actions] form, [data-absolut-actions] form").forEach((form) => form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (form.hasAttribute("data-confirm-delete") && !window.confirm("Видалити це перепрацювання?")) return;
-    try {
-        const response = await fetch(form.action, {method: "POST", body: new FormData(form), headers: reviewFormHeaders()});
-        if (response.ok) {
-            window.location.assign(response.url || "/api/overtime/review");
-            return;
-        }
-        let message;
-        try { message = (await response.json()).message; } catch (_) { message = `Помилка HTTP ${response.status}`; }
-        reviewModal.hidden = true;
-        showReviewError(message);
-    } catch (error) {
-        reviewModal.hidden = true;
-        showReviewError(error?.message);
-    }
-}));
+reviewModal?.querySelectorAll("form[data-confirm-delete]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+        if (!window.confirm("Видалити це перепрацювання?")) event.preventDefault();
+    });
+});
 document.querySelector("[data-bulk-approve]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (!window.confirm("Погодити всі доступні перепрацювання у поточній вибірці?")) return;
