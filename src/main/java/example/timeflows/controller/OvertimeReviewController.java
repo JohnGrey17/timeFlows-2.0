@@ -192,6 +192,35 @@ public class OvertimeReviewController {
                 userId);
     }
 
+    @PostMapping("/api/overtime/review/create-for-user")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    public String createForUser(
+            @RequestParam Long employeeId,
+            @Valid @ModelAttribute OvertimeRequest request,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) OvertimeStatus status,
+            @RequestParam Integer year,
+            @RequestParam Integer month,
+            @RequestParam(defaultValue = "matrix") String view,
+            @RequestParam(defaultValue = "division") String mode,
+            Authentication authentication) {
+        overtimeService.createForDivisionEmployee(authentication.getName(), employeeId, request);
+        return reviewRedirect(
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status,
+                year,
+                month,
+                view,
+                mode,
+                null);
+    }
+
     @PostMapping("/api/overtime/review/approve-all")
     @PreAuthorize("hasAnyRole('ADMIN','DIRECTORATE_MANAGER','ABSOLUT')")
     public String approveAll(

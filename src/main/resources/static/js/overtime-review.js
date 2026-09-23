@@ -18,29 +18,6 @@ document.querySelector("[data-division-overtime-close]")?.addEventListener("clic
 divisionOvertimeModal?.addEventListener("click", (event) => {
     if (event.target === divisionOvertimeModal) divisionOvertimeModal.hidden = true;
 });
-divisionOvertimeForm?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const error = divisionOvertimeModal.querySelector("[data-division-overtime-error]");
-    error.textContent = "";
-    const employeeId = divisionOvertimeForm.elements.employeeId.value;
-    const response = await fetch(`/api/overtimes/users/${employeeId}`, {
-        method: "POST",
-        headers: reviewJsonHeaders(),
-        body: JSON.stringify({
-            workDate: divisionOvertimeForm.elements.workDate.value,
-            hours: Number(divisionOvertimeForm.elements.hours.value),
-            description: divisionOvertimeForm.elements.description.value
-        })
-    });
-    if (response.ok) {
-        window.location.reload();
-        return;
-    }
-    const body = await response.json().catch(() => null);
-    error.textContent = body?.validationErrors
-        ? Object.values(body.validationErrors)[0]
-        : body?.message || `Помилка HTTP ${response.status}`;
-});
 function reviewJsonHeaders() {
     const headers = {"Content-Type": "application/json"};
     const csrfCookie = document.cookie.split("; ").find((cookie) => cookie.startsWith("XSRF-TOKEN="));
@@ -185,6 +162,10 @@ document.querySelectorAll("[data-bonus-modal]").forEach((button) => button.addEv
         const status = item.querySelector("small")?.textContent.match(/(PENDING|APPROVED|REJECTED)$/)?.[1];
         if (status) {
             item.classList.add(`bonus-status-${status.toLowerCase()}`);
+            if (status !== "PENDING") {
+                item.querySelectorAll("form[action$='/approve'], form[action$='/reject']")
+                    .forEach((form) => form.remove());
+            }
             const label = item.querySelector("small");
             label.textContent = label.textContent.replace(status, bonusStatusLabels[status]);
         }
@@ -222,6 +203,19 @@ document.querySelectorAll(".summary-detail-modal").forEach((modal) => {
         const status = item.querySelector("small")?.textContent.match(/(PENDING|APPROVED|REJECTED)/)?.[1];
         if (status) {
             item.classList.add(`bonus-status-${status.toLowerCase()}`);
+            if (status === "PENDING" && document.body.dataset.canApproveBonuses === "true") {
+                const actions = item.querySelector(".summary-bonus-admin");
+                const editForm = actions?.querySelector("form[action$='/update']");
+                if (actions && editForm) {
+                    const approveForm = document.createElement("form");
+                    approveForm.method = "post";
+                    approveForm.action = editForm.action.replace(/\/update$/, "/approve");
+                    approveForm.innerHTML = '<input type="hidden" name="returnTo" value="summary"><input name="comment" placeholder="Коментар (необов’язково)"><button type="submit">Погодити</button>';
+                    const csrf = editForm.querySelector("input[name='_csrf']");
+                    if (csrf) approveForm.prepend(csrf.cloneNode());
+                    actions.insertBefore(approveForm, actions.lastElementChild);
+                }
+            }
             const label = item.querySelector("small");
             label.textContent = label.textContent.replace(status, bonusStatusLabels[status]);
         }
@@ -232,3 +226,28 @@ document.querySelectorAll(".summary-detail-modal").forEach((modal) => {
 
 document.querySelectorAll("form[data-calendar-filter] select[name='month'], form[data-calendar-filter] select[name='year']")
     .forEach((select) => select.addEventListener("change", () => select.form.requestSubmit()));
+
+document.querySelectorAll("form[action='/api/bonuses']").forEach((form) => {
+    const month = form.querySelector("input[name='month']")?.value;
+    const year = form.querySelector("input[name='year']")?.value;
+    if (!month || !year) return;
+    const period = document.createElement("span");
+    period.className = "bonus-period-label";
+    period.textContent = `Період: ${month.padStart(2, "0")}.${year}`;
+    const firstVisibleControl = Array.from(form.children)
+        .find((element) => element.tagName !== "INPUT" || element.type !== "hidden");
+    form.insertBefore(period, firstVisibleControl || null);
+});
+
+const reviewContext = new URLSearchParams(window.location.search);
+document.querySelectorAll("form[action*='/api/bonuses/']").forEach((form) => {
+    ["year", "month", "departmentId", "directorateId", "divisionId", "subdivisionId", "status"]
+        .forEach((name) => {
+            if (form.elements.namedItem(name) || !reviewContext.has(name)) return;
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = name;
+            input.value = reviewContext.get(name);
+            form.appendChild(input);
+        });
+});

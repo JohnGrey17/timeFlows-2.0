@@ -213,7 +213,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("absolut", absolut);
         data.put(
                 "canCreateDivisionOvertime",
-                accessPolicy.isAbsolut(current)
+                current.getRoles().contains(Role.ADMIN)
+                        || accessPolicy.isAbsolut(current)
                         || (current.getRoles().contains(Role.MANAGER)
                                 && current.getTags()
                                         .contains(
@@ -222,7 +223,9 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put(
                 "divisionOvertimeCreationDates",
                 overtimeService.divisionOvertimeCreationDates(email, selected));
-        data.put("canApproveBonuses", current.getRoles().contains(Role.DIRECTORATE_MANAGER));
+        data.put(
+                "canApproveBonuses",
+                admin || current.getRoles().contains(Role.DIRECTORATE_MANAGER));
         data.put(
                 "canManageKpi",
                 accessPolicy.isAbsolut(current)
@@ -397,9 +400,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                         overtime -> overtime.getUser().getId(),
                                         Collectors.toMap(
                                                 Overtime::getWorkDate, Function.identity())));
+        List<User> visibleUsers =
+                status == null
+                        ? users
+                        : users.stream().filter(user -> byUser.containsKey(user.getId())).toList();
+        data.put("users", visibleUsers);
         data.put(
                 "overviewHoursByUser",
-                users.stream()
+                visibleUsers.stream()
                         .collect(
                                 Collectors.toMap(
                                         User::getId,
@@ -423,7 +431,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                                 BigDecimal::add))));
         data.put(
                 "overviewOvertimesByUser",
-                users.stream()
+                visibleUsers.stream()
                         .collect(
                                 Collectors.toMap(
                                         User::getId,
@@ -459,10 +467,10 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                 BigDecimal::add)));
         data.put("dayHeaders", overtimeViewService.dayHeaders(month));
         data.put("bonusesByUser", bonusesByUser);
-        data.put("categoryTotalsByUser", categoryTotals(users, bonusesByUser));
-        data.put("categoryCountsByUser", categoryCounts(users, bonusesByUser));
-        data.put("typeTotalsByUser", typeTotals(users, bonusesByUser));
-        data.put("typeCountsByUser", typeCounts(users, bonusesByUser));
+        data.put("categoryTotalsByUser", categoryTotals(visibleUsers, bonusesByUser));
+        data.put("categoryCountsByUser", categoryCounts(visibleUsers, bonusesByUser));
+        data.put("typeTotalsByUser", typeTotals(visibleUsers, bonusesByUser));
+        data.put("typeCountsByUser", typeCounts(visibleUsers, bonusesByUser));
         data.put(
                 "pendingBonusCounts",
                 bonusesByUser.entrySet().stream()
@@ -479,7 +487,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                         .count())));
         data.put(
                 "divisionRows",
-                users.stream()
+                visibleUsers.stream()
                         .map(
                                 user ->
                                         overtimeViewService.paymentRow(

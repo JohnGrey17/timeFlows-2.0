@@ -47,3 +47,5 @@ databaseChangeLog:
       file: db/changelog/changes/024-add-saved-overtime-filters.yaml
   - include:
       file: db/changelog/changes/025-add-required-password-change.yaml
+  - include:
+      file: db/changelog/changes/026-add-user-patronymic.yaml

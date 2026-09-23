@@ -1,6 +1,7 @@
 const quarterlyForm = document.querySelector("[data-quarterly-form]");
 
 if (quarterlyForm) {
+  const storageKey = "timeflows.quarterly-bonus-form";
   const filters = Array.from(quarterlyForm.querySelectorAll("[data-quarter-filter]"));
   const recipients = Array.from(quarterlyForm.querySelectorAll(".quarterly-recipient"));
   const selectAll = quarterlyForm.querySelector("[data-quarter-select-all]");
@@ -11,6 +12,33 @@ if (quarterlyForm) {
   const poolValue = quarterlyForm.querySelector("[data-quarter-pool]");
   const stateValue = quarterlyForm.querySelector("[data-quarter-state]");
   const resetButton = quarterlyForm.querySelector("[data-quarter-reset]");
+  const restoreState = () => {
+    try {
+      const state = JSON.parse(sessionStorage.getItem(storageKey) || "null");
+      if (!state) return;
+      yearInput.value = state.year || yearInput.value;
+      quarterInput.value = state.quarter || quarterInput.value;
+      filters.forEach((input) => {
+        input.checked = state.filters?.includes(`${input.dataset.quarterFilter}:${input.value}`) || false;
+      });
+      recipients.forEach((recipient) => {
+        const input = recipient.querySelector("input[name='userIds']");
+        input.checked = state.recipients?.includes(input.value) || false;
+      });
+    } catch (_error) {
+      sessionStorage.removeItem(storageKey);
+    }
+  };
+  const saveState = () => {
+    sessionStorage.setItem(storageKey, JSON.stringify({
+      year: yearInput.value,
+      quarter: quarterInput.value,
+      filters: filters.filter((input) => input.checked)
+        .map((input) => `${input.dataset.quarterFilter}:${input.value}`),
+      recipients: recipients.map((recipient) => recipient.querySelector("input[name='userIds']"))
+        .filter((input) => input.checked).map((input) => input.value)
+    }));
+  };
   const filterTypeLabels = {
     department: "Департамент",
     directorate: "Управління",
@@ -110,6 +138,8 @@ if (quarterlyForm) {
       event.preventDefault();
     }
   });
+  restoreState();
+  quarterlyForm.addEventListener("submit", saveState);
   applyFilters();
   loadQuarterSummary();
 }

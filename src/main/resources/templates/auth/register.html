@@ -28,6 +28,11 @@
                 <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
             </label>
             <label>
+                По батькові
+                <input type="text" th:field="*{patronymic}" autocomplete="additional-name">
+                <span class="field-error" th:if="${#fields.hasErrors('patronymic')}" th:errors="*{patronymic}"></span>
+            </label>
+            <label>
                 Email
                 <input type="email" th:field="*{email}" autocomplete="email">
                 <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>

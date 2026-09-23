@@ -13,4 +13,7 @@ public class ProfileRequest {
 
     @Size(max = 100, message = "Прізвище має містити до 100 символів")
     private String lastName;
+
+    @Size(max = 100, message = "По батькові має містити до 100 символів")
+    private String patronymic;
 }

@@ -21,6 +21,9 @@ public class UserRequest {
     @Size(max = 100, message = "Прізвище має містити до 100 символів")
     private String lastName;
 
+    @Size(max = 100, message = "По батькові має містити до 100 символів")
+    private String patronymic;
+
     @NotBlank(message = "Вкажіть email")
     @Email(message = "Вкажіть коректний email")
     @Pattern(

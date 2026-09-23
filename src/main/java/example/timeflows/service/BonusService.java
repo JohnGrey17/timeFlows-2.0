@@ -30,6 +30,17 @@ public interface BonusService {
             String description,
             String creatorEmail);
 
+    Bonus create(
+            Long userId,
+            Long categoryId,
+            BonusType type,
+            BigDecimal amount,
+            String description,
+            String creatorEmail,
+            YearMonth accountingMonth);
+
+    Bonus moveToMonth(Long id, YearMonth accountingMonth);
+
     Bonus update(
             Long id, Long categoryId, BigDecimal amount, String description, boolean allowFinal);
 

@@ -138,15 +138,13 @@ public class OvertimeServiceImpl implements OvertimeService {
     public Overtime createForDivisionEmployee(
             String managerEmail, Long employeeId, OvertimeRequest request) {
         User manager = userService.findByEmail(managerEmail);
-        if (!accessPolicy.isAbsolut(manager)
-                && (!manager.getRoles().contains(Role.MANAGER)
-                        || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME))) {
+        if (!canCreateDivisionOvertime(manager)) {
             throw new OvertimeException(
                     "Створювати перепрацювання за співробітників може лише менеджер із тегом DIVISION_OVERTIME");
         }
         User employee = userService.findById(employeeId);
         if (!employee.isActive()
-                || (!accessPolicy.isAbsolut(manager)
+                || (!hasUnrestrictedDivisionOvertimeAccess(manager)
                         && (employee.getDivision() == null
                                 || manager.getDivision() == null
                                 || !employee.getDivision()
@@ -169,11 +167,17 @@ public class OvertimeServiceImpl implements OvertimeService {
         overtime.setWorkDate(request.getWorkDate());
         overtime.setHours(request.getHours());
         overtime.setDescription(request.getDescription());
-        overtime.setStatus(OvertimeStatus.APPROVED_MANAGER);
-        overtime.setManagerComment(
-                "Створено керівником відділу "
-                        + manager.getEmail()
-                        + "; очікує погодження керівника управління");
+        if (hasUnrestrictedDivisionOvertimeAccess(manager)) {
+            overtime.setStatus(OvertimeStatus.APPROVED_ADMIN);
+            overtime.setManagerComment(
+                    "Створено адміністратором " + manager.getEmail() + "; автоматично погоджено");
+        } else {
+            overtime.setStatus(OvertimeStatus.APPROVED_MANAGER);
+            overtime.setManagerComment(
+                    "Створено керівником відділу "
+                            + manager.getEmail()
+                            + "; очікує погодження керівника управління");
+        }
         return overtimeRepository.save(overtime);
     }
 
@@ -181,9 +185,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional(readOnly = true)
     public Set<LocalDate> divisionOvertimeCreationDates(String managerEmail, YearMonth month) {
         User manager = userService.findByEmail(managerEmail);
-        if (!accessPolicy.isAbsolut(manager)
-                && (!manager.getRoles().contains(Role.MANAGER)
-                        || !manager.getTags().contains(BusinessTag.DIVISION_OVERTIME))) {
+        if (!canCreateDivisionOvertime(manager)) {
             return Set.of();
         }
         return IntStream.rangeClosed(1, month.lengthOfMonth())
@@ -439,6 +441,7 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private void validateHours(OvertimeRequest request, User user) {
         if (!isWeekend(request)
+                && !hasUnrestrictedDivisionOvertimeAccess(user)
                 && !allowsCurrentWeekOvertime(user)
                 && !isAugust2026(request.getWorkDate())) {
             throw new OvertimeException("Перепрацювання дозволені лише у вихідні дні");
@@ -509,7 +512,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     private boolean isDivisionSubmissionDateAllowed(LocalDate workDate, User manager) {
-        if (accessPolicy.isAbsolut(manager)
+        if (hasUnrestrictedDivisionOvertimeAccess(manager)
                 || isAugust2026(workDate)
                 || allowsCurrentWeekOvertime(manager)) {
             return true;
@@ -528,6 +531,16 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private boolean allowsCurrentWeekOvertime(User user) {
         return user.getTags().contains(BusinessTag.ALLOW_OVER);
+    }
+
+    private boolean canCreateDivisionOvertime(User user) {
+        return hasUnrestrictedDivisionOvertimeAccess(user)
+                || (user.getRoles().contains(Role.MANAGER)
+                        && user.getTags().contains(BusinessTag.DIVISION_OVERTIME));
+    }
+
+    private boolean hasUnrestrictedDivisionOvertimeAccess(User user) {
+        return user.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(user);
     }
 
     private OvertimeStatus initialStatus(User user) {

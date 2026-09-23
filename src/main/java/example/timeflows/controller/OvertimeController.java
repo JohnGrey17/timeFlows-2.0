@@ -63,7 +63,7 @@ public class OvertimeController {
     }
 
     @PostMapping("/users/{userId}")
-    @PreAuthorize("hasAnyRole('MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create overtime for an employee in the manager's division")
     public OvertimeResponse createForDivisionEmployee(

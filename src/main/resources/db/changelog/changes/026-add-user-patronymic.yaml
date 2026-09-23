@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: 026-add-user-patronymic
+      author: timeflows
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: patronymic
+                  type: varchar(100)

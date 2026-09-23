@@ -58,6 +58,11 @@
                         <input type="text" th:field="*{lastName}">
                         <span class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></span>
                     </label>
+                    <label>
+                        По батькові
+                        <input type="text" th:field="*{patronymic}" autocomplete="additional-name">
+                        <span class="field-error" th:if="${#fields.hasErrors('patronymic')}" th:errors="*{patronymic}"></span>
+                    </label>
                     <button type="submit">Зберегти</button>
                 </form>
             </article>
