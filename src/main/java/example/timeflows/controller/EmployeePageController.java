@@ -60,7 +60,8 @@ public class EmployeePageController {
         userService.updateProfile(
                 authentication.getName(),
                 profileRequest.getFirstName(),
-                profileRequest.getLastName());
+                profileRequest.getLastName(),
+                profileRequest.getPatronymic());
         return "redirect:/api/settings?profileUpdated";
     }
 

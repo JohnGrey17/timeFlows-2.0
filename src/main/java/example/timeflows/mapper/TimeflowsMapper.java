@@ -66,6 +66,7 @@ public class TimeflowsMapper {
         User user = new User();
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+        user.setPatronymic(request.getPatronymic());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
         user.setRoles(request.getRoles());
@@ -77,6 +78,7 @@ public class TimeflowsMapper {
                 user.getId(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPatronymic(),
                 user.getEmail(),
                 user.getRoles(),
                 user.getDivision() == null ? null : toDivisionSummary(user.getDivision()),
@@ -127,6 +129,7 @@ public class TimeflowsMapper {
         ProfileRequest request = new ProfileRequest();
         request.setFirstName(user.getFirstName());
         request.setLastName(user.getLastName());
+        request.setPatronymic(user.getPatronymic());
         return request;
     }
 }

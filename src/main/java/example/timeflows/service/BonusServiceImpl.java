@@ -91,6 +91,19 @@ public class BonusServiceImpl implements BonusService {
             BigDecimal amount,
             String description,
             String creatorEmail) {
+        return create(userId, categoryId, type, amount, description, creatorEmail, null);
+    }
+
+    @Override
+    @Transactional
+    public Bonus create(
+            Long userId,
+            Long categoryId,
+            BonusType type,
+            BigDecimal amount,
+            String description,
+            String creatorEmail,
+            YearMonth accountingMonth) {
         BonusType requestedType = type == null ? BonusType.MONTHLY : type;
         validateAmount(amount);
         if (requestedType == BonusType.QUARTERLY) {
@@ -114,7 +127,22 @@ public class BonusServiceImpl implements BonusService {
         bonus.setType(requestedType);
         bonus.setAmount(amount);
         bonus.setDescription(normalize(description));
+        if (accountingMonth != null) {
+            bonus.setCreatedAt(accountingMonth.atDay(1).atStartOfDay());
+        }
         if (requestedType == BonusType.KPI) bonus.setStatus(BonusStatus.APPROVED);
+        return repository.save(bonus);
+    }
+
+    @Override
+    @Transactional
+    public Bonus moveToMonth(Long id, YearMonth accountingMonth) {
+        Bonus bonus = find(id);
+        if (bonus.getType() != BonusType.KPI) {
+            throw new IllegalArgumentException("Переносити між місяцями можна лише KPI");
+        }
+        bonus.setCreatedAt(accountingMonth.atDay(1).atStartOfDay());
+        bonus.setUpdatedAt(LocalDateTime.now());
         return repository.save(bonus);
     }
 

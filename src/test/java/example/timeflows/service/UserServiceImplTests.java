@@ -242,9 +242,10 @@ class UserServiceImplTests {
 
         assertThat(service.updateSalary(1L, BigDecimal.TEN).getSalary())
                 .isEqualByComparingTo(BigDecimal.TEN);
-        service.updateProfile(user.getEmail(), "New", "Name");
+        service.updateProfile(user.getEmail(), "New", "Name", "Patronymic");
         assertThat(user.getFirstName()).isEqualTo("New");
         assertThat(user.getLastName()).isEqualTo("Name");
+        assertThat(user.getPatronymic()).isEqualTo("Patronymic");
 
         when(userRepository.existsById(1L)).thenReturn(true);
         service.delete(1L);

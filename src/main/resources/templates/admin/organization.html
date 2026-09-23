@@ -8,6 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app-shell.js}"></script>
     <script defer th:src="@{/js/organization-manager-search.js}"></script>
+    <script defer th:src="@{/js/organization-tree-state.js}"></script>
 </head>
 <body class="app-body">
 <div class="app-layout">
@@ -71,7 +72,7 @@
         </div>
         <div class="section-title-with-help organization-schema-title"><h2>Схема Компанії</h2><span class="help-tip" tabindex="0" data-tooltip="Тут показана структура компанії: усі департаменти та підвідділи, що входять до них. Ця схема допомагає швидко зрозуміти, як організовані команди, і перевірити щойно створені підрозділи.">?</span></div>
         <section class="organization-list company-tree">
-            <details th:each="department:${departments}" class="company-tree-department">
+            <details th:each="department:${departments}" class="company-tree-department" th:attr="data-tree-key=${'department-' + department.id}">
                 <summary class="company-tree-root">
                     <span th:text="${department.name}"></span>
                     <span class="company-tree-toggle" aria-hidden="true">⌄</span>
@@ -89,7 +90,7 @@
                         </details>
                     </div>
                     <div class="company-tree-directorates">
-                <details th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate">
+                <details th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate" th:attr="data-tree-key=${'directorate-' + directorate.id}">
                     <summary class="company-tree-directorate-summary">
                         <span><small>Управління</small><b th:text="${directorate.name}"></b></span>
                         <span class="company-tree-directorate-toggle" aria-hidden="true">⌄</span>
@@ -122,7 +123,8 @@
                         <form th:action="@{/api/organization/directorates/{id}/delete(id=${directorate.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити управління?')">Видалити</button></form>
                     </details>
                     <div class="company-tree-divisions">
-                    <article th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division">
+                    <details th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division" th:attr="data-tree-key=${'division-' + division.id}">
+                        <summary class="company-tree-division-summary">
                         <strong>
                             <small>Відділ</small>
                             <a sec:authorize="hasAnyRole('ADMIN','ABSOLUT')"
@@ -132,6 +134,8 @@
                                title="Перейти до перевірки перепрацювань цього відділу"></a>
                             <span sec:authorize="!hasAnyRole('ADMIN','ABSOLUT')" th:text="${division.name}"></span>
                         </strong>
+                        <span class="company-tree-division-toggle" aria-hidden="true">⌄</span>
+                        </summary>
                         <p class="company-tree-manager"
                            th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') + ' — ' + division.manager.email : 'Керівник не призначений'}"></p>
                         <form th:action="@{/api/organization/divisions/{id}/manager(id=${division.id})}" method="post" class="inline-form manager-assignment-form" data-manager-assignment>
@@ -158,8 +162,7 @@
                             </form>
                             <form th:action="@{/api/organization/divisions/{id}/delete(id=${division.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити відділ?')">Видалити</button></form>
                         </details>
-                        <details class="company-tree-subdivisions-details">
-                        <summary>Показати підвідділи</summary>
+                        <div class="company-tree-subdivisions-details">
                         <div class="company-tree-subdivisions">
                         <div th:each="subdivision:${subdivisions}" th:if="${subdivision.division.id == division.id}" class="company-tree-subdivision">
                             <span><small>Підвідділ</small><b th:text="${subdivision.name}"></b></span>
@@ -173,8 +176,9 @@
                                 <form th:action="@{/api/organization/subdivisions/{id}/delete(id=${subdivision.id})}" method="post" class="inline-form"><button type="submit" class="danger-button" onclick="return confirm('Видалити підвідділ?')">Видалити</button></form>
                             </details>
                         </div>
-                        </details>
-                    </article>
+                        </div>
+                        </div>
+                    </details>
                     </div>
                     </div>
                 </details>

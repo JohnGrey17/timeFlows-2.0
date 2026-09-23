@@ -163,6 +163,45 @@ class BonusServiceTests {
     }
 
     @Test
+    void createsKpiInSelectedAccountingMonth() {
+        Division division = new Division();
+        division.setId(5L);
+        User lead = new User();
+        lead.setDivision(division);
+        lead.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
+        User target = new User();
+        target.setDivision(division);
+        target.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER)));
+        when(userService.findById(1L)).thenReturn(target);
+        when(userService.findByEmail("lead@vyriy.com")).thenReturn(lead);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        1L,
+                        null,
+                        BonusType.KPI,
+                        BigDecimal.TEN,
+                        "August KPI",
+                        "lead@vyriy.com",
+                        YearMonth.of(2026, 8));
+
+        assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
+    }
+
+    @Test
+    void movesExistingKpiToSelectedAccountingMonth() {
+        Bonus kpi = bonus(BonusStatus.APPROVED);
+        kpi.setType(BonusType.KPI);
+        when(repository.findById(1L)).thenReturn(Optional.of(kpi));
+        when(repository.save(kpi)).thenReturn(kpi);
+
+        Bonus result = service.moveToMonth(1L, YearMonth.of(2026, 8));
+
+        assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
+    }
+
+    @Test
     void absolutCreatesKpiForProjectManagerInAnotherDivision() {
         Division creatorDivision = new Division();
         creatorDivision.setId(5L);

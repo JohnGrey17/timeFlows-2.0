@@ -294,6 +294,43 @@ class OvertimeServiceImplTests {
     }
 
     @Test
+    void adminCreatesApprovedOvertimeForAnyEmployeeAndDate() {
+        overtimeService = serviceAt("2026-09-15T08:00:00Z");
+        User admin = user(Role.ADMIN);
+        admin.setEmail("admin@vyriy.com");
+        User employee = user(Role.EMPLOYEE);
+        employee.setId(22L);
+        employee.setEmail("employee@vyriy.com");
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(userService.findById(22L)).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        OvertimeRequest request = validRequest();
+        request.setWorkDate(LocalDate.of(2025, 2, 3));
+
+        Overtime created =
+                overtimeService.createForDivisionEmployee(
+                        "admin@vyriy.com", employee.getId(), request);
+
+        assertThat(created.getStatus()).isEqualTo(OvertimeStatus.APPROVED_ADMIN);
+        assertThat(created.getWorkDate()).isEqualTo(LocalDate.of(2025, 2, 3));
+        assertThat(created.getManagerComment())
+                .contains("admin@vyriy.com", "автоматично погоджено");
+    }
+
+    @Test
+    void adminCanSelectEveryPastAndFutureDateForDivisionOvertime() {
+        User admin = user(Role.ADMIN);
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+
+        assertThat(
+                        overtimeService.divisionOvertimeCreationDates(
+                                "admin@vyriy.com", YearMonth.of(2027, 1)))
+                .hasSize(31)
+                .contains(LocalDate.of(2027, 1, 1), LocalDate.of(2027, 1, 31));
+    }
+
+    @Test
     void divisionOvertimeRequiresTagAndEmployeeFromSameDivision() {
         Division managerDivision = new Division();
         managerDivision.setId(7L);

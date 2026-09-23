@@ -200,7 +200,8 @@ public class BonusController {
         model.addAttribute("absolut", accessPolicy.isAbsolut(current));
         model.addAttribute("sysAdmin", sysAdmin);
         model.addAttribute(
-                "canApproveBonuses", current.getRoles().contains(Role.DIRECTORATE_MANAGER));
+                "canApproveBonuses",
+                admin || current.getRoles().contains(Role.DIRECTORATE_MANAGER));
         return "manager/bonuses";
     }
 
@@ -240,19 +241,36 @@ public class BonusController {
             @RequestParam BigDecimal amount,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String returnTo,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) BonusStatus status,
             Authentication auth,
             RedirectAttributes ra) {
         User current = userService.findByEmail(auth.getName());
         accessService.assertCanManage(current, userService.findById(userId));
         try {
-            bonusService.create(userId, categoryId, type, amount, description, auth.getName());
+            YearMonth accountingMonth =
+                    year == null || month == null ? null : YearMonth.of(year, month);
+            bonusService.create(
+                    userId, categoryId, type, amount, description, auth.getName(), accountingMonth);
             ra.addFlashAttribute("success", "Бонус створено та відправлено на погодження");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("bonusError", e.getMessage());
         }
-        return "review".equals(returnTo)
-                ? "redirect:/api/overtime/review?mode=division&openBonusUserId=" + userId
-                : redirect(returnTo);
+        return redirect(
+                returnTo,
+                userId,
+                year,
+                month,
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status);
     }
 
     @PostMapping("/api/bonuses/{id}/update")
@@ -262,10 +280,15 @@ public class BonusController {
             @RequestParam BigDecimal amount,
             @RequestParam(required = false) String description,
             @RequestParam(required = false) String returnTo,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
             Authentication auth) {
         accessService.assertCanEditBonus(auth.getName(), id);
         bonusService.update(id, categoryId, amount, description, true);
-        return redirect(returnTo);
+        if (year != null && month != null && bonusService.find(id).getType() == BonusType.KPI) {
+            bonusService.moveToMonth(id, YearMonth.of(year, month));
+        }
+        return redirect(returnTo, year, month);
     }
 
     @PostMapping("/api/bonuses/{id}/category")
@@ -330,12 +353,28 @@ public class BonusController {
             @PathVariable Long id,
             @RequestParam(required = false) String comment,
             @RequestParam(required = false) String returnTo,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) BonusStatus status,
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
         assertBonusInActorDirectorate(actor, bonusService.find(id));
         bonusService.decide(id, BonusStatus.APPROVED, comment, false);
-        return redirect(returnTo);
+        return redirect(
+                returnTo,
+                null,
+                year,
+                month,
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status);
     }
 
     @PostMapping("/api/bonuses/{id}/reject")
@@ -344,12 +383,28 @@ public class BonusController {
             @PathVariable Long id,
             @RequestParam(required = false) String comment,
             @RequestParam(required = false) String returnTo,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Long departmentId,
+            @RequestParam(required = false) Long directorateId,
+            @RequestParam(required = false) Long divisionId,
+            @RequestParam(required = false) Long subdivisionId,
+            @RequestParam(required = false) BonusStatus status,
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
         assertBonusInActorDirectorate(actor, bonusService.find(id));
         bonusService.decide(id, BonusStatus.REJECTED, comment, false);
-        return redirect(returnTo);
+        return redirect(
+                returnTo,
+                null,
+                year,
+                month,
+                departmentId,
+                directorateId,
+                divisionId,
+                subdivisionId,
+                status);
     }
 
     @PostMapping("/api/bonuses/{id}/cancel")
@@ -477,11 +532,42 @@ public class BonusController {
     }
 
     private String redirect(String returnTo) {
-        if ("summary".equals(returnTo))
-            return "redirect:/api/overtime/review?mode=division&view=summary";
-        return "review".equals(returnTo)
-                ? "redirect:/api/overtime/review?mode=division"
-                : "redirect:/api/bonuses";
+        return redirect(returnTo, null, null);
+    }
+
+    private String redirect(String returnTo, Integer year, Integer month) {
+        return redirect(returnTo, null, year, month, null, null, null, null, null);
+    }
+
+    private String redirect(
+            String returnTo,
+            Long openBonusUserId,
+            Integer year,
+            Integer month,
+            Long departmentId,
+            Long directorateId,
+            Long divisionId,
+            Long subdivisionId,
+            BonusStatus status) {
+        if (!"review".equals(returnTo) && !"summary".equals(returnTo)) {
+            return "redirect:/api/bonuses";
+        }
+        StringBuilder target =
+                new StringBuilder("redirect:/api/overtime/review?mode=division&view=")
+                        .append("summary".equals(returnTo) ? "summary" : "matrix");
+        appendQuery(target, "openBonusUserId", openBonusUserId);
+        appendQuery(target, "year", year);
+        appendQuery(target, "month", month);
+        appendQuery(target, "departmentId", departmentId);
+        appendQuery(target, "directorateId", directorateId);
+        appendQuery(target, "divisionId", divisionId);
+        appendQuery(target, "subdivisionId", subdivisionId);
+        appendQuery(target, "status", status);
+        return target.toString();
+    }
+
+    private void appendQuery(StringBuilder target, String name, Object value) {
+        if (value != null) target.append('&').append(name).append('=').append(value);
     }
 
     private boolean hasProjectManagerTag(User user) {
@@ -494,6 +580,7 @@ public class BonusController {
     }
 
     private void assertCanApproveBonuses(User user) {
+        if (user.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(user)) return;
         if (!user.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 || user.getDivision() == null
                 || user.getDivision().getDirectorate() == null
@@ -504,6 +591,7 @@ public class BonusController {
     }
 
     private void assertBonusInActorDirectorate(User actor, Bonus bonus) {
+        if (actor.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(actor)) return;
         if (actor.getDivision() == null
                 || actor.getDivision().getDirectorate() == null
                 || bonus.getUser().getDivision() == null

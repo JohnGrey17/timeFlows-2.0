@@ -1,5 +1,6 @@
 package example.timeflows.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -76,6 +77,7 @@ class SecurityAuthorizationTests {
                                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                 .param("firstName", "New")
                                 .param("lastName", "Employee")
+                                .param("patronymic", "Testovych")
                                 .param("email", "new.employee@vyriy.com")
                                 .param("password", "test-password")
                                 .param("divisionId", "1"))
@@ -101,6 +103,7 @@ class SecurityAuthorizationTests {
                                         .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                                         .param("firstName", "Pending")
                                         .param("lastName", "Employee")
+                                        .param("patronymic", "Testovych")
                                         .param("email", "pending.employee@vyriy.com")
                                         .param("password", "test-password")
                                         .param("divisionId", "1"))
@@ -628,7 +631,7 @@ class SecurityAuthorizationTests {
     }
 
     @Test
-    void adminCannotApproveOrRejectPendingBonusFromBonusModule() throws Exception {
+    void adminCanApproveAndRejectPendingBonusFromBonusModule() throws Exception {
         example.timeflows.model.Bonus bonus =
                 bonusRepository.findAll().stream()
                         .filter(b -> b.getStatus() == example.timeflows.model.BonusStatus.PENDING)
@@ -639,14 +642,22 @@ class SecurityAuthorizationTests {
                             post("/api/bonuses/{id}/approve", bonus.getId())
                                     .with(csrf())
                                     .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().is3xxRedirection());
+            assertThat(bonusRepository.findById(bonus.getId()).orElseThrow().getStatus())
+                    .isEqualTo(example.timeflows.model.BonusStatus.APPROVED);
+
+            bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
+            bonus.setAdminComment(null);
+            bonusRepository.save(bonus);
 
             mockMvc.perform(
                             post("/api/bonuses/{id}/reject", bonus.getId())
                                     .with(csrf())
                                     .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE"))
                                     .param("comment", "Відхилено адміністратором"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().is3xxRedirection());
+            assertThat(bonusRepository.findById(bonus.getId()).orElseThrow().getStatus())
+                    .isEqualTo(example.timeflows.model.BonusStatus.REJECTED);
         } finally {
             bonus.setStatus(example.timeflows.model.BonusStatus.PENDING);
             bonus.setAdminComment(null);

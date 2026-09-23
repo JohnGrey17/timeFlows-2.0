@@ -53,7 +53,7 @@ public interface UserService {
 
     Division updateDivisionTags(Long divisionId, Set<BusinessTag> tags);
 
-    void updateProfile(String email, String firstName, String lastName);
+    void updateProfile(String email, String firstName, String lastName, String patronymic);
 
     void changePassword(
             String email, String currentPassword, String newPassword, String confirmPassword);

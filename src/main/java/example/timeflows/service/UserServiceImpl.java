@@ -150,6 +150,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setUsername(request.getEmail());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
+        user.setPatronymic(request.getPatronymic());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
         User created = create(user, request.getDivisionId());
@@ -201,6 +202,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         user.setUsername(input.getEmail());
         user.setFirstName(input.getFirstName());
         user.setLastName(input.getLastName());
+        user.setPatronymic(input.getPatronymic());
         user.setEmail(input.getEmail());
         user.setDivision(division);
         if (input.getRoles() != null && !input.getRoles().isEmpty()) {
@@ -444,10 +446,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
-    public void updateProfile(String email, String firstName, String lastName) {
+    public void updateProfile(String email, String firstName, String lastName, String patronymic) {
         User user = findByEmail(email);
         user.setFirstName(firstName);
         user.setLastName(lastName);
+        user.setPatronymic(patronymic);
         userRepository.save(user);
     }
 
