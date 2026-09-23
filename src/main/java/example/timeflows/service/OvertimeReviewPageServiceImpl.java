@@ -185,7 +185,12 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put(
                 "overtimeStatuses",
                 absolut
-                        ? List.of(OvertimeStatus.values())
+                        ? List.of(
+                                OvertimeStatus.CHECKING,
+                                OvertimeStatus.APPROVED_MANAGER,
+                                OvertimeStatus.APPROVED_DIRECTORATE,
+                                OvertimeStatus.APPROVED_ADMIN,
+                                OvertimeStatus.DECLINED)
                         : admin
                                 ? List.of(
                                         OvertimeStatus.APPROVED_MANAGER,
@@ -379,15 +384,15 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                         && (overtime.getStatus()
                                                                         == OvertimeStatus
                                                                                 .APPROVED_MANAGER
-                                                                || overtime.getStatus()
-                                                                        == OvertimeStatus.DECLINED))
+                                                                || isDeclined(
+                                                                        overtime.getStatus())))
                                                 || (!admin && !directorateManager)
                                                 || overtime.getStatus()
                                                         == OvertimeStatus.APPROVED_MANAGER
                                                 || overtime.getStatus()
                                                         == OvertimeStatus.APPROVED_ADMIN
-                                                || overtime.getStatus() == OvertimeStatus.DECLINED)
-                        .filter(overtime -> status == null || overtime.getStatus() == status)
+                                                || isDeclined(overtime.getStatus()))
+                        .filter(overtime -> matchesStatus(overtime.getStatus(), status))
                         .toList();
         data.put("filteredOvertimes", overtimes);
         data.put(
@@ -497,6 +502,21 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                 approvedTotals.getOrDefault(
                                                         user.getId(), BigDecimal.ZERO)))
                         .toList());
+    }
+
+    private boolean matchesStatus(OvertimeStatus actual, OvertimeStatus selected) {
+        if (selected == null) return true;
+        return switch (selected) {
+            case CHECKING -> actual == OvertimeStatus.CHECKING || actual == OvertimeStatus.PENDING;
+            case APPROVED_ADMIN ->
+                    actual == OvertimeStatus.APPROVED_ADMIN || actual == OvertimeStatus.APPROVED;
+            case DECLINED -> isDeclined(actual);
+            default -> actual == selected;
+        };
+    }
+
+    private boolean isDeclined(OvertimeStatus status) {
+        return status == OvertimeStatus.DECLINED || status == OvertimeStatus.REJECTED;
     }
 
     private boolean isFinalApproved(OvertimeStatus status) {
