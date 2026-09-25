@@ -62,7 +62,7 @@ public class Division {
     @JoinColumn(name = "manager_id")
     private User manager;
 
-    @OneToMany(mappedBy = "division", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "division")
     @OrderBy("username ASC")
     private Set<User> users = new LinkedHashSet<>();
 

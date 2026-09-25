@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class UsersPageController {
@@ -202,6 +203,28 @@ public class UsersPageController {
         model.addAttribute("users", userService.findDeactivatedUsers());
         model.addAttribute("activePage", "users");
         return "admin/deactivated-users";
+    }
+
+    @PostMapping("/api/users/{id}/delete-permanently")
+    @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
+    public String deletePermanently(
+            @PathVariable Long id,
+            Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+        User currentUser = userService.findByEmail(authentication.getName());
+        if (currentUser.getId().equals(id)) {
+            redirectAttributes.addFlashAttribute(
+                    "userError", "Не можна видалити власний обліковий запис");
+            return "redirect:/api/users/deactivated";
+        }
+        try {
+            userService.deleteDeactivatedPermanently(id);
+            redirectAttributes.addFlashAttribute(
+                    "success", "Користувача та всі пов'язані дані остаточно видалено");
+        } catch (RuntimeException exception) {
+            redirectAttributes.addFlashAttribute("userError", exception.getMessage());
+        }
+        return "redirect:/api/users/deactivated";
     }
 
     @PostMapping("/api/users/{id}/salary")

@@ -219,6 +219,23 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void employeeCanOpenReadOnlyCompanyStructure() throws Exception {
+        mockMvc.perform(
+                        get("/api/company-structure")
+                                .with(user("andrii.employee@vyriy.com").roles("EMPLOYEE")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Структура компанії")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/update"))))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/delete"))));
+    }
+
+    @Test
+    void adminCannotOpenDuplicateReadOnlyCompanyStructure() throws Exception {
+        mockMvc.perform(get("/api/company-structure").with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void adminCanSaveAndReuseOwnOvertimeFilterInBothViews() throws Exception {
         String filterName = "IT DEV за серпень";
 

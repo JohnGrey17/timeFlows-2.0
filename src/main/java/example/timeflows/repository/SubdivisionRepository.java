@@ -12,8 +12,6 @@ public interface SubdivisionRepository extends JpaRepository<Subdivision, Long> 
 
     Optional<Subdivision> findByDivisionIdAndNameIgnoreCase(Long divisionId, String name);
 
-    boolean existsByIdAndUsersActiveTrue(Long id);
-
     @EntityGraph(attributePaths = {"division", "division.department", "division.directorate"})
     List<Subdivision> findAllByOrderByNameAsc();
 

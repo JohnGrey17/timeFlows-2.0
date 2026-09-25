@@ -10,6 +10,8 @@ import example.timeflows.exception.DepartmentException;
 import example.timeflows.exception.DivisionException;
 import example.timeflows.model.Department;
 import example.timeflows.model.Division;
+import example.timeflows.model.Subdivision;
+import example.timeflows.model.User;
 import example.timeflows.repository.DepartmentRepository;
 import example.timeflows.repository.DirectorateRepository;
 import example.timeflows.repository.DivisionRepository;
@@ -102,12 +104,41 @@ class DivisionServiceImplTests {
 
         service.delete(1L);
         verify(divisionRepository).delete(existing);
+        verify(divisionRepository).flush();
     }
 
     @Test
     void deleteRejectsMissingDivision() {
         when(divisionRepository.findWithDepartmentAndUsersById(1L)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.delete(1L)).isInstanceOf(DivisionException.class);
+    }
+
+    @Test
+    void deleteRejectsDivisionWithSubdivision() {
+        Division existing = division(1L, "Platform");
+        existing.getSubdivisions().add(new Subdivision());
+        when(divisionRepository.findWithDepartmentAndUsersById(1L))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.delete(1L))
+                .isInstanceOf(DivisionException.class)
+                .hasMessageContaining("підвідділи");
+        verify(divisionRepository, never()).delete(existing);
+    }
+
+    @Test
+    void deleteRejectsDivisionWithDeactivatedUser() {
+        Division existing = division(1L, "Platform");
+        User deactivatedUser = new User();
+        deactivatedUser.setActive(false);
+        existing.getUsers().add(deactivatedUser);
+        when(divisionRepository.findWithDepartmentAndUsersById(1L))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.delete(1L))
+                .isInstanceOf(DivisionException.class)
+                .hasMessageContaining("деактивованими");
+        verify(divisionRepository, never()).delete(existing);
     }
 
     private Division division(Long id, String name) {

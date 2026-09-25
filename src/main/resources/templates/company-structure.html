@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>timeFlows | Структура компанії</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app-shell.js}"></script>
+    <script defer th:src="@{/js/organization-tree-state.js}"></script>
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav" aria-label="Основна навігація">
+            <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+            <a sec:authorize="hasAnyRole('MANAGER','DIRECTORATE_MANAGER')" th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a sec:authorize="hasAnyRole('MANAGER','DIRECTORATE_MANAGER')" th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
+            <a class="active" th:href="@{/api/company-structure}"><span class="nav-icon">▥</span><span>Структура компанії</span></a>
+            <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form"><button type="submit">Вийти</button></form>
+    </aside>
+
+    <main class="content">
+        <header class="topbar">
+            <div><p class="eyebrow">Організація</p><h1>Структура компанії</h1></div>
+            <div class="user-chip" th:text="${currentUser.firstName + ' ' + currentUser.lastName}"></div>
+        </header>
+
+        <section class="organization-list company-tree">
+            <details th:each="department:${departments}" class="company-tree-department" th:attr="data-tree-key=${'department-' + department.id}">
+                <summary class="company-tree-root"><span th:text="${department.name}"></span><span class="company-tree-toggle" aria-hidden="true">⌄</span></summary>
+                <div class="company-tree-content">
+                    <p th:if="${department.description != null and !department.description.isBlank()}" th:text="${department.description}"></p>
+                    <div class="company-tree-directorates">
+                        <details th:each="directorate:${directorates}" th:if="${directorate.department.id == department.id}" class="company-tree-directorate" th:attr="data-tree-key=${'directorate-' + directorate.id}">
+                            <summary class="company-tree-directorate-summary"><span><small>Управління</small><b th:text="${directorate.name}"></b></span><span class="company-tree-directorate-toggle" aria-hidden="true">⌄</span></summary>
+                            <div class="company-tree-directorate-content">
+                                <p class="company-tree-manager" th:text="${directorate.manager != null ? 'Керівник управління: ' + (directorate.manager.lastName ?: '') + ' ' + (directorate.manager.firstName ?: '') : 'Керівник управління не призначений'}"></p>
+                                <p th:if="${directorate.description != null and !directorate.description.isBlank()}" th:text="${directorate.description}"></p>
+                                <div class="company-tree-divisions">
+                                    <details th:each="division:${divisions}" th:if="${division.directorate != null and division.directorate.id == directorate.id}" class="company-tree-division" th:attr="data-tree-key=${'division-' + division.id}">
+                                        <summary class="company-tree-division-summary"><strong><small>Відділ</small><span th:text="${division.name}"></span></strong><span class="company-tree-division-toggle" aria-hidden="true">⌄</span></summary>
+                                        <p class="company-tree-manager" th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') : 'Керівник не призначений'}"></p>
+                                        <p th:if="${division.description != null and !division.description.isBlank()}" th:text="${division.description}"></p>
+                                        <div class="company-tree-subdivisions">
+                                            <div th:each="subdivision:${subdivisions}" th:if="${subdivision.division.id == division.id}" class="company-tree-subdivision">
+                                                <span><small>Підвідділ</small><b th:text="${subdivision.name}"></b></span>
+                                                <p th:if="${subdivision.description != null and !subdivision.description.isBlank()}" th:text="${subdivision.description}"></p>
+                                            </div>
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="company-tree-legacy">
+                        <details th:each="division:${divisions}" th:if="${division.department.id == department.id and division.directorate == null}" class="company-tree-division company-tree-legacy-division" th:attr="data-tree-key=${'division-' + division.id}">
+                            <summary class="company-tree-division-summary"><strong><small>Відділ без управління</small><span th:text="${division.name}"></span></strong><span class="company-tree-division-toggle" aria-hidden="true">⌄</span></summary>
+                            <p class="company-tree-manager" th:text="${division.manager != null ? 'Керівник: ' + (division.manager.lastName ?: '') + ' ' + (division.manager.firstName ?: '') : 'Керівник не призначений'}"></p>
+                            <div class="company-tree-subdivisions">
+                                <div th:each="subdivision:${subdivisions}" th:if="${subdivision.division.id == division.id}" class="company-tree-subdivision"><span><small>Підвідділ</small><b th:text="${subdivision.name}"></b></span></div>
+                            </div>
+                        </details>
+                    </div>
+                </div>
+            </details>
+        </section>
+    </main>
+</div>
+</body>
+</html>

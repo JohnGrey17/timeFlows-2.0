@@ -91,9 +91,11 @@ public class SubdivisionServiceImpl implements SubdivisionService {
     @Transactional
     public void delete(Long id) {
         Subdivision subdivision = findById(id);
-        if (subdivisions.existsByIdAndUsersActiveTrue(id)) {
-            throw new DivisionException("Не можна видалити підвідділ з активними працівниками");
+        if (!subdivision.getUsers().isEmpty()) {
+            throw new DivisionException(
+                    "Не можна видалити підвідділ, доки до нього прив'язані працівники, включно з деактивованими");
         }
         subdivisions.delete(subdivision);
+        subdivisions.flush();
     }
 }

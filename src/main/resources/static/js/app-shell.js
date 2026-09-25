@@ -8,6 +8,21 @@ if (layout && toggle) {
     });
 }
 
+// Non-administrative roles get a read-only organization tree. Administrative roles already
+// have the full organization-management entry, so the extra menu item is intentionally hidden.
+document.querySelectorAll(".side-nav").forEach((navigation) => {
+    const hasOrganizationManagement = navigation.querySelector("a[href='/api/organization']");
+    const hasCompanyStructure = navigation.querySelector("a[href='/api/company-structure']");
+    const settings = navigation.querySelector("a[href='/api/settings']");
+    if (!hasOrganizationManagement && !hasCompanyStructure && settings) {
+        const link = document.createElement("a");
+        link.href = "/api/company-structure";
+        if (location.pathname === "/api/company-structure") link.classList.add("active");
+        link.innerHTML = '<span class="nav-icon">▥</span><span>Структура компанії</span>';
+        settings.before(link);
+    }
+});
+
 // Keep contextual help next to the heading it explains on every module.
 document.querySelectorAll(".section-title-with-help").forEach((title) => {
     const heading = title.querySelector("h1, h2");
