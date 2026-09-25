@@ -91,6 +91,18 @@ class BonusServiceTests {
     }
 
     @Test
+    void approvedKpiCanBeArchived() {
+        Bonus kpi = bonus(BonusStatus.APPROVED);
+        kpi.setType(BonusType.KPI);
+        when(repository.findById(1L)).thenReturn(Optional.of(kpi));
+
+        service.delete(1L, true);
+
+        assertThat(kpi.isArchived()).isTrue();
+        verify(repository).save(kpi);
+    }
+
+    @Test
     void monthQueriesUseExactMonthBoundaries() {
         YearMonth month = YearMonth.of(2026, 8);
         LocalDateTime start = LocalDateTime.of(2026, 8, 1, 0, 0);
