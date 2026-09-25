@@ -11,6 +11,7 @@ import example.timeflows.repository.OvertimeRepository;
 import example.timeflows.repository.SubdivisionRepository;
 import example.timeflows.repository.UserRepository;
 import example.timeflows.service.DemoDataService;
+import example.timeflows.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,7 @@ class DemoDataIntegrationTests {
     @Autowired private OvertimeRepository overtimes;
     @Autowired private BonusRepository bonuses;
     @Autowired private DemoDataService demoDataService;
+    @Autowired private UserService userService;
 
     @Test
     @Transactional
@@ -71,5 +73,18 @@ class DemoDataIntegrationTests {
         assertThat(subdivisions.count()).isEqualTo(160);
         assertThat(overtimes.count()).isZero();
         assertThat(bonuses.count()).isZero();
+    }
+
+    @Test
+    @Transactional
+    void permanentlyDeletesDeactivatedUserWithoutForeignKeyFailures() {
+        demoDataService.initialize();
+        var user = users.findByEmail("ihor.melnyk@vyriy.com").orElseThrow();
+        user.setActive(false);
+        users.saveAndFlush(user);
+
+        userService.deleteDeactivatedPermanently(user.getId());
+
+        assertThat(users.findById(user.getId())).isEmpty();
     }
 }

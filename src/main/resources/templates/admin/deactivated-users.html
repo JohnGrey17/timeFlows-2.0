@@ -35,6 +35,9 @@
             <a class="link-button" th:href="@{/api/users}">Активні користувачі</a>
         </header>
 
+        <p class="success-message" th:if="${success}" th:text="${success}"></p>
+        <p class="error-message" th:if="${userError}" th:text="${userError}"></p>
+
         <section class="table-panel">
             <table class="data-table">
                 <thead>
@@ -44,6 +47,7 @@
                     <th>Відділ</th>
                     <th>Причина деактивації</th>
                     <th>Overtime</th>
+                    <th>Дії</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -56,6 +60,14 @@
                     <td th:text="${user.division.name}">Division</td>
                     <td th:text="${user.deactivationReason}">Reason</td>
                     <td><a th:href="@{/api/overtime/review(mode='employee',divisionId=${user.division.id},userId=${user.id})}">Календар</a></td>
+                    <td>
+                        <form sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')"
+                              th:action="@{/api/users/{id}/delete-permanently(id=${user.id})}"
+                              method="post"
+                              onsubmit="return confirm('Остаточно видалити користувача з бази даних разом з усіма його overtime, бонусами, фільтрами та MFA-даними? Цю дію неможливо скасувати.')">
+                            <button type="submit" class="danger-button">Видалити з DB</button>
+                        </form>
+                    </td>
                 </tr>
                 </tbody>
             </table>

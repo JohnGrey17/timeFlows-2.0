@@ -9,6 +9,8 @@ import example.timeflows.service.SubdivisionService;
 import example.timeflows.service.UserService;
 import java.util.Comparator;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -22,6 +24,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @PreAuthorize("hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
 public class OrganizationPageController {
+
+    private static final Logger log = LoggerFactory.getLogger(OrganizationPageController.class);
 
     private final DepartmentService departmentService;
     private final DivisionService divisionService;
@@ -240,7 +244,13 @@ public class OrganizationPageController {
             action.run();
             redirectAttributes.addFlashAttribute("success", successMessage);
         } catch (RuntimeException exception) {
-            redirectAttributes.addFlashAttribute("organizationError", exception.getMessage());
+            log.error("Organization action failed", exception);
+            String message = exception.getMessage();
+            redirectAttributes.addFlashAttribute(
+                    "organizationError",
+                    message == null || message.isBlank()
+                            ? "Не вдалося виконати операцію. Деталі записано в журнал сервера."
+                            : message);
         }
         return "redirect:/api/organization";
     }

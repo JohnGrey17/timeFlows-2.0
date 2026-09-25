@@ -225,6 +225,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
+    public void deleteDeactivatedPermanently(Long id) {
+        User user = findById(id);
+        if (user.isActive()) {
+            throw new UserException(
+                    "Повністю видалити можна лише попередньо деактивованого користувача");
+        }
+
+        userRepository.clearDivisionManagerReferences(id);
+        userRepository.clearDirectorateManagerReferences(id);
+        userRepository.deleteBonusData(id);
+        userRepository.deleteOvertimeData(id);
+        userRepository.deleteSavedOvertimeFilters(id);
+        userRepository.deleteMfaRecoveryCodes(id);
+        userRepository.delete(user);
+        userRepository.flush();
+    }
+
+    @Override
+    @Transactional
     public void deactivate(Long id, String reason) {
         User user = findById(id);
         if (user.getRoles().contains(Role.ADMIN)) {

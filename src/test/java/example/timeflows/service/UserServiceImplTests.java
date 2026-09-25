@@ -253,6 +253,36 @@ class UserServiceImplTests {
     }
 
     @Test
+    void permanentDeleteRemovesAllDataForDeactivatedUser() {
+        User user = user(1L, "former@vyriy.com", Role.EMPLOYEE);
+        user.setActive(false);
+        when(userRepository.findWithDivisionById(1L)).thenReturn(Optional.of(user));
+
+        service.deleteDeactivatedPermanently(1L);
+
+        verify(userRepository).clearDivisionManagerReferences(1L);
+        verify(userRepository).clearDirectorateManagerReferences(1L);
+        verify(userRepository).deleteBonusData(1L);
+        verify(userRepository).deleteOvertimeData(1L);
+        verify(userRepository).deleteSavedOvertimeFilters(1L);
+        verify(userRepository).deleteMfaRecoveryCodes(1L);
+        verify(userRepository).delete(user);
+        verify(userRepository).flush();
+    }
+
+    @Test
+    void permanentDeleteRejectsActiveUser() {
+        User user = user(1L, "active@vyriy.com", Role.EMPLOYEE);
+        user.setActive(true);
+        when(userRepository.findWithDivisionById(1L)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.deleteDeactivatedPermanently(1L))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("деактивованого");
+        verify(userRepository, never()).delete(user);
+    }
+
+    @Test
     void assignDivisionManagerUpdatesRolesAndPreviousManager() {
         Division division = division(2L);
         User candidate = user(1L, "candidate@vyriy.com", Role.EMPLOYEE);

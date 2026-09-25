@@ -34,6 +34,4 @@ public interface DivisionRepository extends JpaRepository<Division, Long> {
     Optional<Division> findWithDepartmentAndUsersById(Long id);
 
     Optional<Division> findByManagerId(Long managerId);
-
-    boolean existsByIdAndUsersActiveTrue(Long id);
 }

@@ -143,11 +143,15 @@ public class DivisionServiceImpl implements DivisionService {
     @Transactional
     public void delete(Long id) {
         Division division = findById(id);
-        if (!division.getSubdivisions().isEmpty()
-                || divisionRepository.existsByIdAndUsersActiveTrue(id)) {
-            throw new DivisionException("Не можна видалити відділ з активними даними");
+        if (!division.getSubdivisions().isEmpty()) {
+            throw new DivisionException("Не можна видалити відділ, доки в ньому є підвідділи");
+        }
+        if (!division.getUsers().isEmpty()) {
+            throw new DivisionException(
+                    "Не можна видалити відділ, доки до нього прив'язані працівники, включно з деактивованими");
         }
         divisionRepository.delete(division);
+        divisionRepository.flush();
     }
 
     private Department findDepartment(Long departmentId) {

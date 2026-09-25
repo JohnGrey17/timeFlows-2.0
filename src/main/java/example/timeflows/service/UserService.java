@@ -37,6 +37,8 @@ public interface UserService {
 
     void delete(Long id);
 
+    void deleteDeactivatedPermanently(Long id);
+
     void deactivate(Long id, String reason);
 
     User updateSalary(Long id, BigDecimal salary);
