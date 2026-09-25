@@ -8,6 +8,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -19,6 +21,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
 public class BonusController {
+    private static final Logger log = LoggerFactory.getLogger(BonusController.class);
+
     private final BonusService bonusService;
     private final UserService userService;
     private final DepartmentService departmentService;
@@ -333,16 +337,30 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonuses/{id}/delete")
+    @PreAuthorize("hasRole('ABSOLUT')")
     public String delete(
             @PathVariable Long id,
             @RequestParam(required = false) String returnTo,
             Authentication auth,
             RedirectAttributes ra) {
-        accessService.assertCanEditBonus(auth.getName(), id);
         try {
+            User actor = userService.findByEmail(auth.getName());
+            if (!accessPolicy.isAbsolut(actor)) {
+                throw new AccessDeniedException(
+                        "Видалення бонусів доступне лише користувачу ABSOLUT");
+            }
             bonusService.delete(id, true);
-        } catch (IllegalArgumentException exception) {
-            ra.addFlashAttribute("bonusError", exception.getMessage());
+            ra.addFlashAttribute("quarterlySuccessTitle", "Бонус видалено");
+            ra.addFlashAttribute(
+                    "quarterlySuccessMessage", "Бонус успішно видалено з поточного перегляду.");
+        } catch (RuntimeException exception) {
+            log.error("Failed to delete bonus {}", id, exception);
+            String message = exception.getMessage();
+            ra.addFlashAttribute(
+                    "bonusError",
+                    message == null || message.isBlank()
+                            ? "Не вдалося видалити бонус. Деталі записано в журнал сервера."
+                            : message);
         }
         return redirect(returnTo);
     }
