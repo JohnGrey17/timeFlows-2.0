@@ -183,7 +183,7 @@ cp .env.example .env
 | `POSTGRES_USER` | Користувач PostgreSQL | `timeflows` |
 | `POSTGRES_PASSWORD` | Пароль PostgreSQL | випадковий сильний пароль |
 | `JWT_SECRET` | Ключ підпису JWT | випадковий секрет 32+ символи |
-| `JWT_EXPIRATION` | Термін дії JWT | `PT8H` |
+| `JWT_EXPIRATION` | Термін дії JWT | `PT4H` |
 | `MFA_ENCRYPTION_KEY` | Окремий ключ шифрування TOTP-secret | довгий випадковий секрет |
 | `MFA_ISSUER` | Назва у Google Authenticator | `timeFlows` |
 | `MFA_ENABLED` | Увімкнення двофакторної автентифікації | `true` |

@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/changes/025-add-required-password-change.yaml
   - include:
       file: db/changelog/changes/026-add-user-patronymic.yaml
+  - include:
+      file: db/changelog/changes/027-add-subdivision-manager.yaml

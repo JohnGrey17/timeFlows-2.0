@@ -47,6 +47,8 @@ public interface UserService {
 
     User assignDirectorateManager(Long directorateId, Long userId);
 
+    User assignSubdivisionManager(Long subdivisionId, Long userId);
+
     User moveToOrganization(Long userId, Long divisionId, Long subdivisionId);
 
     User updateRoles(Long userId, Set<Role> roles, String actorEmail);

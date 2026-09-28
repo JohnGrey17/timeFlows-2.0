@@ -151,6 +151,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Modifying
     @Query(
+            value = "update subdivisions set manager_id = null where manager_id = :userId",
+            nativeQuery = true)
+    void clearSubdivisionManagerReferences(@Param("userId") Long userId);
+
+    @Modifying
+    @Query(
             value = "delete from bonuses where user_id = :userId or created_by_id = :userId",
             nativeQuery = true)
     void deleteBonusData(@Param("userId") Long userId);

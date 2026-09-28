@@ -232,8 +232,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                     "Повністю видалити можна лише попередньо деактивованого користувача");
         }
 
+        if (user.getSubdivision() != null
+                && user.getSubdivision().getManager() != null
+                && user.getSubdivision().getManager().getId().equals(id)) {
+            user.getSubdivision().setManager(null);
+            subdivisionRepository.save(user.getSubdivision());
+        }
+
         userRepository.clearDivisionManagerReferences(id);
         userRepository.clearDirectorateManagerReferences(id);
+        userRepository.clearSubdivisionManagerReferences(id);
         userRepository.deleteBonusData(id);
         userRepository.deleteOvertimeData(id);
         userRepository.deleteSavedOvertimeFilters(id);
@@ -331,6 +339,40 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     @Transactional
+    public User assignSubdivisionManager(Long subdivisionId, Long userId) {
+        Subdivision subdivision =
+                subdivisionRepository
+                        .findById(subdivisionId)
+                        .orElseThrow(() -> new UserException("Підвідділ не знайдено"));
+        User user = findById(userId);
+        if (!user.isActive()) {
+            throw new UserException(
+                    "Деактивованого користувача не можна призначити офіс-менеджером");
+        }
+        if (user.getSubdivision() == null || !user.getSubdivision().getId().equals(subdivisionId)) {
+            throw new UserException("Офіс-менеджер має належати до вибраного підвідділу");
+        }
+        subdivisionRepository
+                .findByManagerId(userId)
+                .filter(existing -> !existing.getId().equals(subdivisionId))
+                .ifPresent(
+                        existing -> {
+                            throw new UserException(
+                                    "Користувач вже є офіс-менеджером іншого підвідділу");
+                        });
+        User previousManager = subdivision.getManager();
+        subdivision.setManager(user);
+        user.getRoles().add(Role.OFFICE_MANAGER);
+        subdivisionRepository.save(subdivision);
+        if (previousManager != null && !previousManager.getId().equals(userId)) {
+            previousManager.getRoles().remove(Role.OFFICE_MANAGER);
+            userRepository.save(previousManager);
+        }
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
     public User moveToOrganization(Long userId, Long divisionId, Long subdivisionId) {
         User user = findById(userId);
         Division targetDivision = findDivision(divisionId);
@@ -340,6 +382,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 && currentDivision.getManager().getId().equals(userId)
                 && !currentDivision.getId().equals(divisionId)) {
             throw new UserException("Спочатку призначте іншого керівника поточного відділу");
+        }
+        if (user.getSubdivision() != null
+                && user.getSubdivision().getManager() != null
+                && user.getSubdivision().getManager().getId().equals(userId)
+                && !user.getSubdivision().getId().equals(subdivisionId)) {
+            throw new UserException(
+                    "Спочатку призначте іншого офіс-менеджера поточного підвідділу");
         }
         Subdivision targetSubdivision = null;
         if (subdivisionId != null) {
@@ -417,6 +466,20 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         } else if (assignedDirectorateManager && !requestsDirectorateManager) {
             user.getDivision().getDirectorate().setManager(null);
             directorateRepository.save(user.getDivision().getDirectorate());
+        }
+        boolean assignedOfficeManager =
+                user.getSubdivision() != null
+                        && user.getSubdivision().getManager() != null
+                        && user.getSubdivision().getManager().getId().equals(userId);
+        boolean requestsOfficeManager = requested.contains(Role.OFFICE_MANAGER);
+        if (requestsOfficeManager && !assignedOfficeManager) {
+            if (user.getSubdivision() == null) {
+                throw new UserException("Офіс-менеджер повинен належати до підвідділу");
+            }
+            assignSubdivisionManager(user.getSubdivision().getId(), userId);
+        } else if (assignedOfficeManager && !requestsOfficeManager) {
+            user.getSubdivision().setManager(null);
+            subdivisionRepository.save(user.getSubdivision());
         }
         user.setRoles(requested);
         return userRepository.save(user);

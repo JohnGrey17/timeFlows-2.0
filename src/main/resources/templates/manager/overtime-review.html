@@ -8,7 +8,7 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
     <script defer th:src="@{/js/app-shell.js}"></script><script defer th:src="@{/js/organization-filters.js}"></script><script defer th:src="@{/js/overtime-review.js}"></script>
 </head>
-<body class="app-body" th:data-can-approve-bonuses="${canApproveBonuses}">
+<body class="app-body" th:data-can-approve-bonuses="${canApproveBonuses}" th:data-office-manager="${officeManager}" th:data-division-manager="${divisionManager}">
 <div class="app-layout">
     <aside class="sidebar">
         <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-label="Згорнути меню">☰</button>
@@ -87,7 +87,7 @@
             </th:block>
             <select name="status">
                 <option value="">Всі статуси</option>
-                <option th:each="statusOption:${overtimeStatuses}" th:value="${statusOption}" th:selected="${statusOption == selectedStatus}" th:text="${statusOption.name() == 'CHECKING' ? 'На розгляді керівника відділу' : (statusOption.name() == 'APPROVED_MANAGER' ? 'Погоджено керівником відділу' : (statusOption.name() == 'APPROVED_DIRECTORATE' ? 'Погоджено керівником управління' : (statusOption.name() == 'APPROVED_ADMIN' ? 'Погоджено адміністратором' : 'Відхилено')))}"></option>
+                <option th:each="statusOption:${overtimeStatuses}" th:value="${statusOption}" th:selected="${statusOption == selectedStatus}" th:text="${statusOption.name() == 'CHECKING' ? 'На розгляді керівника' : (statusOption.name() == 'APPROVED_OFFICE_MANAGER' ? 'Погоджено офіс-менеджером' : (statusOption.name() == 'APPROVED_MANAGER' ? 'Погоджено керівником відділу' : (statusOption.name() == 'APPROVED_DIRECTORATE' ? 'Погоджено керівником управління' : (statusOption.name() == 'APPROVED_ADMIN' ? 'Погоджено адміністратором' : 'Відхилено'))))}"></option>
             </select>
             <select name="month">
                 <option th:each="monthOption : ${months}"
@@ -269,7 +269,17 @@
                     <span class="bonus-type-label" th:if="${projectManagerUserIds.contains(row.user().id)}">KPI</span>
                     <input type="number" name="amount" min="0.01" step="0.01" required placeholder="Сума"><input name="description" maxlength="1000" placeholder="Додатковий опис"><button type="submit">Створити</button>
                 </form>
-                <div class="bonus-modal-list"><p th:if="${#lists.isEmpty(bonusesByUser.get(row.user().id))}">Бонусів за цей місяць немає.</p><article class="bonus-modal-item" th:each="bonus:${bonusesByUser.get(row.user().id)}"><div><strong th:text="${bonus.amount}"></strong><span th:text="${bonus.description}"></span><small th:text="${#temporals.format(bonus.createdAt,'dd.MM.yyyy HH:mm')+' · '+bonus.status}"></small></div><form th:if="${admin || bonus.status.name()=='PENDING' || (canManageKpi && bonus.type.name()=='KPI')}" method="post" th:action="@{/api/bonuses/{id}/update(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input th:if="${bonus.type.name()=='MONTHLY'}" type="hidden" name="categoryId" th:value="${bonus.category.id}"><input type="number" name="amount" min="0.01" step="0.01" th:value="${bonus.amount}" required><input name="description" th:value="${bonus.description}" required><button>Зберегти</button></form><div class="bonus-item-actions"><form th:if="${canApproveBonuses && (absolut || bonus.status.name()=='PENDING')}" method="post" th:action="@{/api/bonuses/{id}/approve(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" placeholder="Коментар"><button>Погодити</button></form><form th:if="${canApproveBonuses && (absolut || bonus.status.name()=='PENDING')}" method="post" th:action="@{/api/bonuses/{id}/reject(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" required placeholder="Причина"><button class="danger-button">Відхилити</button></form><form th:if="${admin || bonus.status.name()=='PENDING' || (canManageKpi && bonus.type.name()=='KPI')}" method="post" th:action="@{/api/bonuses/{id}/delete(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><button class="danger-button">Видалити</button></form></div></article></div>
+                <div class="bonus-modal-list">
+                    <p th:if="${#lists.isEmpty(bonusesByUser.get(row.user().id))}">Бонусів за цей місяць немає.</p>
+                    <article class="bonus-modal-item" th:each="bonus:${bonusesByUser.get(row.user().id)}">
+                        <div><strong th:text="${bonus.amount}"></strong><span th:text="${bonus.description}"></span><small th:text="${#temporals.format(bonus.createdAt,'dd.MM.yyyy HH:mm')+' · '+bonus.status}"></small></div>
+                        <form th:if="${admin || bonus.status.name()=='PENDING' || (canManageKpi && bonus.type.name()=='KPI')}" method="post" th:action="@{/api/bonuses/{id}/update(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input th:if="${bonus.type.name()=='MONTHLY'}" type="hidden" name="categoryId" th:value="${bonus.category.id}"><input type="number" name="amount" min="0.01" step="0.01" th:value="${bonus.amount}" required><input name="description" th:value="${bonus.description}" required><button>Зберегти</button></form>
+                        <div class="bonus-item-actions">
+                            <form th:if="${canApproveBonuses && (absolut || bonus.status.name()=='PENDING' || (directorateManager && bonus.status.name()=='APPROVED_OFFICE_MANAGER'))}" method="post" th:action="@{/api/bonuses/{id}/approve(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" placeholder="Коментар"><button>Погодити</button></form>
+                            <form th:if="${(canApproveBonuses && (absolut || bonus.status.name()=='PENDING' || (directorateManager && bonus.status.name()=='APPROVED_OFFICE_MANAGER'))) || (canCancelOfficeApprovedBonuses && bonus.status.name()=='APPROVED_OFFICE_MANAGER')}" method="post" th:action="@{/api/bonuses/{id}/reject(id=${bonus.id})}"><input type="hidden" name="returnTo" value="review"><input name="comment" required placeholder="Причина"><button class="danger-button" th:text="${canCancelOfficeApprovedBonuses && bonus.status.name()=='APPROVED_OFFICE_MANAGER' ? 'Скасувати' : 'Відхилити'}">Відхилити</button></form>
+                        </div>
+                    </article>
+                </div>
             </section>
         </div>
     </main>

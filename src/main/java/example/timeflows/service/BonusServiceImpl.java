@@ -184,8 +184,12 @@ public class BonusServiceImpl implements BonusService {
             if (!allowFinal || b.getStatus() != BonusStatus.APPROVED) {
                 throw new IllegalArgumentException("Скасувати можна лише погоджений бонус");
             }
-        } else {
+        } else if (status == BonusStatus.APPROVED_OFFICE_MANAGER) {
             assertPending(b);
+        } else if (b.getStatus() != BonusStatus.PENDING
+                && b.getStatus() != BonusStatus.APPROVED_OFFICE_MANAGER) {
+            throw new IllegalArgumentException(
+                    "Рішення можна прийняти лише для бонусу на погодженні");
         }
         b.setStatus(status);
         b.setAdminComment(comment);

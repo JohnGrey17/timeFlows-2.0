@@ -43,7 +43,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review/export")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public ResponseEntity<byte[]> export(
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) Long directorateId,
@@ -82,7 +82,7 @@ public class OvertimeReviewController {
     }
 
     @GetMapping("/api/overtime/review")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String review(
             @RequestParam(defaultValue = "division") String mode,
             @RequestParam(defaultValue = "matrix") String view,
@@ -163,7 +163,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/approve")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String approve(
             @RequestParam Long overtimeId,
             @RequestParam(required = false) String comment,
@@ -193,7 +193,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/create-for-user")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','ABSOLUT')")
     public String createForUser(
             @RequestParam Long employeeId,
             @Valid @ModelAttribute OvertimeRequest request,
@@ -269,7 +269,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/reject")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String reject(
             @RequestParam Long overtimeId,
             @RequestParam String comment,

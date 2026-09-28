@@ -25,6 +25,7 @@ class DemoEnvironmentInitializerTests {
         assertThat(environment.getProperty("spring.h2.console.enabled")).isEqualTo("true");
         assertThat(environment.getProperty("timeflows.jwt.secret"))
                 .startsWith("test-only-jwt-secret");
+        assertThat(environment.getProperty("timeflows.jwt.expiration")).isEqualTo("PT4H");
         assertThat(environment.getProperty("timeflows.mfa.enabled")).isEqualTo("false");
         assertThat(environment.getProperty("timeflows.access.absolut-enabled")).isEqualTo("true");
         assertThat(environment.getProperty("timeflows.bootstrap.admin-password")).isEqualTo("111");

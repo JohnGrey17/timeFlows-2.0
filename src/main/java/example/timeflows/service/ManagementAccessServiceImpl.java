@@ -31,6 +31,13 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
 
     @Override
     public void assertCanManage(User actor, User target) {
+        boolean officeManagerScope =
+                actor.getRoles().contains(Role.OFFICE_MANAGER)
+                        && actor.getSubdivision() != null
+                        && actor.getSubdivision().getManager() != null
+                        && actor.getSubdivision().getManager().getId().equals(actor.getId())
+                        && target.getSubdivision() != null
+                        && actor.getSubdivision().getId().equals(target.getSubdivision().getId());
         if (!accessPolicy.isAbsolut(actor)
                 && !actor.getRoles().contains(Role.ADMIN)
                 && !(actor.getRoles().contains(Role.DIRECTORATE_MANAGER)
@@ -42,8 +49,13 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
                                 .getDirectorate()
                                 .getId()
                                 .equals(target.getDivision().getDirectorate().getId()))
-                && !actor.getDivision().getId().equals(target.getDivision().getId())) {
-            throw new UserException("Керівник може працювати лише зі своїм відділом");
+                && !officeManagerScope
+                && !(actor.getRoles().contains(Role.MANAGER)
+                        && actor.getDivision() != null
+                        && target.getDivision() != null
+                        && actor.getDivision().getId().equals(target.getDivision().getId()))) {
+            throw new UserException(
+                    "Керівник може працювати лише зі своєю організаційною одиницею");
         }
     }
 }

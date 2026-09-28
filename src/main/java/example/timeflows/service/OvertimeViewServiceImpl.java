@@ -159,7 +159,7 @@ public class OvertimeViewServiceImpl implements OvertimeViewService {
         String statusClass =
                 switch (overtime.getStatus()) {
                     case CHECKING, PENDING -> "status-pending";
-                    case APPROVED_MANAGER -> "status-manager";
+                    case APPROVED_OFFICE_MANAGER, APPROVED_MANAGER -> "status-manager";
                     case APPROVED_DIRECTORATE, APPROVED_ADMIN, APPROVED -> "status-approved";
                     case DECLINED, REJECTED -> "status-rejected";
                 };
