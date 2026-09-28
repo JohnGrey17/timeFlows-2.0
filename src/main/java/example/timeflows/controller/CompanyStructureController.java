@@ -8,7 +8,6 @@ import example.timeflows.service.SubdivisionService;
 import example.timeflows.service.UserService;
 import java.util.Comparator;
 import java.util.List;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -37,7 +36,6 @@ public class CompanyStructureController {
     }
 
     @GetMapping("/api/company-structure")
-    @PreAuthorize("isAuthenticated()")
     public String page(Authentication authentication, Model model) {
         List<Division> divisions =
                 divisionService.findAll().stream()
