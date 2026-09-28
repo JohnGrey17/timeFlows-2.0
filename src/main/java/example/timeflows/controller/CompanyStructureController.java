@@ -37,7 +37,7 @@ public class CompanyStructureController {
     }
 
     @GetMapping("/api/company-structure")
-    @PreAuthorize("!hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')")
+    @PreAuthorize("isAuthenticated()")
     public String page(Authentication authentication, Model model) {
         List<Division> divisions =
                 divisionService.findAll().stream()

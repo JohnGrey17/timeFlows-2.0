@@ -224,15 +224,30 @@ class SecurityAuthorizationTests {
                         get("/api/company-structure")
                                 .with(user("andrii.employee@vyriy.com").roles("EMPLOYEE")))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Структура компанії")))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/update"))))
-                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("/delete"))));
+                .andExpect(
+                        content()
+                                .string(org.hamcrest.Matchers.containsString("Структура компанії")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("/update"))))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.not(
+                                                org.hamcrest.Matchers.containsString("/delete"))));
     }
 
     @Test
-    void adminCannotOpenDuplicateReadOnlyCompanyStructure() throws Exception {
+    void adminCanOpenReadOnlyCompanyStructure() throws Exception {
         mockMvc.perform(get("/api/company-structure").with(user("admin@vyriy.com").roles("ADMIN")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "Структура компанії")));
     }
 
     @Test
