@@ -94,10 +94,24 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
     }
     const admin = reviewModal.dataset.admin === "true";
     const directorateManager = reviewModal.dataset.directorateManager === "true";
+    const officeManager = document.body.dataset.officeManager === "true";
+    const divisionManager = document.body.dataset.divisionManager === "true";
+    const awaitingFinal = ["APPROVED_MANAGER", "APPROVED_OFFICE_MANAGER"].includes(cell.dataset.status);
     const canReview = admin || directorateManager
-        ? cell.dataset.status === "APPROVED_MANAGER"
-        : cell.dataset.status === "CHECKING";
-    reviewModal.querySelector("[data-review-actions]").hidden = !canReview;
+        ? awaitingFinal
+        : officeManager
+            ? cell.dataset.status === "CHECKING"
+            : cell.dataset.status === "CHECKING" || (divisionManager && cell.dataset.status === "APPROVED_OFFICE_MANAGER");
+    const actions = reviewModal.querySelector("[data-review-actions]");
+    actions.hidden = !canReview;
+    const approveForm = actions.querySelector("form[action$='/approve']");
+    if (approveForm) {
+        approveForm.hidden =
+            divisionManager
+            && !directorateManager
+            && !admin
+            && cell.dataset.status === "APPROVED_OFFICE_MANAGER";
+    }
     reviewModal.hidden = false;
 }));
 document.querySelector("[data-review-close]")?.addEventListener("click", () => reviewModal.hidden = true);
@@ -131,6 +145,7 @@ document.querySelector("[data-bulk-approve]")?.addEventListener("submit", async 
 let bonusCategories;
 const bonusStatusLabels = {
     PENDING: "Очікує підтвердження адміністратором",
+    APPROVED_OFFICE_MANAGER: "Погоджено офіс-менеджером, очікує керівника управління",
     APPROVED: "Погоджено адміністратором",
     REJECTED: "Відхилено адміністратором"
 };
@@ -140,10 +155,10 @@ document.querySelectorAll("[data-bonus-modal]").forEach((button) => button.addEv
     const projectManager = createForm?.dataset.projectManager === "true";
     if (!projectManager) bonusCategories ||= await fetch("/api/bonus-categories").then(response => response.json());
     bonusModal.querySelectorAll(".bonus-modal-item").forEach((item) => {
-        const status = item.querySelector("small")?.textContent.match(/(PENDING|APPROVED|REJECTED)$/)?.[1];
+        const status = item.querySelector("small")?.textContent.match(/(APPROVED_OFFICE_MANAGER|PENDING|APPROVED|REJECTED)$/)?.[1];
         if (status) {
             item.classList.add(`bonus-status-${status.toLowerCase()}`);
-            if (status !== "PENDING") {
+            if (status !== "PENDING" && status !== "APPROVED_OFFICE_MANAGER") {
                 item.querySelectorAll("form[action$='/approve'], form[action$='/reject']")
                     .forEach((form) => form.remove());
             }

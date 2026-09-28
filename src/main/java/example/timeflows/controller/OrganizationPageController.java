@@ -200,6 +200,17 @@ public class OrganizationPageController {
                 redirectAttributes);
     }
 
+    @PostMapping("/api/organization/subdivisions/{id}/manager")
+    public String assignSubdivisionManager(
+            @PathVariable Long id,
+            @RequestParam Long userId,
+            RedirectAttributes redirectAttributes) {
+        return organizationAction(
+                () -> userService.assignSubdivisionManager(id, userId),
+                "Офіс-менеджера підвідділу призначено",
+                redirectAttributes);
+    }
+
     @PostMapping("/api/organization/divisions/{id}/update")
     public String updateDivision(
             @PathVariable Long id,

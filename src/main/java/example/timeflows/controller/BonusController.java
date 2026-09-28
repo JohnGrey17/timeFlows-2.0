@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
-@PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+@PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
 public class BonusController {
     private static final Logger log = LoggerFactory.getLogger(BonusController.class);
 
@@ -288,6 +288,7 @@ public class BonusController {
             @RequestParam(required = false) Integer month,
             Authentication auth) {
         accessService.assertCanEditBonus(auth.getName(), id);
+        assertCanEditBonusState(userService.findByEmail(auth.getName()), bonusService.find(id));
         bonusService.update(id, categoryId, amount, description, true);
         if (year != null && month != null && bonusService.find(id).getType() == BonusType.KPI) {
             bonusService.moveToMonth(id, YearMonth.of(year, month));
@@ -300,6 +301,7 @@ public class BonusController {
             @PathVariable Long id, @RequestParam Long categoryId, Authentication auth) {
         accessService.assertCanEditBonus(auth.getName(), id);
         Bonus b = bonusService.find(id);
+        assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         if (b.getType() != BonusType.MONTHLY)
             throw new IllegalArgumentException("KPI та квартальний бонус не мають категорії");
         bonusService.update(id, categoryId, b.getAmount(), b.getDescription(), true);
@@ -311,6 +313,7 @@ public class BonusController {
             @PathVariable Long id, @RequestParam BigDecimal amount, Authentication auth) {
         accessService.assertCanEditBonus(auth.getName(), id);
         Bonus b = bonusService.find(id);
+        assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         bonusService.update(
                 id,
                 b.getCategory() == null ? null : b.getCategory().getId(),
@@ -327,6 +330,7 @@ public class BonusController {
             Authentication auth) {
         accessService.assertCanEditBonus(auth.getName(), id);
         Bonus b = bonusService.find(id);
+        assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         bonusService.update(
                 id,
                 b.getCategory() == null ? null : b.getCategory().getId(),
@@ -381,8 +385,15 @@ public class BonusController {
             Authentication auth) {
         assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
-        assertBonusInActorDirectorate(actor, bonusService.find(id));
-        bonusService.decide(id, BonusStatus.APPROVED, comment, false);
+        Bonus bonus = bonusService.find(id);
+        assertBonusInActorScope(actor, bonus);
+        bonusService.decide(
+                id,
+                actor.getRoles().contains(Role.OFFICE_MANAGER)
+                        ? BonusStatus.APPROVED_OFFICE_MANAGER
+                        : BonusStatus.APPROVED,
+                comment,
+                false);
         return redirect(
                 returnTo,
                 null,
@@ -409,9 +420,13 @@ public class BonusController {
             @RequestParam(required = false) Long subdivisionId,
             @RequestParam(required = false) BonusStatus status,
             Authentication auth) {
-        assertCanApproveBonuses(userService.findByEmail(auth.getName()));
         User actor = userService.findByEmail(auth.getName());
-        assertBonusInActorDirectorate(actor, bonusService.find(id));
+        Bonus bonus = bonusService.find(id);
+        boolean divisionCancellation =
+                actor.getRoles().contains(Role.MANAGER)
+                        && bonus.getStatus() == BonusStatus.APPROVED_OFFICE_MANAGER;
+        if (!divisionCancellation) assertCanApproveBonuses(actor);
+        assertBonusInActorScope(actor, bonus);
         bonusService.decide(id, BonusStatus.REJECTED, comment, false);
         return redirect(
                 returnTo,
@@ -599,6 +614,10 @@ public class BonusController {
 
     private void assertCanApproveBonuses(User user) {
         if (user.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(user)) return;
+        if (user.getRoles().contains(Role.OFFICE_MANAGER)
+                && user.getSubdivision() != null
+                && user.getSubdivision().getManager() != null
+                && user.getSubdivision().getManager().getId().equals(user.getId())) return;
         if (!user.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 || user.getDivision() == null
                 || user.getDivision().getDirectorate() == null
@@ -606,6 +625,31 @@ public class BonusController {
                 || !user.getDivision().getDirectorate().getManager().getId().equals(user.getId())) {
             throw new AccessDeniedException("Погоджувати бонуси може лише керівник управління");
         }
+    }
+
+    private void assertBonusInActorScope(User actor, Bonus bonus) {
+        if (actor.getRoles().contains(Role.OFFICE_MANAGER)) {
+            if (actor.getSubdivision() == null
+                    || bonus.getUser().getSubdivision() == null
+                    || !actor.getSubdivision()
+                            .getId()
+                            .equals(bonus.getUser().getSubdivision().getId())) {
+                throw new AccessDeniedException(
+                        "Офіс-менеджер погоджує бонуси лише свого підвідділу");
+            }
+            return;
+        }
+        if (actor.getRoles().contains(Role.MANAGER)
+                && !actor.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            if (actor.getDivision() == null
+                    || bonus.getUser().getDivision() == null
+                    || !actor.getDivision().getId().equals(bonus.getUser().getDivision().getId())) {
+                throw new AccessDeniedException(
+                        "Керівник відділу може скасовувати бонуси лише свого відділу");
+            }
+            return;
+        }
+        assertBonusInActorDirectorate(actor, bonus);
     }
 
     private void assertBonusInActorDirectorate(User actor, Bonus bonus) {
@@ -629,6 +673,16 @@ public class BonusController {
                 && !user.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 && !user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException("Модуль керування бонусами доступний лише ADMIN");
+        }
+    }
+
+    private void assertCanEditBonusState(User actor, Bonus bonus) {
+        if (bonus.getStatus() == BonusStatus.APPROVED_OFFICE_MANAGER
+                && actor.getRoles().contains(Role.MANAGER)
+                && !actor.getRoles().contains(Role.ADMIN)
+                && !accessPolicy.isAbsolut(actor)) {
+            throw new AccessDeniedException(
+                    "Керівник відділу може лише переглянути або скасувати бонус після офіс-менеджера");
         }
     }
 }

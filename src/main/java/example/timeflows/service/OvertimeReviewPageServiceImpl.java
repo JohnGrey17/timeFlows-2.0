@@ -72,9 +72,20 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         boolean admin = current.getRoles().contains(Role.ADMIN) || absolut;
         boolean directorateManager = current.getRoles().contains(Role.DIRECTORATE_MANAGER);
         boolean divisionManager = current.getRoles().contains(Role.MANAGER);
+        boolean officeManager = current.getRoles().contains(Role.OFFICE_MANAGER);
         YearMonth selected = overtimeViewService.resolveMonth(year, month);
         boolean employeeMode = "employee".equals(mode) && userId != null;
         User requestedUser = employeeMode ? userService.findById(userId) : null;
+        if (requestedUser != null
+                && officeManager
+                && (current.getSubdivision() == null
+                        || requestedUser.getSubdivision() == null
+                        || !current.getSubdivision()
+                                .getId()
+                                .equals(requestedUser.getSubdivision().getId()))) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Офіс-менеджер може переглядати лише свій підвідділ");
+        }
         if (requestedUser != null
                 && !admin
                 && !(directorateManager
@@ -85,6 +96,12 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                 .getDirectorate()
                                 .getId()
                                 .equals(current.getDivision().getDirectorate().getId()))
+                && !(officeManager
+                        && current.getSubdivision() != null
+                        && requestedUser.getSubdivision() != null
+                        && current.getSubdivision()
+                                .getId()
+                                .equals(requestedUser.getSubdivision().getId()))
                 && !requestedUser.getDivision().getId().equals(current.getDivision().getId())) {
             throw new org.springframework.security.access.AccessDeniedException(
                     "Немає доступу до перепрацювань цього користувача");
@@ -112,7 +129,11 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         Long effectiveSubdivision =
                 requestedUser != null && requestedUser.getSubdivision() != null
                         ? requestedUser.getSubdivision().getId()
-                        : admin || directorateManager || divisionManager ? subdivisionId : null;
+                        : officeManager
+                                ? current.getSubdivision().getId()
+                                : admin || directorateManager || divisionManager
+                                        ? subdivisionId
+                                        : null;
         validateManagerScope(
                 current,
                 admin,
@@ -187,24 +208,33 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                 absolut
                         ? List.of(
                                 OvertimeStatus.CHECKING,
+                                OvertimeStatus.APPROVED_OFFICE_MANAGER,
                                 OvertimeStatus.APPROVED_MANAGER,
                                 OvertimeStatus.APPROVED_DIRECTORATE,
                                 OvertimeStatus.APPROVED_ADMIN,
                                 OvertimeStatus.DECLINED)
                         : admin
                                 ? List.of(
+                                        OvertimeStatus.APPROVED_OFFICE_MANAGER,
                                         OvertimeStatus.APPROVED_MANAGER,
                                         OvertimeStatus.DECLINED,
                                         OvertimeStatus.APPROVED_ADMIN)
                                 : directorateManager
                                         ? List.of(
+                                                OvertimeStatus.APPROVED_OFFICE_MANAGER,
                                                 OvertimeStatus.APPROVED_MANAGER,
                                                 OvertimeStatus.APPROVED_DIRECTORATE,
                                                 OvertimeStatus.DECLINED)
-                                        : List.of(
-                                                OvertimeStatus.CHECKING,
-                                                OvertimeStatus.APPROVED_MANAGER,
-                                                OvertimeStatus.DECLINED));
+                                        : officeManager
+                                                ? List.of(
+                                                        OvertimeStatus.CHECKING,
+                                                        OvertimeStatus.APPROVED_OFFICE_MANAGER,
+                                                        OvertimeStatus.DECLINED)
+                                                : List.of(
+                                                        OvertimeStatus.CHECKING,
+                                                        OvertimeStatus.APPROVED_OFFICE_MANAGER,
+                                                        OvertimeStatus.APPROVED_MANAGER,
+                                                        OvertimeStatus.DECLINED));
         data.put("selectedUserId", selectedUserId);
         data.put("selectedUserDisplay", displayName(selectedUser));
         data.put("selectedMonth", selected);
@@ -216,11 +246,13 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("admin", admin);
         data.put("directorateManager", directorateManager);
         data.put("divisionManager", divisionManager);
+        data.put("officeManager", officeManager);
         data.put("absolut", absolut);
         data.put(
                 "canCreateDivisionOvertime",
                 current.getRoles().contains(Role.ADMIN)
                         || accessPolicy.isAbsolut(current)
+                        || officeManager
                         || (current.getRoles().contains(Role.MANAGER)
                                 && current.getTags()
                                         .contains(
@@ -231,7 +263,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                 overtimeService.divisionOvertimeCreationDates(email, selected));
         data.put(
                 "canApproveBonuses",
-                admin || current.getRoles().contains(Role.DIRECTORATE_MANAGER));
+                admin || current.getRoles().contains(Role.DIRECTORATE_MANAGER) || officeManager);
+        data.put("canCancelOfficeApprovedBonuses", divisionManager);
         data.put(
                 "canManageKpi",
                 accessPolicy.isAbsolut(current)
@@ -516,13 +549,15 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             OvertimeStatus status, boolean admin, boolean directorateManager, boolean absolut) {
         if (absolut) return true;
         if (directorateManager) {
-            return status == OvertimeStatus.APPROVED_MANAGER
+            return status == OvertimeStatus.APPROVED_OFFICE_MANAGER
+                    || status == OvertimeStatus.APPROVED_MANAGER
                     || status == OvertimeStatus.APPROVED_DIRECTORATE
                     || status == OvertimeStatus.DECLINED
                     || status == OvertimeStatus.REJECTED;
         }
         if (!admin) return true;
-        return status == OvertimeStatus.APPROVED_MANAGER
+        return status == OvertimeStatus.APPROVED_OFFICE_MANAGER
+                || status == OvertimeStatus.APPROVED_MANAGER
                 || status == OvertimeStatus.APPROVED_ADMIN
                 || status == OvertimeStatus.APPROVED
                 || status == OvertimeStatus.DECLINED

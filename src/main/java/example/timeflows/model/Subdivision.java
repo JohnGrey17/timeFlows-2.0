@@ -37,6 +37,10 @@ public class Subdivision {
     @JoinColumn(name = "division_id", nullable = false)
     private Division division;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    private User manager;
+
     @OneToMany(mappedBy = "subdivision")
     @OrderBy("username ASC")
     private Set<User> users = new LinkedHashSet<>();

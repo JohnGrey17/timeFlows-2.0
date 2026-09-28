@@ -36,12 +36,12 @@ class DemoDataIntegrationTests {
     @Test
     @Transactional
     void createsRichIdempotentPreProductionDataset() {
-        assertThat(users.count()).isEqualTo(15);
+        assertThat(users.count()).isEqualTo(19);
         assertThat(departments.count()).isEqualTo(3);
         assertThat(directorates.count()).isEqualTo(16);
         assertThat(divisions.count()).isEqualTo(56);
-        assertThat(subdivisions.count()).isEqualTo(160);
-        assertThat(overtimes.count()).isZero();
+        assertThat(subdivisions.count()).isEqualTo(161);
+        assertThat(overtimes.count()).isEqualTo(6);
         assertThat(bonuses.count()).isZero();
 
         var admin = users.findByEmail("serhii.hainovskyi@vyriy.com").orElseThrow();
@@ -66,12 +66,12 @@ class DemoDataIntegrationTests {
 
         demoDataService.initialize();
 
-        assertThat(users.count()).isEqualTo(15);
+        assertThat(users.count()).isEqualTo(19);
         assertThat(departments.count()).isEqualTo(3);
         assertThat(directorates.count()).isEqualTo(16);
         assertThat(divisions.count()).isEqualTo(56);
-        assertThat(subdivisions.count()).isEqualTo(160);
-        assertThat(overtimes.count()).isZero();
+        assertThat(subdivisions.count()).isEqualTo(161);
+        assertThat(overtimes.count()).isEqualTo(6);
         assertThat(bonuses.count()).isZero();
     }
 

@@ -12,9 +12,12 @@ public interface SubdivisionRepository extends JpaRepository<Subdivision, Long> 
 
     Optional<Subdivision> findByDivisionIdAndNameIgnoreCase(Long divisionId, String name);
 
-    @EntityGraph(attributePaths = {"division", "division.department", "division.directorate"})
+    @EntityGraph(
+            attributePaths = {"division", "division.department", "division.directorate", "manager"})
     List<Subdivision> findAllByOrderByNameAsc();
 
-    @EntityGraph(attributePaths = {"division"})
+    @EntityGraph(attributePaths = {"division", "manager"})
     List<Subdivision> findByDivisionIdOrderByNameAsc(Long divisionId);
+
+    Optional<Subdivision> findByManagerId(Long managerId);
 }

@@ -10,10 +10,12 @@ import static org.mockito.Mockito.when;
 import example.timeflows.controller.dto.OvertimeRequest;
 import example.timeflows.exception.OvertimeException;
 import example.timeflows.model.BusinessTag;
+import example.timeflows.model.Directorate;
 import example.timeflows.model.Division;
 import example.timeflows.model.Overtime;
 import example.timeflows.model.OvertimeStatus;
 import example.timeflows.model.Role;
+import example.timeflows.model.Subdivision;
 import example.timeflows.model.User;
 import example.timeflows.repository.OvertimeRepository;
 import java.time.Clock;
@@ -56,6 +58,77 @@ class OvertimeServiceImplTests {
         assertThat(result.getStatus()).isEqualTo(OvertimeStatus.APPROVED_MANAGER);
         assertThat(result.getManagerComment()).isEqualTo("Погоджено");
         verify(overtimeRepository).save(overtime);
+    }
+
+    @Test
+    void officeManagerOwnOvertimeGoesDirectlyToDirectorateReview() {
+        User officeManager = user(Role.EMPLOYEE, Role.OFFICE_MANAGER);
+        when(userService.findByEmail("office.manager@vyriy.com")).thenReturn(officeManager);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Overtime result = overtimeService.create("office.manager@vyriy.com", validRequest());
+
+        assertThat(result.getStatus()).isEqualTo(OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        assertThat(result.getManagerComment()).contains("офіс-менеджера");
+    }
+
+    @Test
+    void officeManagerCreatesApprovedRequestForEmployeeInOwnSubdivision() {
+        Subdivision subdivision = new Subdivision();
+        subdivision.setId(20L);
+        User officeManager = user(Role.EMPLOYEE, Role.OFFICE_MANAGER);
+        officeManager.setId(1L);
+        officeManager.setEmail("office.manager@vyriy.com");
+        officeManager.setSubdivision(subdivision);
+        subdivision.setManager(officeManager);
+        User employee = user(Role.EMPLOYEE);
+        employee.setId(2L);
+        employee.setEmail("employee@vyriy.com");
+        employee.setSubdivision(subdivision);
+        when(userService.findByEmail("office.manager@vyriy.com")).thenReturn(officeManager);
+        when(userService.findById(2L)).thenReturn(employee);
+        when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Overtime result =
+                overtimeService.createForDivisionEmployee(
+                        "office.manager@vyriy.com", 2L, validRequest());
+
+        assertThat(result.getUser()).isSameAs(employee);
+        assertThat(result.getStatus()).isEqualTo(OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        assertThat(result.getManagerComment()).contains("очікує погодження керівника управління");
+    }
+
+    @Test
+    void directorateManagerWithDivisionManagerRoleFinallyApprovesOfficeManagerRequest() {
+        Directorate directorate = new Directorate();
+        directorate.setId(30L);
+        Division managerDivision = new Division();
+        managerDivision.setDirectorate(directorate);
+        User directorateManager = user(Role.EMPLOYEE, Role.MANAGER, Role.DIRECTORATE_MANAGER);
+        directorateManager.setId(1L);
+        directorateManager.setDivision(managerDivision);
+        directorate.setManager(directorateManager);
+
+        Division employeeDivision = new Division();
+        employeeDivision.setDirectorate(directorate);
+        User employee = user(Role.EMPLOYEE);
+        employee.setDivision(employeeDivision);
+        Overtime overtime = new Overtime();
+        overtime.setId(1L);
+        overtime.setUser(employee);
+        overtime.setStatus(OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        when(userService.findByEmail("directorate.manager@vyriy.com"))
+                .thenReturn(directorateManager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime result =
+                overtimeService.approve(1L, "Фінально погоджено", "directorate.manager@vyriy.com");
+
+        assertThat(result.getStatus()).isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+        assertThat(result.getManagerComment()).isEqualTo("Фінально погоджено");
     }
 
     @Test
@@ -357,7 +430,7 @@ class OvertimeServiceImplTests {
                                 overtimeService.createForDivisionEmployee(
                                         "manager@vyriy.com", 22L, validRequest()))
                 .isInstanceOf(OvertimeException.class)
-                .hasMessageContaining("свого відділу");
+                .hasMessageContaining("своєї організаційної одиниці");
     }
 
     @Test

@@ -21,6 +21,7 @@
             <a sec:authorize="hasAnyRole('ADMIN','SYS_ADMIN','ABSOLUT')" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
             <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
             <a class="active" th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a th:href="@{/api/company-structure}"><span class="nav-icon">⌘</span><span>Структура компанії</span></a>
             <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
         </nav>
         <form th:action="@{/api/logout}" method="post" class="logout-form"><button type="submit">Вийти</button></form>
@@ -166,6 +167,23 @@
                         <div class="company-tree-subdivisions">
                         <div th:each="subdivision:${subdivisions}" th:if="${subdivision.division.id == division.id}" class="company-tree-subdivision">
                             <span><small>Підвідділ</small><b th:text="${subdivision.name}"></b></span>
+                            <p class="company-tree-manager"
+                               th:text="${subdivision.manager != null ? 'Офіс-менеджер: ' + (subdivision.manager.lastName ?: '') + ' ' + (subdivision.manager.firstName ?: '') + ' — ' + subdivision.manager.email : 'Офіс-менеджер не призначений'}"></p>
+                            <form th:action="@{/api/organization/subdivisions/{id}/manager(id=${subdivision.id})}" method="post" class="inline-form manager-assignment-form" data-manager-assignment>
+                                <label>Пошук співробітника за прізвищем
+                                    <input type="search" autocomplete="off" placeholder="Введіть прізвище" required data-manager-search>
+                                </label>
+                                <select name="userId" hidden data-manager-select>
+                                    <option value="">Оберіть співробітника</option>
+                                    <option th:each="user:${activeUsers}"
+                                            th:if="${user.subdivision != null and user.subdivision.id == subdivision.id}"
+                                            th:value="${user.id}"
+                                            th:data-last-name="${user.lastName ?: ''}"
+                                            th:selected="${subdivision.manager != null and subdivision.manager.id == user.id}"
+                                            th:text="${(user.lastName ?: '') + ' ' + (user.firstName ?: '') + ' — ' + user.email}"></option>
+                                </select>
+                                <button type="submit">Призначити</button>
+                            </form>
                             <details class="company-tree-description" th:if="${subdivision.description != null and !subdivision.description.isBlank()}">
                                 <summary>Переглянути опис</summary><p th:text="${subdivision.description}"></p>
                             </details>

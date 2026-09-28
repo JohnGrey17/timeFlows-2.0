@@ -305,6 +305,27 @@ class UserServiceImplTests {
     }
 
     @Test
+    void assignSubdivisionManagerRequiresMembershipAndUpdatesRole() {
+        Division division = division(2L);
+        Subdivision subdivision = new Subdivision();
+        subdivision.setId(20L);
+        subdivision.setDivision(division);
+        User candidate = user(1L, "office@vyriy.com", Role.EMPLOYEE);
+        candidate.setDivision(division);
+        candidate.setSubdivision(subdivision);
+        when(subdivisionRepository.findById(20L)).thenReturn(Optional.of(subdivision));
+        when(userRepository.findWithDivisionById(1L)).thenReturn(Optional.of(candidate));
+        when(subdivisionRepository.findByManagerId(1L)).thenReturn(Optional.empty());
+        when(userRepository.save(candidate)).thenReturn(candidate);
+
+        User result = service.assignSubdivisionManager(20L, 1L);
+
+        assertThat(result.getRoles()).contains(Role.OFFICE_MANAGER);
+        assertThat(subdivision.getManager()).isSameAs(candidate);
+        verify(subdivisionRepository).save(subdivision);
+    }
+
+    @Test
     void moveToOrganizationAssignsMatchingSubdivision() {
         Division current = division(1L);
         Division target = division(2L);

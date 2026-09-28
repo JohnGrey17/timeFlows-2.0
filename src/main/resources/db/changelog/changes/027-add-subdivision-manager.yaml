@@ -1,0 +1,21 @@
+databaseChangeLog:
+  - changeSet:
+      id: 027-add-subdivision-manager
+      author: codex
+      changes:
+        - addColumn:
+            tableName: subdivisions
+            columns:
+              - column:
+                  name: manager_id
+                  type: BIGINT
+        - addForeignKeyConstraint:
+            baseTableName: subdivisions
+            baseColumnNames: manager_id
+            referencedTableName: users
+            referencedColumnNames: id
+            constraintName: fk_subdivisions_manager
+        - addUniqueConstraint:
+            tableName: subdivisions
+            columnNames: manager_id
+            constraintName: uk_subdivision_manager

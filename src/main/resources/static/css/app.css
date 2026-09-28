@@ -1431,6 +1431,17 @@ textarea:focus {
 .company-tree-division-link { color: var(--accent-strong); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .company-tree-division-link:hover { color: var(--accent); }
 .company-tree-manager { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.company-tree-manager-assigned {
+    display: inline-block;
+    padding: 6px 9px;
+    border: 1px solid #e6b99d;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #fff4ec, #ffe8d9);
+    color: #7b3515;
+    font-weight: 800;
+    box-shadow: 0 3px 10px rgba(145, 73, 32, .1);
+}
+.company-tree-manager-empty { color: #9a8d85; font-style: italic; }
 .manager-assignment-form { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; gap: 8px; }
 .manager-assignment-form > label,
 .manager-assignment-form > button { width: 100%; min-width: 0; }

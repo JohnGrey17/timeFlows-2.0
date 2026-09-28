@@ -107,6 +107,8 @@ public class DemoDataServiceImpl implements DemoDataService {
         Subdivision learning = subdivision(hr, "Навчання та розвиток");
         Subdivision office = subdivision(administration, "Офіс");
         Subdivision documentation = subdivision(administration, "Документообіг");
+        Subdivision officeManagerDemo =
+                subdivision(administration, "Тестовий підвідділ офіс-менеджера");
 
         createLargeOrganizationForInterfaceTesting();
 
@@ -134,7 +136,14 @@ public class DemoDataServiceImpl implements DemoDataService {
                         platform,
                         Role.MANAGER,
                         Role.DIRECTORATE_MANAGER);
-        demoUser("ihor.melnyk@vyriy.com", "Ігор", "Мельник", it, support);
+        User ihor =
+                demoUser(
+                        "ihor.melnyk@vyriy.com",
+                        "Ігор",
+                        "Мельник",
+                        it,
+                        support,
+                        Role.OFFICE_MANAGER);
         User taras =
                 demoUser(
                         "taras.bondar@vyriy.com", "Тарас", "Бондар", data, analytics, Role.MANAGER);
@@ -194,6 +203,35 @@ public class DemoDataServiceImpl implements DemoDataService {
                         administration,
                         office,
                         Role.MANAGER);
+        User olha =
+                demoUser(
+                        "olha.office.manager@vyriy.com",
+                        "Ольга",
+                        "Романюк",
+                        administration,
+                        officeManagerDemo,
+                        Role.OFFICE_MANAGER);
+        User viktor =
+                demoUser(
+                        "viktor.office.employee@vyriy.com",
+                        "Віктор",
+                        "Савчук",
+                        administration,
+                        officeManagerDemo);
+        User iryna =
+                demoUser(
+                        "iryna.office.employee@vyriy.com",
+                        "Ірина",
+                        "Данилюк",
+                        administration,
+                        officeManagerDemo);
+        User pavlo =
+                demoUser(
+                        "pavlo.office.employee@vyriy.com",
+                        "Павло",
+                        "Кравчук",
+                        administration,
+                        officeManagerDemo);
 
         manager(it, olena);
         manager(data, taras);
@@ -207,6 +245,20 @@ public class DemoDataServiceImpl implements DemoDataService {
         directorateManager(commercial, andrii);
         directorateManager(operations, nataliia);
         directorateManager(people, maksym);
+        officeManager(support, ihor);
+        officeManager(officeManagerDemo, olha);
+        overtime(viktor, 3, 2.0, "Підготовка офісу до робочого тижня", OvertimeStatus.CHECKING);
+        overtime(
+                viktor,
+                10,
+                3.5,
+                "Інвентаризація обладнання",
+                OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        overtime(iryna, 5, 4.0, "Організація внутрішнього заходу", OvertimeStatus.CHECKING);
+        overtime(iryna, 12, 2.5, "Координація підрядників", OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        overtime(pavlo, 7, 3.0, "Термінова закупівля матеріалів", OvertimeStatus.CHECKING);
+        overtime(
+                pavlo, 14, 5.0, "Підготовка робочих місць", OvertimeStatus.APPROVED_OFFICE_MANAGER);
         retireLegacyAdmin(admin.getId());
     }
 
@@ -223,11 +275,8 @@ public class DemoDataServiceImpl implements DemoDataService {
                                 testDepartment,
                                 directorate,
                                 String.format(
-                                        "Відділ %02d.%02d",
-                                        directorateNumber, divisionNumber));
-                for (int subdivisionNumber = 1;
-                        subdivisionNumber <= 3;
-                        subdivisionNumber++) {
+                                        "Відділ %02d.%02d", directorateNumber, divisionNumber));
+                for (int subdivisionNumber = 1; subdivisionNumber <= 3; subdivisionNumber++) {
                     subdivision(
                             division,
                             String.format(
@@ -300,6 +349,11 @@ public class DemoDataServiceImpl implements DemoDataService {
     private void directorateManager(Directorate directorate, User manager) {
         directorate.setManager(manager);
         directorates.save(directorate);
+    }
+
+    private void officeManager(Subdivision subdivision, User manager) {
+        subdivision.setManager(manager);
+        subdivisions.save(subdivision);
     }
 
     private void retireLegacyAdmin(Long replacementAdminId) {
@@ -411,7 +465,9 @@ public class DemoDataServiceImpl implements DemoDataService {
         overtime.setHours(hours);
         overtime.setDescription(description);
         overtime.setStatus(status);
-        if (status == OvertimeStatus.APPROVED_ADMIN || status == OvertimeStatus.APPROVED_MANAGER)
+        if (status == OvertimeStatus.APPROVED_ADMIN
+                || status == OvertimeStatus.APPROVED_MANAGER
+                || status == OvertimeStatus.APPROVED_OFFICE_MANAGER)
             overtime.setManagerComment("Погоджено для демо");
         if (status == OvertimeStatus.DECLINED) overtime.setManagerComment("Потрібне уточнення");
         overtimes.save(overtime);

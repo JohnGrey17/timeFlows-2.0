@@ -24,7 +24,7 @@ public class DemoEnvironmentInitializer
                     Map.entry(
                             "timeflows.jwt.secret",
                             "test-only-jwt-secret-that-is-long-enough-for-hmac-signing"),
-                    Map.entry("timeflows.jwt.expiration", "PT2H"),
+                    Map.entry("timeflows.jwt.expiration", "PT4H"),
                     Map.entry("timeflows.mfa.enabled", "false"),
                     Map.entry(
                             "timeflows.mfa.encryption-key",

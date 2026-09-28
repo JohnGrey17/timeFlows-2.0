@@ -73,6 +73,7 @@ public class UsersPageController {
         User currentUser = userService.findByEmail(authentication.getName());
         if (!accessPolicy.isAbsolut(currentUser)
                 && !currentUser.getRoles().contains(Role.ADMIN)
+                && !currentUser.getRoles().contains(Role.OFFICE_MANAGER)
                 && !currentUser.getRoles().contains(Role.MANAGER)
                 && !currentUser.getRoles().contains(Role.DIRECTORATE_MANAGER)
                 && !currentUser.getTags().contains(BusinessTag.SYS_ADMIN)) {
@@ -84,6 +85,18 @@ public class UsersPageController {
         boolean globalUserManager = admin || currentUser.getTags().contains(BusinessTag.SYS_ADMIN);
         boolean directorateManager =
                 currentUser.getRoles().contains(Role.DIRECTORATE_MANAGER) && !globalUserManager;
+        boolean officeManager =
+                currentUser.getRoles().contains(Role.OFFICE_MANAGER) && !globalUserManager;
+        if (officeManager
+                && (currentUser.getSubdivision() == null
+                        || currentUser.getSubdivision().getManager() == null
+                        || !currentUser
+                                .getSubdivision()
+                                .getManager()
+                                .getId()
+                                .equals(currentUser.getId()))) {
+            throw new AccessDeniedException("Офіс-менеджер не прив'язаний до підвідділу");
+        }
         Long ownDirectorateId =
                 currentUser.getDivision().getDirectorate() == null
                         ? null
@@ -102,7 +115,9 @@ public class UsersPageController {
         Long effectiveDirectorateId =
                 globalUserManager ? directorateId : directorateManager ? ownDirectorateId : null;
         Long effectiveSubdivisionId =
-                globalUserManager || directorateManager ? subdivisionId : null;
+                officeManager
+                        ? currentUser.getSubdivision().getId()
+                        : globalUserManager || directorateManager ? subdivisionId : null;
         if (directorateManager && effectiveDivisionId != null) {
             var selectedDivision = divisionService.findById(effectiveDivisionId);
             if (selectedDivision.getDirectorate() == null
@@ -164,6 +179,7 @@ public class UsersPageController {
         model.addAttribute("selectedDirectorateId", effectiveDirectorateId);
         model.addAttribute("selectedDivisionId", effectiveDivisionId);
         model.addAttribute("selectedSubdivisionId", effectiveSubdivisionId);
+        model.addAttribute("officeManager", officeManager);
         model.addAttribute(
                 "directorates",
                 globalUserManager && effectiveDepartmentId != null
@@ -228,7 +244,7 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/salary")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String updateSalary(
             @PathVariable Long id,
             @RequestParam BigDecimal salary,
@@ -247,7 +263,8 @@ public class UsersPageController {
     }
 
     @PostMapping("/api/users/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')")
+    @PreAuthorize(
+            "hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','SYS_ADMIN','ABSOLUT')")
     public String deactivate(
             @PathVariable Long id,
             @RequestParam String reason,
@@ -401,7 +418,9 @@ public class UsersPageController {
 
     private int roleRank(User user) {
         if (user.getRoles().contains(Role.ADMIN)) return 0;
-        if (user.getRoles().contains(Role.MANAGER)) return 1;
-        return 2;
+        if (user.getRoles().contains(Role.DIRECTORATE_MANAGER)) return 1;
+        if (user.getRoles().contains(Role.MANAGER)) return 2;
+        if (user.getRoles().contains(Role.OFFICE_MANAGER)) return 3;
+        return 4;
     }
 }
