@@ -16,6 +16,26 @@ class OvertimeReviewPageServiceImplTests {
     }
 
     @Test
+    void adminSeesDirectorateApprovedRequests() {
+        assertThat(
+                        OvertimeReviewPageServiceImpl.isVisibleForReviewer(
+                                OvertimeStatus.APPROVED_DIRECTORATE, true, false, false))
+                .isTrue();
+    }
+
+    @Test
+    void adminSeesRequestsAtEveryStatus() {
+        assertThat(OvertimeStatus.values())
+                .allSatisfy(
+                        status ->
+                                assertThat(
+                                                OvertimeReviewPageServiceImpl
+                                                        .isVisibleForReviewer(
+                                                                status, true, false, false))
+                                        .isTrue());
+    }
+
+    @Test
     void directorateManagerDoesNotSeeRequestsBeforeDivisionApproval() {
         assertThat(
                         OvertimeReviewPageServiceImpl.isVisibleForReviewer(

@@ -215,8 +215,10 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                 OvertimeStatus.DECLINED)
                         : admin
                                 ? List.of(
+                                        OvertimeStatus.CHECKING,
                                         OvertimeStatus.APPROVED_OFFICE_MANAGER,
                                         OvertimeStatus.APPROVED_MANAGER,
+                                        OvertimeStatus.APPROVED_DIRECTORATE,
                                         OvertimeStatus.DECLINED,
                                         OvertimeStatus.APPROVED_ADMIN)
                                 : directorateManager
@@ -547,7 +549,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
 
     static boolean isVisibleForReviewer(
             OvertimeStatus status, boolean admin, boolean directorateManager, boolean absolut) {
-        if (absolut) return true;
+        if (absolut || admin) return true;
         if (directorateManager) {
             return status == OvertimeStatus.APPROVED_OFFICE_MANAGER
                     || status == OvertimeStatus.APPROVED_MANAGER
@@ -555,13 +557,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                     || status == OvertimeStatus.DECLINED
                     || status == OvertimeStatus.REJECTED;
         }
-        if (!admin) return true;
-        return status == OvertimeStatus.APPROVED_OFFICE_MANAGER
-                || status == OvertimeStatus.APPROVED_MANAGER
-                || status == OvertimeStatus.APPROVED_ADMIN
-                || status == OvertimeStatus.APPROVED
-                || status == OvertimeStatus.DECLINED
-                || status == OvertimeStatus.REJECTED;
+        return true;
     }
 
     private boolean isFinalApproved(OvertimeStatus status) {
