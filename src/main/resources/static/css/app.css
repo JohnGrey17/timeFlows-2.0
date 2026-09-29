@@ -726,12 +726,17 @@ textarea {
 
 .overtime-details {
     display: grid;
-    grid-template-columns: 150px 1fr;
+    grid-template-columns: 150px minmax(0, 1fr);
     gap: 10px 16px;
 }
 
 .overtime-details dt { color: var(--muted); font-weight: 800; }
-.overtime-details dd { margin: 0; white-space: pre-wrap; }
+.overtime-details dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
 
 .organization-grid {
     display: grid;
