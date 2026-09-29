@@ -20,6 +20,24 @@ jobs:
             -t timeflows:latest \
             .
 
+      # Wait until PostgreSQL is ready before touching the running application
+      - name: Wait for PostgreSQL
+        run: |
+          echo "Waiting for PostgreSQL..."
+
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432; then
+              echo "PostgreSQL is ready"
+              exit 0
+            fi
+
+            echo "PostgreSQL is not ready yet ($i/30)"
+            sleep 2
+          done
+
+          echo "ERROR: PostgreSQL did not become ready within 60 seconds"
+          exit 1
+
       - name: Stop old container
         run: |
           docker stop timeflows || true
