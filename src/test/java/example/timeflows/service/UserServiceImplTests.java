@@ -400,6 +400,19 @@ class UserServiceImplTests {
     }
 
     @Test
+    void adminCanRemoveOwnAdminRole() {
+        User admin = user(20L, "admin@vyriy.com", Role.ADMIN, Role.EMPLOYEE);
+        when(userRepository.findWithDivisionById(admin.getId())).thenReturn(Optional.of(admin));
+        when(userRepository.findByEmail(admin.getEmail())).thenReturn(Optional.of(admin));
+        when(userRepository.save(admin)).thenReturn(admin);
+
+        User updated = service.updateRoles(admin.getId(), Set.of(Role.EMPLOYEE), admin.getEmail());
+
+        assertThat(updated.getRoles()).containsExactly(Role.EMPLOYEE);
+        verify(userRepository).save(admin);
+    }
+
+    @Test
     void sysAdminCannotGrantAdminRole() {
         User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
         User sysAdmin = user(20L, "sysadmin@vyriy.com", Role.EMPLOYEE);
