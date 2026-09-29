@@ -251,9 +251,14 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("officeManager", officeManager);
         data.put("absolut", absolut);
         data.put(
+                "fullManagement",
+                current.getTags().contains(example.timeflows.model.BusinessTag.FULL_MANAGEMENT));
+        data.put(
                 "canCreateDivisionOvertime",
                 current.getRoles().contains(Role.ADMIN)
                         || accessPolicy.isAbsolut(current)
+                        || current.getTags()
+                                .contains(example.timeflows.model.BusinessTag.FULL_MANAGEMENT)
                         || officeManager
                         || (current.getRoles().contains(Role.MANAGER)
                                 && current.getTags()

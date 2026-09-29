@@ -46,6 +46,8 @@ public interface BonusService {
 
     void delete(Long id, boolean allowFinal);
 
+    Bonus setManagementStatus(Long id, BonusStatus status, String comment);
+
     Bonus decide(Long id, BonusStatus status, String comment);
 
     Bonus decide(Long id, BonusStatus status, String comment, boolean allowFinal);

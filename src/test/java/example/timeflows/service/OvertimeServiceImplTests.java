@@ -558,6 +558,72 @@ class OvertimeServiceImplTests {
     }
 
     @Test
+    void fullManagementDivisionManagerCanEditFinalOvertimeAndRequeuesIt() {
+        Division division = new Division();
+        division.setId(5L);
+        User manager = user(Role.MANAGER, Role.EMPLOYEE);
+        manager.setDivision(division);
+        manager.setTags(new LinkedHashSet<>(Set.of(BusinessTag.FULL_MANAGEMENT)));
+        User employee = user(Role.EMPLOYEE);
+        employee.setDivision(division);
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_DIRECTORATE);
+        overtime.setUser(employee);
+        OvertimeRequest request = validRequest();
+        request.setHours(6.0);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime updated = overtimeService.updateAsFullManager("manager@vyriy.com", 1L, request);
+
+        assertThat(updated.getStatus()).isEqualTo(OvertimeStatus.APPROVED_MANAGER);
+        assertThat(updated.getHours()).isEqualTo(6.0);
+    }
+
+    @Test
+    void fullManagementDirectorateManagerChangesOvertimeToFinalStatus() {
+        Directorate directorate = new Directorate();
+        directorate.setId(7L);
+        Division managerDivision = new Division();
+        managerDivision.setDirectorate(directorate);
+        Division employeeDivision = new Division();
+        employeeDivision.setDirectorate(directorate);
+        User manager = user(Role.DIRECTORATE_MANAGER, Role.EMPLOYEE);
+        manager.setDivision(managerDivision);
+        manager.setTags(new LinkedHashSet<>(Set.of(BusinessTag.FULL_MANAGEMENT)));
+        User employee = user(Role.EMPLOYEE);
+        employee.setDivision(employeeDivision);
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_ADMIN);
+        overtime.setUser(employee);
+        when(userService.findByEmail("director@vyriy.com")).thenReturn(manager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime updated =
+                overtimeService.updateAsFullManager("director@vyriy.com", 1L, validRequest());
+
+        assertThat(updated.getStatus()).isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+    }
+
+    @Test
+    void fullManagementCannotDeleteOvertimeOutsideOwnScope() {
+        Division own = new Division();
+        own.setId(5L);
+        Division other = new Division();
+        other.setId(6L);
+        User manager = user(Role.MANAGER);
+        manager.setDivision(own);
+        manager.setTags(new LinkedHashSet<>(Set.of(BusinessTag.FULL_MANAGEMENT)));
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_DIRECTORATE);
+        overtime.getUser().setDivision(other);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+
+        assertThatThrownBy(() -> overtimeService.deleteAsFullManager("manager@vyriy.com", 1L))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+    }
+
+    @Test
     void resubmitRejectedOvertimeReturnsItToPending() {
         Overtime overtime = overtime(OvertimeStatus.REJECTED);
         when(overtimeRepository.findByIdAndUserEmail(1L, "employee@vyriy.com"))

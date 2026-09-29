@@ -72,6 +72,7 @@ public class BonusController {
                 year == null || month == null ? YearMonth.now() : YearMonth.of(year, month);
         boolean admin = current.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(current);
         boolean directorateManager = current.getRoles().contains(Role.DIRECTORATE_MANAGER);
+        boolean fullManagement = accessService.hasFullManagement(current);
         boolean sysAdmin = current.getTags().contains(BusinessTag.SYS_ADMIN);
         Long effectiveDepartmentId = departmentId;
         Long effectiveDivisionId = divisionId;
@@ -92,9 +93,25 @@ public class BonusController {
                                     .equals(effectiveDirectorateId))) {
                 throw new AccessDeniedException("Відділ не належить управлінню керівника");
             }
+        } else if (fullManagement && current.getRoles().contains(Role.OFFICE_MANAGER)) {
+            effectiveDepartmentId = current.getDivision().getDepartment().getId();
+            effectiveDirectorateId =
+                    current.getDivision().getDirectorate() == null
+                            ? null
+                            : current.getDivision().getDirectorate().getId();
+            effectiveDivisionId = current.getDivision().getId();
+            effectiveSubdivisionId = current.getSubdivision().getId();
+        } else if (fullManagement && current.getRoles().contains(Role.MANAGER)) {
+            effectiveDepartmentId = current.getDivision().getDepartment().getId();
+            effectiveDirectorateId =
+                    current.getDivision().getDirectorate() == null
+                            ? null
+                            : current.getDivision().getDirectorate().getId();
+            effectiveDivisionId = current.getDivision().getId();
         }
         final Long scopedDepartmentId = effectiveDepartmentId;
         final Long scopedDirectorateId = effectiveDirectorateId;
+        final Long scopedSubdivisionId = effectiveSubdivisionId;
         List<Bonus> bonuses =
                 effectiveDivisionId != null
                         ? bonusService.findDivisionMonth(effectiveDivisionId, selected)
@@ -131,7 +148,7 @@ public class BonusController {
                                                     && b.getUser()
                                                             .getSubdivision()
                                                             .getId()
-                                                            .equals(effectiveSubdivisionId))
+                                                            .equals(scopedSubdivisionId))
                             .toList();
         if (status != null)
             bonuses = bonuses.stream().filter(b -> b.getStatus() == status).toList();
@@ -202,6 +219,7 @@ public class BonusController {
         model.addAttribute("selectedStatus", status);
         model.addAttribute("admin", admin);
         model.addAttribute("absolut", accessPolicy.isAbsolut(current));
+        model.addAttribute("fullManagement", fullManagement);
         model.addAttribute("sysAdmin", sysAdmin);
         model.addAttribute(
                 "canApproveBonuses",
@@ -255,12 +273,21 @@ public class BonusController {
             Authentication auth,
             RedirectAttributes ra) {
         User current = userService.findByEmail(auth.getName());
-        accessService.assertCanManage(current, userService.findById(userId));
+        User target = userService.findById(userId);
+        assertCanFullyManageBonus(current, target);
         try {
             YearMonth accountingMonth =
                     year == null || month == null ? null : YearMonth.of(year, month);
-            bonusService.create(
-                    userId, categoryId, type, amount, description, auth.getName(), accountingMonth);
+            Bonus created =
+                    bonusService.create(
+                            userId,
+                            categoryId,
+                            type,
+                            amount,
+                            description,
+                            auth.getName(),
+                            accountingMonth);
+            applyFullManagementBonusStatus(current, created);
             ra.addFlashAttribute("success", "Бонус створено та відправлено на погодження");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("bonusError", e.getMessage());
@@ -287,9 +314,11 @@ public class BonusController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month,
             Authentication auth) {
-        accessService.assertCanEditBonus(auth.getName(), id);
+        User actor = userService.findByEmail(auth.getName());
+        assertCanFullyManageBonus(actor, bonusService.find(id).getUser());
         assertCanEditBonusState(userService.findByEmail(auth.getName()), bonusService.find(id));
         bonusService.update(id, categoryId, amount, description, true);
+        applyFullManagementBonusStatus(actor, bonusService.find(id));
         if (year != null && month != null && bonusService.find(id).getType() == BonusType.KPI) {
             bonusService.moveToMonth(id, YearMonth.of(year, month));
         }
@@ -299,19 +328,22 @@ public class BonusController {
     @PostMapping("/api/bonuses/{id}/category")
     public String updateCategory(
             @PathVariable Long id, @RequestParam Long categoryId, Authentication auth) {
-        accessService.assertCanEditBonus(auth.getName(), id);
+        User actor = userService.findByEmail(auth.getName());
+        assertCanFullyManageBonus(actor, bonusService.find(id).getUser());
         Bonus b = bonusService.find(id);
         assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         if (b.getType() != BonusType.MONTHLY)
             throw new IllegalArgumentException("KPI та квартальний бонус не мають категорії");
         bonusService.update(id, categoryId, b.getAmount(), b.getDescription(), true);
+        applyFullManagementBonusStatus(actor, bonusService.find(id));
         return "redirect:/api/bonuses";
     }
 
     @PostMapping("/api/bonuses/{id}/amount")
     public String updateAmount(
             @PathVariable Long id, @RequestParam BigDecimal amount, Authentication auth) {
-        accessService.assertCanEditBonus(auth.getName(), id);
+        User actor = userService.findByEmail(auth.getName());
+        assertCanFullyManageBonus(actor, bonusService.find(id).getUser());
         Bonus b = bonusService.find(id);
         assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         bonusService.update(
@@ -320,6 +352,7 @@ public class BonusController {
                 amount,
                 b.getDescription(),
                 true);
+        applyFullManagementBonusStatus(actor, bonusService.find(id));
         return "redirect:/api/bonuses";
     }
 
@@ -328,7 +361,8 @@ public class BonusController {
             @PathVariable Long id,
             @RequestParam(required = false) String description,
             Authentication auth) {
-        accessService.assertCanEditBonus(auth.getName(), id);
+        User actor = userService.findByEmail(auth.getName());
+        assertCanFullyManageBonus(actor, bonusService.find(id).getUser());
         Bonus b = bonusService.find(id);
         assertCanEditBonusState(userService.findByEmail(auth.getName()), b);
         bonusService.update(
@@ -337,11 +371,12 @@ public class BonusController {
                 b.getAmount(),
                 description,
                 true);
+        applyFullManagementBonusStatus(actor, bonusService.find(id));
         return "redirect:/api/bonuses";
     }
 
     @PostMapping("/api/bonuses/{id}/delete")
-    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
+    @PreAuthorize("isAuthenticated()")
     public String delete(
             @PathVariable Long id,
             @RequestParam(required = false) String returnTo,
@@ -349,10 +384,7 @@ public class BonusController {
             RedirectAttributes ra) {
         try {
             User actor = userService.findByEmail(auth.getName());
-            if (!accessPolicy.isAbsolut(actor)) {
-                throw new AccessDeniedException(
-                        "Видалення бонусів доступне лише користувачу ABSOLUT");
-            }
+            accessService.assertCanFullyManage(actor, bonusService.find(id).getUser());
             bonusService.delete(id, true);
             ra.addFlashAttribute("quarterlySuccessTitle", "Бонус видалено");
             ra.addFlashAttribute(
@@ -671,6 +703,7 @@ public class BonusController {
         if (!accessPolicy.isAbsolut(user)
                 && !user.getRoles().contains(Role.ADMIN)
                 && !user.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                && !user.getTags().contains(BusinessTag.FULL_MANAGEMENT)
                 && !user.getTags().contains(BusinessTag.SYS_ADMIN)) {
             throw new AccessDeniedException("Модуль керування бонусами доступний лише ADMIN");
         }
@@ -680,9 +713,34 @@ public class BonusController {
         if (bonus.getStatus() == BonusStatus.APPROVED_OFFICE_MANAGER
                 && actor.getRoles().contains(Role.MANAGER)
                 && !actor.getRoles().contains(Role.ADMIN)
+                && !actor.getTags().contains(BusinessTag.FULL_MANAGEMENT)
                 && !accessPolicy.isAbsolut(actor)) {
             throw new AccessDeniedException(
                     "Керівник відділу може лише переглянути або скасувати бонус після офіс-менеджера");
+        }
+    }
+
+    private void assertCanFullyManageBonus(User actor, User target) {
+        if (actor.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(actor)) {
+            return;
+        }
+        accessService.assertCanFullyManage(actor, target);
+    }
+
+    private void applyFullManagementBonusStatus(User actor, Bonus bonus) {
+        if (!actor.getTags().contains(BusinessTag.FULL_MANAGEMENT)) {
+            return;
+        }
+        if (actor.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            bonusService.setManagementStatus(
+                    bonus.getId(),
+                    BonusStatus.APPROVED,
+                    "Створено або змінено керівником управління; погоджено автоматично");
+        } else {
+            bonusService.setManagementStatus(
+                    bonus.getId(),
+                    BonusStatus.PENDING,
+                    "Створено або змінено з FULL_MANAGEMENT; направлено керівнику управління");
         }
     }
 }

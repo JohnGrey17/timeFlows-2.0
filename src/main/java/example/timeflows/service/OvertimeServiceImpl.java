@@ -147,18 +147,33 @@ public class OvertimeServiceImpl implements OvertimeService {
         }
         User employee = userService.findById(employeeId);
         boolean officeManager = isAssignedOfficeManager(manager);
+        boolean fullDirectorateManager =
+                manager.getTags().contains(BusinessTag.FULL_MANAGEMENT)
+                        && manager.getRoles().contains(Role.DIRECTORATE_MANAGER);
         if (!employee.isActive()
                 || (!hasUnrestrictedDivisionOvertimeAccess(manager)
-                        && (officeManager
-                                ? employee.getSubdivision() == null
-                                        || !manager.getSubdivision()
-                                                .getId()
-                                                .equals(employee.getSubdivision().getId())
-                                : employee.getDivision() == null
+                        && (fullDirectorateManager
+                                ? employee.getDivision() == null
+                                        || employee.getDivision().getDirectorate() == null
                                         || manager.getDivision() == null
-                                        || !employee.getDivision()
+                                        || manager.getDivision().getDirectorate() == null
+                                        || !manager.getDivision()
+                                                .getDirectorate()
                                                 .getId()
-                                                .equals(manager.getDivision().getId())))) {
+                                                .equals(
+                                                        employee.getDivision()
+                                                                .getDirectorate()
+                                                                .getId())
+                                : officeManager
+                                        ? employee.getSubdivision() == null
+                                                || !manager.getSubdivision()
+                                                        .getId()
+                                                        .equals(employee.getSubdivision().getId())
+                                        : employee.getDivision() == null
+                                                || manager.getDivision() == null
+                                                || !employee.getDivision()
+                                                        .getId()
+                                                        .equals(manager.getDivision().getId())))) {
             throw new OvertimeException(
                     "Керівник може створювати перепрацювання лише за активних співробітників своєї організаційної одиниці");
         }
@@ -180,6 +195,12 @@ public class OvertimeServiceImpl implements OvertimeService {
             overtime.setStatus(OvertimeStatus.APPROVED_ADMIN);
             overtime.setManagerComment(
                     "Створено адміністратором " + manager.getEmail() + "; автоматично погоджено");
+        } else if (fullDirectorateManager) {
+            overtime.setStatus(OvertimeStatus.APPROVED_DIRECTORATE);
+            overtime.setManagerComment(
+                    "Створено керівником управління "
+                            + manager.getEmail()
+                            + "; погоджено автоматично");
         } else if (officeManager) {
             overtime.setStatus(OvertimeStatus.APPROVED_OFFICE_MANAGER);
             overtime.setManagerComment(
@@ -275,6 +296,45 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     @Override
     @Transactional
+    public Overtime updateAsFullManager(String actorEmail, Long id, OvertimeRequest request) {
+        User actor = userService.findByEmail(actorEmail);
+        Overtime overtime = findById(id);
+        requireFullManagementScope(actor, overtime.getUser());
+        if (request.getWorkDate() == null) {
+            throw new OvertimeException("Оберіть дату перепрацювання");
+        }
+        validateHours(request, overtime.getUser());
+        overtimeRepository
+                .findByUserEmailAndWorkDate(overtime.getUser().getEmail(), request.getWorkDate())
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(
+                        existing -> {
+                            throw new OvertimeException(
+                                    "На вибрану дату у користувача вже існує перепрацювання");
+                        });
+        overtime.setWorkDate(request.getWorkDate());
+        overtime.setHours(request.getHours());
+        overtime.setDescription(request.getDescription());
+        overtime.setStatus(fullManagementStatus(actor));
+        overtime.setManagerComment(
+                actor.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                        ? "Змінено керівником управління; погоджено автоматично"
+                        : "Змінено користувачем із FULL_MANAGEMENT; повторно направлено керівнику управління");
+        overtime.setUpdatedAt(LocalDateTime.now(clock));
+        return overtimeRepository.save(overtime);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAsFullManager(String actorEmail, Long id) {
+        User actor = userService.findByEmail(actorEmail);
+        Overtime overtime = findById(id);
+        requireFullManagementScope(actor, overtime.getUser());
+        overtimeRepository.delete(overtime);
+    }
+
+    @Override
+    @Transactional
     public Overtime setStatusAsAbsolut(
             String actorEmail, Long id, OvertimeStatus status, String comment) {
         requireAbsolut(actorEmail);
@@ -293,6 +353,47 @@ public class OvertimeServiceImpl implements OvertimeService {
                     "Операція доступна лише користувачу з тегом ABSOLUT");
         }
         return actor;
+    }
+
+    private void requireFullManagementScope(User actor, User target) {
+        if (!actor.getTags().contains(BusinessTag.FULL_MANAGEMENT)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Операція потребує тег FULL_MANAGEMENT");
+        }
+        boolean inScope = false;
+        if (actor.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                && actor.getDivision() != null
+                && actor.getDivision().getDirectorate() != null
+                && target.getDivision() != null
+                && target.getDivision().getDirectorate() != null) {
+            inScope =
+                    actor.getDivision()
+                            .getDirectorate()
+                            .getId()
+                            .equals(target.getDivision().getDirectorate().getId());
+        } else if (actor.getRoles().contains(Role.OFFICE_MANAGER)
+                && actor.getSubdivision() != null
+                && target.getSubdivision() != null) {
+            inScope = actor.getSubdivision().getId().equals(target.getSubdivision().getId());
+        } else if (actor.getRoles().contains(Role.MANAGER)
+                && actor.getDivision() != null
+                && target.getDivision() != null) {
+            inScope = actor.getDivision().getId().equals(target.getDivision().getId());
+        }
+        if (!inScope) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "FULL_MANAGEMENT діє лише у власній організаційній області");
+        }
+    }
+
+    private OvertimeStatus fullManagementStatus(User actor) {
+        if (actor.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
+            return OvertimeStatus.APPROVED_DIRECTORATE;
+        }
+        if (actor.getRoles().contains(Role.OFFICE_MANAGER)) {
+            return OvertimeStatus.APPROVED_OFFICE_MANAGER;
+        }
+        return OvertimeStatus.APPROVED_MANAGER;
     }
 
     @Override
@@ -556,6 +657,7 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private boolean isDivisionSubmissionDateAllowed(LocalDate workDate, User manager) {
         if (hasUnrestrictedDivisionOvertimeAccess(manager)
+                || manager.getTags().contains(BusinessTag.FULL_MANAGEMENT)
                 || isAugust2026(workDate)
                 || allowsCurrentWeekOvertime(manager)) {
             return true;
@@ -578,6 +680,10 @@ public class OvertimeServiceImpl implements OvertimeService {
 
     private boolean canCreateDivisionOvertime(User user) {
         return hasUnrestrictedDivisionOvertimeAccess(user)
+                || (user.getTags().contains(BusinessTag.FULL_MANAGEMENT)
+                        && (user.getRoles().contains(Role.MANAGER)
+                                || user.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                                || user.getRoles().contains(Role.OFFICE_MANAGER)))
                 || isAssignedOfficeManager(user)
                 || (user.getRoles().contains(Role.MANAGER)
                         && user.getTags().contains(BusinessTag.DIVISION_OVERTIME));

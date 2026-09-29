@@ -5,6 +5,7 @@ public enum BusinessTag {
     PROJECT_MANAGER_LEAD,
     ALLOW_OVER,
     DIVISION_OVERTIME,
+    FULL_MANAGEMENT,
     SYS_ADMIN,
     ABSOLUT
 }

@@ -91,6 +91,18 @@ class BonusServiceTests {
     }
 
     @Test
+    void managementStatusCanRequeueFinalBonus() {
+        Bonus bonus = bonus(BonusStatus.APPROVED);
+        when(repository.findById(1L)).thenReturn(Optional.of(bonus));
+        when(repository.save(bonus)).thenReturn(bonus);
+
+        Bonus updated = service.setManagementStatus(1L, BonusStatus.PENDING, "Повторне погодження");
+
+        assertThat(updated.getStatus()).isEqualTo(BonusStatus.PENDING);
+        assertThat(updated.getAdminComment()).isEqualTo("Повторне погодження");
+    }
+
+    @Test
     void approvedKpiCanBeArchived() {
         Bonus kpi = bonus(BonusStatus.APPROVED);
         kpi.setType(BonusType.KPI);

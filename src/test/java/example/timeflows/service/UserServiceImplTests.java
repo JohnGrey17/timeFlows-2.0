@@ -443,6 +443,16 @@ class UserServiceImplTests {
     }
 
     @Test
+    void fullManagementTagRequiresHierarchicalManagerRole() {
+        User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
+        when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));
+
+        assertThatThrownBy(() -> service.updateTags(10L, Set.of(BusinessTag.FULL_MANAGEMENT)))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("FULL_MANAGEMENT");
+    }
+
+    @Test
     void projectManagerTagsCannotBeCombined() {
         User employee = user(10L, "employee@vyriy.com", Role.EMPLOYEE);
         when(userRepository.findWithDivisionById(10L)).thenReturn(Optional.of(employee));

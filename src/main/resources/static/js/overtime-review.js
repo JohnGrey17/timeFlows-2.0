@@ -86,6 +86,33 @@ if (reviewModal?.dataset.absolut === "true") {
         });
     }
 }
+if (document.body.dataset.fullManagement === "true" && reviewModal?.dataset.absolut !== "true") {
+    reviewModal.querySelector(".overtime-details")?.insertAdjacentHTML("afterend", `
+        <div class="modal-review-actions" data-full-management-actions>
+            <form method="post" action="/api/overtime/review/management/update">
+                <input type="hidden" name="overtimeId" data-decision-overtime-id>
+                <label>Дата<input type="date" name="workDate" required></label>
+                <label>Години<input type="number" name="hours" min="0.01" max="14" step="0.01" required></label>
+                <label>Опис<input name="description" maxlength="1000" required></label>
+                <button type="submit">Зберегти й повторно погодити</button>
+            </form>
+            <form method="post" action="/api/overtime/review/management/delete" data-confirm-delete>
+                <input type="hidden" name="overtimeId" data-decision-overtime-id>
+                <button type="submit" class="danger-button">Видалити перепрацювання</button>
+            </form>
+        </div>`);
+    const csrfToken = document.querySelector("meta[name='_csrf']")?.content;
+    const csrfParameter = document.querySelector("meta[name='_csrf_parameter']")?.content;
+    if (csrfToken && csrfParameter) {
+        reviewModal.querySelectorAll("[data-full-management-actions] form").forEach((form) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = csrfParameter;
+            input.value = csrfToken;
+            form.prepend(input);
+        });
+    }
+}
 document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''])").forEach((cell) => cell.addEventListener("click", (event) => {
     if (event.target.closest("form")) return;
     if (!reviewModal.querySelector("[data-info-resubmission]")) {
@@ -102,6 +129,12 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
         absolutActions.querySelector("[name='description']").value = cell.dataset.description;
         absolutActions.querySelector("[name='targetStatus']").value = cell.dataset.status;
         absolutActions.querySelector("[name='comment']").value = cell.dataset.comment || "";
+    }
+    const fullManagementActions = reviewModal.querySelector("[data-full-management-actions]");
+    if (fullManagementActions) {
+        fullManagementActions.querySelector("[name='workDate']").value = cell.dataset.date;
+        fullManagementActions.querySelector("[name='hours']").value = cell.dataset.hours;
+        fullManagementActions.querySelector("[name='description']").value = cell.dataset.description;
     }
     const admin = reviewModal.dataset.admin === "true";
     const directorateManager = reviewModal.dataset.directorateManager === "true";
