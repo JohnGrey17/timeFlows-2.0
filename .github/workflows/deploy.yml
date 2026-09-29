@@ -47,7 +47,7 @@ jobs:
         run: |
           docker run -d \
             --name timeflows \
-            --restart unless-stopped \
+            --restart no \
             -p 8080:8080 \
             -e DB_URL="${{ vars.DB_URL }}" \
             -e DB_USERNAME="${{ vars.DB_USERNAME }}" \
