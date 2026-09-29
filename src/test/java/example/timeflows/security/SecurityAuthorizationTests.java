@@ -299,6 +299,40 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void overtimeReviewPublishesCsrfMetadataForDynamicAbsolutForms() throws Exception {
+        mockMvc.perform(
+                        get("/api/overtime/review")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "name=\"_csrf_parameter\"")));
+    }
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void adminWithCurrentAbsolutTagCanArchiveApprovedBonus() throws Exception {
+        var admin = userService.findByEmail("admin@vyriy.com");
+        userService.updateTags(
+                admin.getId(),
+                java.util.Set.of(example.timeflows.model.BusinessTag.ABSOLUT));
+        var bonus = bonusRepository.findAll().stream().findFirst().orElseThrow();
+        bonus.setStatus(example.timeflows.model.BonusStatus.APPROVED);
+        bonusRepository.save(bonus);
+
+        mockMvc.perform(
+                        post("/api/bonuses/{id}/delete", bonus.getId())
+                                .with(user("admin@vyriy.com").roles("ADMIN"))
+                                .with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        assertThat(bonusRepository.findById(bonus.getId()).orElseThrow().isArchived()).isTrue();
+    }
+
+    @Test
     void managerCannotSaveAdminOvertimeFilter() throws Exception {
         mockMvc.perform(
                         post("/api/overtime/review/filters")

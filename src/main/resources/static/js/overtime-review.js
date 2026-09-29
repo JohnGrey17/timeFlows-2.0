@@ -74,6 +74,17 @@ if (reviewModal?.dataset.absolut === "true") {
                 <button type="submit" class="danger-button">Видалити перепрацювання</button>
             </form>
         </div>`);
+    const csrfToken = document.querySelector("meta[name='_csrf']")?.content;
+    const csrfParameter = document.querySelector("meta[name='_csrf_parameter']")?.content;
+    if (csrfToken && csrfParameter) {
+        reviewModal.querySelectorAll("[data-absolut-actions] form").forEach((form) => {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = csrfParameter;
+            input.value = csrfToken;
+            form.prepend(input);
+        });
+    }
 }
 document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''])").forEach((cell) => cell.addEventListener("click", (event) => {
     if (event.target.closest("form")) return;
