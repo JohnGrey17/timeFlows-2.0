@@ -341,7 +341,7 @@ public class BonusController {
     }
 
     @PostMapping("/api/bonuses/{id}/delete")
-    @PreAuthorize("hasRole('ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
     public String delete(
             @PathVariable Long id,
             @RequestParam(required = false) String returnTo,
