@@ -83,6 +83,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         if (accessPolicy.isAbsolut(user)) {
             authorities.add("ROLE_ABSOLUT");
         }
+        if (user.getTags().contains(BusinessTag.FULL_MANAGEMENT)) {
+            authorities.add("ROLE_FULL_MANAGEMENT");
+        }
 
         return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
                 .password(user.getPassword())
@@ -495,6 +498,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                         "PROJECT_MANAGER_LEAD можна призначити лише керівнику відділу");
             }
         }
+        if (requested.contains(BusinessTag.FULL_MANAGEMENT)
+                && user.getRoles().stream()
+                        .noneMatch(
+                                role ->
+                                        role == Role.MANAGER
+                                                || role == Role.DIRECTORATE_MANAGER
+                                                || role == Role.OFFICE_MANAGER)) {
+            throw new UserException(
+                    "FULL_MANAGEMENT можна призначити лише керівнику управління, відділу або підвідділу");
+        }
         user.setTags(requested);
         return userRepository.save(user);
     }
@@ -506,6 +519,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Set<BusinessTag> requested = normalizedTags(tags);
         if (requested.contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
             throw new UserException("PROJECT_MANAGER_LEAD призначається конкретному керівнику");
+        }
+        if (requested.contains(BusinessTag.FULL_MANAGEMENT)) {
+            throw new UserException("FULL_MANAGEMENT призначається конкретному керівнику");
         }
         division.setTags(requested);
         return divisionRepository.save(division);

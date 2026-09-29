@@ -2,6 +2,7 @@ package example.timeflows;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Role;
 import example.timeflows.repository.BonusRepository;
 import example.timeflows.repository.DepartmentRepository;
@@ -36,11 +37,11 @@ class DemoDataIntegrationTests {
     @Test
     @Transactional
     void createsRichIdempotentPreProductionDataset() {
-        assertThat(users.count()).isEqualTo(19);
+        assertThat(users.count()).isEqualTo(29);
         assertThat(departments.count()).isEqualTo(3);
-        assertThat(directorates.count()).isEqualTo(16);
-        assertThat(divisions.count()).isEqualTo(56);
-        assertThat(subdivisions.count()).isEqualTo(161);
+        assertThat(directorates.count()).isEqualTo(17);
+        assertThat(divisions.count()).isEqualTo(57);
+        assertThat(subdivisions.count()).isEqualTo(163);
         assertThat(overtimes.count()).isEqualTo(6);
         assertThat(bonuses.count()).isZero();
 
@@ -54,23 +55,52 @@ class DemoDataIntegrationTests {
         assertThat(
                         directorates.findAllByOrderByNameAsc().stream()
                                 .filter(directorate -> directorate.getManager() != null))
-                .hasSize(4);
+                .hasSize(5);
         assertThat(divisions.findAll().stream().filter(division -> division.getManager() != null))
-                .hasSize(8);
+                .hasSize(9);
+        var demonstrationDirector = users.findByEmail("demo.director@vyriy.com").orElseThrow();
+        var demonstrationManager = users.findByEmail("demo.manager@vyriy.com").orElseThrow();
+        assertThat(demonstrationDirector.getRoles()).contains(Role.DIRECTORATE_MANAGER);
+        assertThat(demonstrationDirector.getTags()).contains(BusinessTag.FULL_MANAGEMENT);
+        assertThat(demonstrationDirector.getDivision().getDirectorate().getName())
+                .isEqualTo("Управління для демонстрації");
+        assertThat(demonstrationManager.getRoles()).contains(Role.MANAGER);
+        assertThat(demonstrationManager.getTags()).contains(BusinessTag.FULL_MANAGEMENT);
+        var demonstrationOfficeManager =
+                users.findByEmail("demo.office.manager@vyriy.com").orElseThrow();
+        assertThat(demonstrationOfficeManager.getRoles()).contains(Role.OFFICE_MANAGER);
+        assertThat(demonstrationOfficeManager.getTags()).contains(BusinessTag.FULL_MANAGEMENT);
+        assertThat(demonstrationOfficeManager.getSubdivision().getName())
+                .isEqualTo("Демонстраційна команда 2");
+        assertThat(demonstrationOfficeManager.getSubdivision().getManager())
+                .isEqualTo(demonstrationOfficeManager);
+        assertThat(
+                        users.findAll().stream()
+                                .filter(
+                                        user ->
+                                                user.getDivision()
+                                                        .getName()
+                                                        .equals("Демонстраційний відділ")))
+                .hasSize(10);
         assertThat(users.findAll())
                 .allSatisfy(
                         user -> {
                             assertThat(user.getDivision()).isNotNull();
-                            assertThat(user.getSubdivision()).isNotNull();
                         });
+        assertThat(
+                        users.findAll().stream()
+                                .filter(user -> user.getSubdivision() == null)
+                                .map(user -> user.getEmail()))
+                .containsExactlyInAnyOrder(
+                        "demo.no.subdivision1@vyriy.com", "demo.no.subdivision2@vyriy.com");
 
         demoDataService.initialize();
 
-        assertThat(users.count()).isEqualTo(19);
+        assertThat(users.count()).isEqualTo(29);
         assertThat(departments.count()).isEqualTo(3);
-        assertThat(directorates.count()).isEqualTo(16);
-        assertThat(divisions.count()).isEqualTo(56);
-        assertThat(subdivisions.count()).isEqualTo(161);
+        assertThat(directorates.count()).isEqualTo(17);
+        assertThat(divisions.count()).isEqualTo(57);
+        assertThat(subdivisions.count()).isEqualTo(163);
         assertThat(overtimes.count()).isEqualTo(6);
         assertThat(bonuses.count()).isZero();
     }

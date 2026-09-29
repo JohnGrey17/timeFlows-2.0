@@ -315,6 +315,24 @@ public class OvertimeReviewController {
         return "redirect:/api/overtime/review";
     }
 
+    @PostMapping("/api/overtime/review/management/update")
+    @PreAuthorize("hasAnyRole('OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER')")
+    public String updateAsFullManager(
+            @RequestParam Long overtimeId,
+            @Valid @ModelAttribute OvertimeRequest request,
+            Authentication authentication) {
+        overtimeService.updateAsFullManager(authentication.getName(), overtimeId, request);
+        return "redirect:/api/overtime/review";
+    }
+
+    @PostMapping("/api/overtime/review/management/delete")
+    @PreAuthorize("hasAnyRole('OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER')")
+    public String deleteAsFullManager(
+            @RequestParam Long overtimeId, Authentication authentication) {
+        overtimeService.deleteAsFullManager(authentication.getName(), overtimeId);
+        return "redirect:/api/overtime/review";
+    }
+
     @PostMapping("/api/overtime/review/absolut/status")
     @PreAuthorize("hasRole('ABSOLUT')")
     public String setStatusAsAbsolut(

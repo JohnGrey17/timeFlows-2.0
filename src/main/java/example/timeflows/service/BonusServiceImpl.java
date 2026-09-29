@@ -171,6 +171,16 @@ public class BonusServiceImpl implements BonusService {
         repository.save(bonus);
     }
 
+    @Override
+    @Transactional
+    public Bonus setManagementStatus(Long id, BonusStatus status, String comment) {
+        Bonus bonus = find(id);
+        bonus.setStatus(status);
+        bonus.setAdminComment(comment);
+        bonus.setUpdatedAt(LocalDateTime.now());
+        return repository.save(bonus);
+    }
+
     @Transactional
     public Bonus decide(Long id, BonusStatus status, String comment) {
         return decide(id, status, comment, false);

@@ -8,4 +8,8 @@ public interface ManagementAccessService {
     void assertCanEditBonus(String actorEmail, Long bonusId);
 
     void assertCanManage(User actor, User target);
+
+    void assertCanFullyManage(User actor, User target);
+
+    boolean hasFullManagement(User actor);
 }

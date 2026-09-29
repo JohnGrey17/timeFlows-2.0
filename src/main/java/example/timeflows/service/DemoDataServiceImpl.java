@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -77,10 +78,12 @@ public class DemoDataServiceImpl implements DemoDataService {
         Department scaling = department("Масштабування");
         Directorate technical = directorate(scaling, "Технічне управління");
         Directorate commercial = directorate(scaling, "Комерційне управління");
+        Directorate demonstration = directorate(scaling, "Управління для демонстрації");
         Division it = division(scaling, technical, "IT");
         Division data = division(scaling, technical, "Дані та автоматизація");
         Division sales = division(scaling, commercial, "Продажі");
         Division marketing = division(scaling, commercial, "Маркетинг");
+        Division demonstrationDivision = division(scaling, demonstration, "Демонстраційний відділ");
         Subdivision platform = subdivision(it, "Платформа");
         Subdivision support = subdivision(it, "Підтримка");
         Subdivision analytics = subdivision(data, "Аналітика");
@@ -89,6 +92,10 @@ public class DemoDataServiceImpl implements DemoDataService {
         Subdivision b2g = subdivision(sales, "B2G");
         Subdivision content = subdivision(marketing, "Контент");
         Subdivision performance = subdivision(marketing, "Performance-маркетинг");
+        Subdivision demonstrationTeam =
+                subdivision(demonstrationDivision, "Демонстраційна команда");
+        Subdivision secondDemonstrationTeam =
+                subdivision(demonstrationDivision, "Демонстраційна команда 2");
         removeUnusedSeedDivision(scaling, "Архітектори");
         removeUnusedSeedDivision(scaling, "Аналітики");
 
@@ -232,6 +239,78 @@ public class DemoDataServiceImpl implements DemoDataService {
                         "Кравчук",
                         administration,
                         officeManagerDemo);
+        User demonstrationDirector =
+                demoUser(
+                        "demo.director@vyriy.com",
+                        "Денис",
+                        "Демонстраційний",
+                        demonstrationDivision,
+                        demonstrationTeam,
+                        Role.DIRECTORATE_MANAGER);
+        User demonstrationManager =
+                demoUser(
+                        "demo.manager@vyriy.com",
+                        "Марина",
+                        "Керівник",
+                        demonstrationDivision,
+                        demonstrationTeam,
+                        Role.MANAGER);
+        demoUser(
+                "demo.employee1@vyriy.com",
+                "Олександр",
+                "Тестовий",
+                demonstrationDivision,
+                demonstrationTeam);
+        demoUser(
+                "demo.employee2@vyriy.com",
+                "Ірина",
+                "Тестова",
+                demonstrationDivision,
+                demonstrationTeam);
+        demoUser(
+                "demo.employee3@vyriy.com",
+                "Владислав",
+                "Тестовий",
+                demonstrationDivision,
+                demonstrationTeam);
+        User demonstrationOfficeManager =
+                demoUser(
+                        "demo.office.manager@vyriy.com",
+                        "Ольга",
+                        "Керівник команди",
+                        demonstrationDivision,
+                        secondDemonstrationTeam,
+                        Role.OFFICE_MANAGER);
+        demoUser(
+                "demo.team2.employee1@vyriy.com",
+                "Андрій",
+                "Командний",
+                demonstrationDivision,
+                secondDemonstrationTeam);
+        demoUser(
+                "demo.team2.employee2@vyriy.com",
+                "Наталія",
+                "Командна",
+                demonstrationDivision,
+                secondDemonstrationTeam);
+        demoUser(
+                "demo.no.subdivision1@vyriy.com",
+                "Богдан",
+                "Без підвідділу",
+                demonstrationDivision,
+                null);
+        demoUser(
+                "demo.no.subdivision2@vyriy.com",
+                "Софія",
+                "Без підвідділу",
+                demonstrationDivision,
+                null);
+
+        demonstrationDirector.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        demonstrationManager.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        demonstrationOfficeManager.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        users.saveAll(
+                List.of(demonstrationDirector, demonstrationManager, demonstrationOfficeManager));
 
         manager(it, olena);
         manager(data, taras);
@@ -241,12 +320,15 @@ public class DemoDataServiceImpl implements DemoDataService {
         manager(procurement, bohdan);
         manager(hr, maksym);
         manager(administration, kateryna);
+        manager(demonstrationDivision, demonstrationManager);
         directorateManager(technical, olena);
         directorateManager(commercial, andrii);
         directorateManager(operations, nataliia);
         directorateManager(people, maksym);
+        directorateManager(demonstration, demonstrationDirector);
         officeManager(support, ihor);
         officeManager(officeManagerDemo, olha);
+        officeManager(secondDemonstrationTeam, demonstrationOfficeManager);
         overtime(viktor, 3, 2.0, "Підготовка офісу до робочого тижня", OvertimeStatus.CHECKING);
         overtime(
                 viktor,

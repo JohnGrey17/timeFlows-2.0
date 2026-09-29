@@ -37,6 +37,10 @@ public interface OvertimeService {
 
     void deleteAsAbsolut(String actorEmail, Long id);
 
+    Overtime updateAsFullManager(String actorEmail, Long id, OvertimeRequest request);
+
+    void deleteAsFullManager(String actorEmail, Long id);
+
     Overtime setStatusAsAbsolut(
             String actorEmail,
             Long id,

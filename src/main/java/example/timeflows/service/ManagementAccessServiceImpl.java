@@ -1,6 +1,7 @@
 package example.timeflows.service;
 
 import example.timeflows.exception.UserException;
+import example.timeflows.model.BusinessTag;
 import example.timeflows.model.Role;
 import example.timeflows.model.User;
 import org.springframework.stereotype.Service;
@@ -57,5 +58,19 @@ public class ManagementAccessServiceImpl implements ManagementAccessService {
             throw new UserException(
                     "Керівник може працювати лише зі своєю організаційною одиницею");
         }
+    }
+
+    @Override
+    public void assertCanFullyManage(User actor, User target) {
+        if (!hasFullManagement(actor)) {
+            throw new UserException("Операція потребує тег FULL_MANAGEMENT");
+        }
+        assertCanManage(actor, target);
+    }
+
+    @Override
+    public boolean hasFullManagement(User actor) {
+        return accessPolicy.isAbsolut(actor)
+                || actor.getTags().contains(BusinessTag.FULL_MANAGEMENT);
     }
 }
