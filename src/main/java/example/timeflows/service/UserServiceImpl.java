@@ -422,11 +422,6 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         if (requested.isEmpty()) {
             throw new UserException("Користувач повинен мати хоча б одну роль");
         }
-        if (user.getId().equals(actor.getId())
-                && user.getRoles().contains(Role.ADMIN)
-                && !requested.contains(Role.ADMIN)) {
-            throw new UserException("Адміністратор не може забрати власну роль ADMIN");
-        }
         boolean assignedManager =
                 user.getDivision() != null
                         && user.getDivision().getManager() != null
