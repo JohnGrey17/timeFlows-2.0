@@ -169,26 +169,14 @@ reviewModal?.querySelectorAll("form[data-confirm-delete]").forEach((form) => {
         if (!window.confirm("Видалити це перепрацювання?")) event.preventDefault();
     });
 });
-document.querySelector("[data-bulk-approve]")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (!window.confirm("Погодити всі доступні перепрацювання у поточній вибірці?")) return;
+document.querySelector("[data-bulk-approve]")?.addEventListener("submit", (event) => {
+    if (!window.confirm("Погодити всі доступні перепрацювання у поточній вибірці?")) {
+        event.preventDefault();
+        return;
+    }
     const form = event.currentTarget;
     const button = document.querySelector(`[form="${form.id}"]`);
     if (button) button.disabled = true;
-    try {
-        const response = await fetch(form.action, {method: "POST", body: new FormData(form), credentials: "same-origin"});
-        if (response.ok) {
-            window.location.assign(response.url || "/api/overtime/review");
-            return;
-        }
-        let message;
-        try { message = (await response.json()).message; } catch (_) { message = `Помилка HTTP ${response.status}`; }
-        showReviewError(message);
-    } catch (_) {
-        showReviewError("Не вдалося зв’язатися із сервером. Повторіть дію.");
-    } finally {
-        if (button) button.disabled = false;
-    }
 });
 let bonusCategories;
 const bonusStatusLabels = {
