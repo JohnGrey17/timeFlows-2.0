@@ -11,7 +11,7 @@ class OvertimeReviewPageServiceImplTests {
     void directorateManagerKeepsBulkApprovedRequestsVisible() {
         assertThat(
                         OvertimeReviewPageServiceImpl.isVisibleForReviewer(
-                                OvertimeStatus.APPROVED_DIRECTORATE, false, true, false))
+                                OvertimeStatus.APPROVED_DIRECTORATE, false, true, false, false))
                 .isTrue();
     }
 
@@ -19,7 +19,7 @@ class OvertimeReviewPageServiceImplTests {
     void adminSeesDirectorateApprovedRequests() {
         assertThat(
                         OvertimeReviewPageServiceImpl.isVisibleForReviewer(
-                                OvertimeStatus.APPROVED_DIRECTORATE, true, false, false))
+                                OvertimeStatus.APPROVED_DIRECTORATE, true, false, false, false))
                 .isTrue();
     }
 
@@ -29,9 +29,8 @@ class OvertimeReviewPageServiceImplTests {
                 .allSatisfy(
                         status ->
                                 assertThat(
-                                                OvertimeReviewPageServiceImpl
-                                                        .isVisibleForReviewer(
-                                                                status, true, false, false))
+                                                OvertimeReviewPageServiceImpl.isVisibleForReviewer(
+                                                        status, true, false, false, false))
                                         .isTrue());
     }
 
@@ -39,7 +38,18 @@ class OvertimeReviewPageServiceImplTests {
     void directorateManagerDoesNotSeeRequestsBeforeDivisionApproval() {
         assertThat(
                         OvertimeReviewPageServiceImpl.isVisibleForReviewer(
-                                OvertimeStatus.CHECKING, false, true, false))
+                                OvertimeStatus.CHECKING, false, true, false, false))
                 .isFalse();
+    }
+
+    @Test
+    void fullManagementDirectorateManagerSeesRequestsAtEveryStatus() {
+        assertThat(OvertimeStatus.values())
+                .allSatisfy(
+                        status ->
+                                assertThat(
+                                                OvertimeReviewPageServiceImpl.isVisibleForReviewer(
+                                                        status, false, true, true, false))
+                                        .isTrue());
     }
 }

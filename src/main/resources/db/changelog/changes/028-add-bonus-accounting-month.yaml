@@ -1,0 +1,23 @@
+databaseChangeLog:
+  - changeSet:
+      id: 028-add-bonus-accounting-month
+      author: codex
+      changes:
+        - addColumn:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: accounting_month
+                  type: DATE
+        - sql:
+            sql: UPDATE bonuses SET accounting_month = CAST(DATE_TRUNC('MONTH', created_at) AS DATE) WHERE accounting_month IS NULL
+        - addNotNullConstraint:
+            tableName: bonuses
+            columnName: accounting_month
+            columnDataType: DATE
+        - createIndex:
+            tableName: bonuses
+            indexName: idx_bonuses_accounting_month
+            columns:
+              - column:
+                  name: accounting_month

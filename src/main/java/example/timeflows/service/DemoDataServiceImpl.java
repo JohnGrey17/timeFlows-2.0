@@ -531,10 +531,10 @@ public class DemoDataServiceImpl implements DemoDataService {
 
     private void archiveMonthlyBonuses(User projectManager) {
         bonuses
-                .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+                .findByUserIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
                         projectManager.getId(),
-                        YearMonth.now().atDay(1).atStartOfDay(),
-                        YearMonth.now().plusMonths(1).atDay(1).atStartOfDay())
+                        YearMonth.now().atDay(1),
+                        YearMonth.now().plusMonths(1).atDay(1))
                 .stream()
                 .filter(bonus -> bonus.getType() == BonusType.MONTHLY)
                 .filter(bonus -> !bonus.isArchived())
@@ -583,10 +583,10 @@ public class DemoDataServiceImpl implements DemoDataService {
             BonusStatus status) {
         boolean exists =
                 bonuses
-                        .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+                        .findByUserIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
                                 user.getId(),
-                                YearMonth.now().atDay(1).atStartOfDay(),
-                                YearMonth.now().plusMonths(1).atDay(1).atStartOfDay())
+                                YearMonth.now().atDay(1),
+                                YearMonth.now().plusMonths(1).atDay(1))
                         .stream()
                         .anyMatch(value -> description.equals(value.getDescription()));
         if (exists) return;

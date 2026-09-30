@@ -73,6 +73,8 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         boolean directorateManager = current.getRoles().contains(Role.DIRECTORATE_MANAGER);
         boolean divisionManager = current.getRoles().contains(Role.MANAGER);
         boolean officeManager = current.getRoles().contains(Role.OFFICE_MANAGER);
+        boolean fullManagement =
+                current.getTags().contains(example.timeflows.model.BusinessTag.FULL_MANAGEMENT);
         YearMonth selected = overtimeViewService.resolveMonth(year, month);
         boolean employeeMode = "employee".equals(mode) && userId != null;
         User requestedUser = employeeMode ? userService.findById(userId) : null;
@@ -221,22 +223,26 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                         OvertimeStatus.APPROVED_DIRECTORATE,
                                         OvertimeStatus.DECLINED,
                                         OvertimeStatus.APPROVED_ADMIN)
-                                : directorateManager
-                                        ? List.of(
-                                                OvertimeStatus.APPROVED_OFFICE_MANAGER,
-                                                OvertimeStatus.APPROVED_MANAGER,
-                                                OvertimeStatus.APPROVED_DIRECTORATE,
-                                                OvertimeStatus.DECLINED)
-                                        : officeManager
+                                : directorateManager && fullManagement
+                                        ? List.of(OvertimeStatus.values())
+                                        : directorateManager
                                                 ? List.of(
-                                                        OvertimeStatus.CHECKING,
-                                                        OvertimeStatus.APPROVED_OFFICE_MANAGER,
-                                                        OvertimeStatus.DECLINED)
-                                                : List.of(
-                                                        OvertimeStatus.CHECKING,
                                                         OvertimeStatus.APPROVED_OFFICE_MANAGER,
                                                         OvertimeStatus.APPROVED_MANAGER,
-                                                        OvertimeStatus.DECLINED));
+                                                        OvertimeStatus.APPROVED_DIRECTORATE,
+                                                        OvertimeStatus.DECLINED)
+                                                : officeManager
+                                                        ? List.of(
+                                                                OvertimeStatus.CHECKING,
+                                                                OvertimeStatus
+                                                                        .APPROVED_OFFICE_MANAGER,
+                                                                OvertimeStatus.DECLINED)
+                                                        : List.of(
+                                                                OvertimeStatus.CHECKING,
+                                                                OvertimeStatus
+                                                                        .APPROVED_OFFICE_MANAGER,
+                                                                OvertimeStatus.APPROVED_MANAGER,
+                                                                OvertimeStatus.DECLINED));
         data.put("selectedUserId", selectedUserId);
         data.put("selectedUserDisplay", displayName(selectedUser));
         data.put("selectedMonth", selected);
@@ -250,9 +256,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("divisionManager", divisionManager);
         data.put("officeManager", officeManager);
         data.put("absolut", absolut);
-        data.put(
-                "fullManagement",
-                current.getTags().contains(example.timeflows.model.BusinessTag.FULL_MANAGEMENT));
+        data.put("fullManagement", fullManagement);
         data.put(
                 "canCreateDivisionOvertime",
                 current.getRoles().contains(Role.ADMIN)
@@ -347,6 +351,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                 selected,
                 admin,
                 directorateManager,
+                fullManagement,
                 absolut);
         return data;
     }
@@ -408,6 +413,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
             YearMonth month,
             boolean admin,
             boolean directorateManager,
+            boolean fullManagement,
             boolean absolut) {
         if (departmentId == null) return;
         List<Overtime> overtimes =
@@ -424,6 +430,7 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                                                 overtime.getStatus(),
                                                 admin,
                                                 directorateManager,
+                                                fullManagement,
                                                 absolut))
                         .filter(overtime -> matchesStatus(overtime.getStatus(), status))
                         .toList();
@@ -553,8 +560,13 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
     }
 
     static boolean isVisibleForReviewer(
-            OvertimeStatus status, boolean admin, boolean directorateManager, boolean absolut) {
+            OvertimeStatus status,
+            boolean admin,
+            boolean directorateManager,
+            boolean fullManagement,
+            boolean absolut) {
         if (absolut || admin) return true;
+        if (directorateManager && fullManagement) return true;
         if (directorateManager) {
             return status == OvertimeStatus.APPROVED_OFFICE_MANAGER
                     || status == OvertimeStatus.APPROVED_MANAGER

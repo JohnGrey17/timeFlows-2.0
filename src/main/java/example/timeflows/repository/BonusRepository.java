@@ -1,7 +1,7 @@
 package example.timeflows.repository;
 
 import example.timeflows.model.Bonus;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -31,7 +31,8 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "createdBy",
                 "category"
             })
-    List<Bonus> findByCreatedAtBetweenOrderByCreatedAtDesc(LocalDateTime from, LocalDateTime to);
+    List<Bonus> findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+            LocalDate from, LocalDate to);
 
     @EntityGraph(
             attributePaths = {
@@ -43,8 +44,9 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "createdBy",
                 "category"
             })
-    List<Bonus> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-            Long userId, LocalDateTime from, LocalDateTime to);
+    List<Bonus>
+            findByUserIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                    Long userId, LocalDate from, LocalDate to);
 
     @EntityGraph(
             attributePaths = {
@@ -56,8 +58,9 @@ public interface BonusRepository extends JpaRepository<Bonus, Long> {
                 "createdBy",
                 "category"
             })
-    List<Bonus> findByUserDivisionIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-            Long divisionId, LocalDateTime from, LocalDateTime to);
+    List<Bonus>
+            findByUserDivisionIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                    Long divisionId, LocalDate from, LocalDate to);
 
     boolean existsByUserIdAndTypeAndQuarterYearAndQuarterNumber(
             Long userId, example.timeflows.model.BonusType type, Integer year, Integer quarter);

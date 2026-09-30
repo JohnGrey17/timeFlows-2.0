@@ -360,6 +360,21 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void kpiManagementIsAvailableToAdminAndForbiddenToManager() throws Exception {
+        mockMvc.perform(
+                        get("/api/bonuses/kpi")
+                                .param("year", "2026")
+                                .with(user("admin@vyriy.com").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Керування KPI")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Q1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Q4")));
+
+        mockMvc.perform(get("/api/bonuses/kpi").with(user("it.manager@vyriy.com").roles("MANAGER")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @org.springframework.transaction.annotation.Transactional
     void adminWithCurrentAbsolutTagCanArchiveApprovedBonus() throws Exception {
         var admin = userService.findByEmail("admin@vyriy.com");

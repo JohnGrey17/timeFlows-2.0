@@ -5,6 +5,7 @@ import example.timeflows.service.*;
 import java.math.BigDecimal;
 import java.time.YearMonth;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -236,6 +237,132 @@ public class BonusController {
                                 Map.<String, Object>of(
                                         "id", c.getId(), "name", c.getName(), "type", c.getType()))
                 .toList();
+    }
+
+    @GetMapping("/api/bonuses/kpi")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
+    public String kpiManagement(
+            @RequestParam(required = false) Integer year, Authentication auth, Model model) {
+        int selectedYear = year == null ? YearMonth.now().getYear() : year;
+        User current = userService.findByEmail(auth.getName());
+        List<User> projectManagers =
+                userService.findActiveUsers().stream()
+                        .filter(this::hasProjectManagerTag)
+                        .sorted(
+                                Comparator.comparing(
+                                                (User user) ->
+                                                        user.getLastName() == null
+                                                                ? ""
+                                                                : user.getLastName(),
+                                                String.CASE_INSENSITIVE_ORDER)
+                                        .thenComparing(
+                                                user ->
+                                                        user.getFirstName() == null
+                                                                ? ""
+                                                                : user.getFirstName(),
+                                                String.CASE_INSENSITIVE_ORDER))
+                        .toList();
+        List<Bonus> kpis = bonusService.findKpisForYear(selectedYear);
+        Map<Long, Map<Integer, List<Bonus>>> kpisByUserAndQuarter = new LinkedHashMap<>();
+        Map<Long, Map<Integer, BigDecimal>> kpiTotalsByUserAndQuarter = new LinkedHashMap<>();
+        for (User user : projectManagers) {
+            Map<Integer, List<Bonus>> quarters = new LinkedHashMap<>();
+            Map<Integer, BigDecimal> quarterAmounts = new LinkedHashMap<>();
+            for (int quarter = 1; quarter <= 4; quarter++) {
+                int selectedQuarter = quarter;
+                List<Bonus> userQuarterKpis =
+                        kpis.stream()
+                                .filter(kpi -> kpi.getUser().getId().equals(user.getId()))
+                                .filter(
+                                        kpi ->
+                                                ((kpi.getAccountingMonth().getMonthValue() - 1) / 3)
+                                                                + 1
+                                                        == selectedQuarter)
+                                .toList();
+                quarters.put(quarter, userQuarterKpis);
+                quarterAmounts.put(
+                        quarter,
+                        userQuarterKpis.stream()
+                                .map(Bonus::getAmount)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add));
+            }
+            kpisByUserAndQuarter.put(user.getId(), quarters);
+            kpiTotalsByUserAndQuarter.put(user.getId(), quarterAmounts);
+        }
+        Map<Integer, BigDecimal> quarterTotals = new LinkedHashMap<>();
+        Map<Integer, Long> quarterCounts = new LinkedHashMap<>();
+        for (int quarter = 1; quarter <= 4; quarter++) {
+            int selectedQuarter = quarter;
+            List<Bonus> quarterKpis =
+                    kpis.stream()
+                            .filter(
+                                    kpi ->
+                                            ((kpi.getAccountingMonth().getMonthValue() - 1) / 3) + 1
+                                                    == selectedQuarter)
+                            .toList();
+            quarterTotals.put(
+                    quarter,
+                    quarterKpis.stream()
+                            .map(Bonus::getAmount)
+                            .reduce(BigDecimal.ZERO, BigDecimal::add));
+            quarterCounts.put(quarter, (long) quarterKpis.size());
+        }
+        model.addAttribute("currentUser", current);
+        model.addAttribute("selectedYear", selectedYear);
+        model.addAttribute("projectManagers", projectManagers);
+        model.addAttribute("kpisByUserAndQuarter", kpisByUserAndQuarter);
+        model.addAttribute("kpiTotalsByUserAndQuarter", kpiTotalsByUserAndQuarter);
+        model.addAttribute("quarterTotals", quarterTotals);
+        model.addAttribute("quarterCounts", quarterCounts);
+        model.addAttribute(
+                "totalKpiAmount",
+                kpis.stream().map(Bonus::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add));
+        model.addAttribute("totalKpiCount", kpis.size());
+        return "manager/kpi-management";
+    }
+
+    @PostMapping("/api/bonuses/kpi")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
+    public String createKpiAsAdmin(
+            @RequestParam Long userId,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam BigDecimal amount,
+            @RequestParam(required = false) String description,
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
+        try {
+            bonusService.create(
+                    userId,
+                    null,
+                    BonusType.KPI,
+                    amount,
+                    description,
+                    auth.getName(),
+                    YearMonth.of(year, month));
+            redirectAttributes.addFlashAttribute("success", "KPI успішно створено");
+        } catch (RuntimeException exception) {
+            redirectAttributes.addFlashAttribute("bonusError", exception.getMessage());
+        }
+        return "redirect:/api/bonuses/kpi?year=" + year;
+    }
+
+    @PostMapping("/api/bonuses/kpi/{id}/delete")
+    @PreAuthorize("hasAnyRole('ADMIN','ABSOLUT')")
+    public String deleteKpiAsAdmin(
+            @PathVariable Long id, @RequestParam int year, RedirectAttributes redirectAttributes) {
+        try {
+            Bonus kpi = bonusService.find(id);
+            if (kpi.getType() != BonusType.KPI) {
+                throw new IllegalArgumentException(
+                        "Через модуль KPI можна видаляти лише KPI-записи");
+            }
+            bonusService.delete(id, true);
+            redirectAttributes.addFlashAttribute("success", "KPI успішно архівовано");
+        } catch (RuntimeException exception) {
+            redirectAttributes.addFlashAttribute("bonusError", exception.getMessage());
+        }
+        return "redirect:/api/bonuses/kpi?year=" + year;
     }
 
     @GetMapping("/api/bonuses/{id}/details")
