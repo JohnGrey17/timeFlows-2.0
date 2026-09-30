@@ -7,7 +7,7 @@ import example.timeflows.model.*;
 import example.timeflows.repository.BonusCategoryRepository;
 import example.timeflows.repository.BonusRepository;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -117,14 +117,20 @@ class BonusServiceTests {
     @Test
     void monthQueriesUseExactMonthBoundaries() {
         YearMonth month = YearMonth.of(2026, 8);
-        LocalDateTime start = LocalDateTime.of(2026, 8, 1, 0, 0);
-        LocalDateTime end = LocalDateTime.of(2026, 9, 1, 0, 0);
+        LocalDate start = LocalDate.of(2026, 8, 1);
+        LocalDate end = LocalDate.of(2026, 9, 1);
         Bonus bonus = bonus(BonusStatus.PENDING);
-        when(repository.findByCreatedAtBetweenOrderByCreatedAtDesc(start, end))
+        when(repository
+                        .findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                                start, end))
                 .thenReturn(List.of(bonus));
-        when(repository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(1L, start, end))
+        when(repository
+                        .findByUserIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                                1L, start, end))
                 .thenReturn(List.of(bonus));
-        when(repository.findByUserDivisionIdAndCreatedAtBetweenOrderByCreatedAtDesc(2L, start, end))
+        when(repository
+                        .findByUserDivisionIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                                2L, start, end))
                 .thenReturn(List.of(bonus));
 
         assertThat(service.findMonth(month)).containsExactly(bonus);
@@ -210,7 +216,32 @@ class BonusServiceTests {
                         "lead@vyriy.com",
                         YearMonth.of(2026, 8));
 
-        assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
+        assertThat(result.getAccountingMonth()).isEqualTo(LocalDate.of(2026, 8, 1));
+    }
+
+    @Test
+    void adminCreatesKpiForProjectManagerInSelectedMonth() {
+        User admin = new User();
+        admin.setRoles(new java.util.LinkedHashSet<>(Set.of(Role.ADMIN)));
+        User target = new User();
+        target.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER)));
+        when(userService.findById(1L)).thenReturn(target);
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        1L,
+                        null,
+                        BonusType.KPI,
+                        new BigDecimal("13500"),
+                        "August KPI",
+                        "admin@vyriy.com",
+                        YearMonth.of(2026, 8));
+
+        assertThat(result.getType()).isEqualTo(BonusType.KPI);
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThat(result.getAccountingMonth()).isEqualTo(LocalDate.of(2026, 8, 1));
     }
 
     @Test
@@ -222,7 +253,7 @@ class BonusServiceTests {
 
         Bonus result = service.moveToMonth(1L, YearMonth.of(2026, 8));
 
-        assertThat(result.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 0, 0));
+        assertThat(result.getAccountingMonth()).isEqualTo(LocalDate.of(2026, 8, 1));
     }
 
     @Test
@@ -294,8 +325,9 @@ class BonusServiceTests {
         when(userService.findById(1L)).thenReturn(first);
         when(userService.findById(2L)).thenReturn(second);
         when(userService.findById(3L)).thenReturn(third);
-        when(repository.findByCreatedAtBetweenOrderByCreatedAtDesc(
-                        LocalDateTime.of(2026, 7, 1, 0, 0), LocalDateTime.of(2026, 10, 1, 0, 0)))
+        when(repository
+                        .findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                                LocalDate.of(2026, 7, 1), LocalDate.of(2026, 10, 1)))
                 .thenReturn(List.of(approvedKpi));
         when(repository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 

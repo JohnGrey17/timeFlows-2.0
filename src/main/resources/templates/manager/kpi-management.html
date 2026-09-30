@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="uk" xmlns:th="http://www.thymeleaf.org" xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>TimeFlows | Керування KPI</title>
+    <link rel="icon" th:href="@{/images/icon_16px_gradient.png}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/app-shell.js}"></script>
+</head>
+<body class="app-body">
+<div class="app-layout">
+    <aside class="sidebar">
+        <button type="button" class="sidebar-toggle" data-sidebar-toggle>☰</button>
+        <div class="sidebar-brand">timeFlows</div>
+        <nav class="side-nav">
+            <a th:href="@{/api/overtime}"><span class="nav-icon">◷</span><span>Мої перепрацювання</span></a>
+            <a th:href="@{/api/overtime/review}"><span class="nav-icon">☑</span><span>Перевірка перепрацювань</span></a>
+            <a class="active" th:href="@{/api/bonuses}"><span class="nav-icon">★</span><span>Керування бонусами</span></a>
+            <a th:href="@{/api/users}"><span class="nav-icon">♙</span><span>Керування користувачами</span></a>
+            <a th:href="@{/api/organization}"><span class="nav-icon">▥</span><span>Керування Відділами</span></a>
+            <a th:href="@{/api/company-structure}"><span class="nav-icon">⌘</span><span>Структура компанії</span></a>
+            <a th:href="@{/api/settings}"><span class="nav-icon">⚙</span><span>Налаштування</span></a>
+        </nav>
+        <form th:action="@{/api/logout}" method="post" class="logout-form"><button>Вийти</button></form>
+    </aside>
+    <main class="content">
+        <header class="topbar">
+            <div><p class="eyebrow">Bonuses / KPI</p><h1>Керування KPI</h1></div>
+            <div class="user-chip" th:text="${currentUser.firstName+' '+currentUser.lastName}"></div>
+        </header>
+
+        <nav class="review-view-switch"><a th:href="@{/api/bonuses(year=${selectedYear})}">Бонуси</a><a class="active" th:href="@{/api/bonuses/kpi(year=${selectedYear})}">Керування KPI</a></nav>
+
+        <div class="status-note success-message" th:if="${success}" th:text="${success}"></div>
+        <div class="error-message" th:if="${bonusError}" th:text="${bonusError}"></div>
+
+        <section class="settings-panel kpi-management-toolbar">
+            <div class="section-title-with-help">
+                <div><p class="eyebrow">Звітний період</p><h2>Огляд KPI за рік</h2></div>
+                <span class="help-tip" tabindex="0" data-tooltip="Кожен KPI належить конкретному звітному місяцю. У таблиці записи згруповано за кварталами цього року.">?</span>
+            </div>
+            <form method="get" class="inline-form kpi-year-filter">
+                <label>Рік<input type="number" name="year" min="2000" max="2100" th:value="${selectedYear}" required></label>
+                <button>Показати</button>
+            </form>
+            <div class="kpi-overview-cards">
+                <article><span>Усього записів</span><strong th:text="${totalKpiCount}">0</strong></article>
+                <article><span>Загальна сума KPI</span><strong th:text="${totalKpiAmount}">0</strong></article>
+                <article th:each="quarter:${#numbers.sequence(1,4)}"><span th:text="${'Q'+quarter+' · '+quarterCounts.get(quarter)+' записів'}">Q1</span><strong th:text="${quarterTotals.get(quarter)}">0</strong></article>
+            </div>
+        </section>
+
+        <section class="settings-panel kpi-create-panel">
+            <div><p class="eyebrow">Новий запис</p><h2>Створити KPI</h2></div>
+            <form method="post" th:action="@{/api/bonuses/kpi}" class="kpi-create-form">
+                <label>PM-користувач<select name="userId" required><option value="">Оберіть користувача</option><option th:each="user:${projectManagers}" th:value="${user.id}" th:text="${user.lastName+' '+user.firstName+' — '+user.email}"></option></select></label>
+                <label>Рік<input type="number" name="year" min="2000" max="2100" th:value="${selectedYear}" required></label>
+                <label>Місяць<select name="month" required><option th:each="month:${#numbers.sequence(1,12)}" th:value="${month}" th:text="${month}"></option></select></label>
+                <label>Сума KPI<input type="number" name="amount" min="0.01" step="0.01" required></label>
+                <label>Опис<input name="description" maxlength="1000" placeholder="Необов’язково"></label>
+                <button type="submit">Створити KPI</button>
+            </form>
+        </section>
+
+        <section class="table-panel kpi-quarter-table-wrap">
+            <table class="data-table kpi-quarter-table">
+                <thead><tr><th>PM-користувач</th><th th:each="quarter:${#numbers.sequence(1,4)}" th:text="${'Q'+quarter}">Q1</th></tr></thead>
+                <tbody>
+                <tr th:each="user:${projectManagers}">
+                    <td><strong th:text="${user.lastName+' '+user.firstName}"></strong><span th:text="${user.email}"></span></td>
+                    <td th:each="quarter:${#numbers.sequence(1,4)}">
+                        <div class="kpi-quarter-summary">
+                            <strong th:text="${kpiTotalsByUserAndQuarter.get(user.id).get(quarter)}">0</strong>
+                            <span th:text="${kpisByUserAndQuarter.get(user.id).get(quarter).size()+' записів'}">0 записів</span>
+                        </div>
+                        <details th:if="${!kpisByUserAndQuarter.get(user.id).get(quarter).isEmpty()}">
+                            <summary>Переглянути записи</summary>
+                            <article class="kpi-record" th:each="kpi:${kpisByUserAndQuarter.get(user.id).get(quarter)}">
+                                <div><strong th:text="${kpi.amount}">0</strong><span th:text="${#temporals.format(kpi.accountingMonth,'MM.yyyy')}"></span><small th:text="${kpi.description ?: 'Без опису'}"></small></div>
+                                <form method="post" th:action="@{/api/bonuses/kpi/{id}/delete(id=${kpi.id})}"><input type="hidden" name="year" th:value="${selectedYear}"><button type="submit" class="danger-button">Видалити</button></form>
+                            </article>
+                        </details>
+                    </td>
+                </tr>
+                <tr th:if="${projectManagers.isEmpty()}"><td colspan="5">Активних користувачів із тегом PROJECT_MANAGER не знайдено.</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </main>
+</div>
+</body>
+</html>

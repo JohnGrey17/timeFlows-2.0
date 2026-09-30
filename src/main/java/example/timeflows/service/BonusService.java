@@ -13,6 +13,8 @@ public interface BonusService {
 
     List<Bonus> findDivisionMonth(Long divisionId, YearMonth month);
 
+    List<Bonus> findKpisForYear(int year);
+
     Bonus find(Long id);
 
     Bonus create(

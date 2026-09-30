@@ -2,6 +2,7 @@ package example.timeflows.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Getter;
 import lombok.Setter;
@@ -36,6 +37,9 @@ public class Bonus {
 
     @Column(name = "quarter_number")
     private Integer quarterNumber;
+
+    @Column(name = "accounting_month", nullable = false)
+    private LocalDate accountingMonth = LocalDate.now().withDayOfMonth(1);
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;

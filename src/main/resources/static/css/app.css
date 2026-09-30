@@ -1370,6 +1370,30 @@ textarea:focus {
 .summary-amount-button:focus,
 .summary-amount-button:active { outline: 0; box-shadow: none; transform: none; }
 .summary-amount-button:focus-visible { outline: 2px solid rgba(255,135,84,.35); outline-offset: 2px; }
+
+.kpi-management-toolbar,
+.kpi-create-panel { margin-bottom: 18px; }
+.kpi-year-filter { max-width: 340px; margin: 14px 0; }
+.kpi-year-filter label { display: grid; gap: 6px; }
+.kpi-overview-cards { display: grid; grid-template-columns: repeat(6, minmax(130px, 1fr)); gap: 10px; }
+.kpi-overview-cards article { display: grid; gap: 5px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff8ef; }
+.kpi-overview-cards span { color: var(--muted); font-size: 12px; font-weight: 800; }
+.kpi-overview-cards strong { color: var(--accent-strong); font-size: 20px; }
+.kpi-create-form { display: grid; grid-template-columns: minmax(240px, 2fr) repeat(3, minmax(110px, .7fr)) minmax(180px, 1.3fr) auto; gap: 10px; align-items: end; margin-top: 14px; }
+.kpi-create-form label { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 800; }
+.kpi-quarter-table { min-width: 1250px; }
+.kpi-quarter-table th:not(:first-child),
+.kpi-quarter-table td:not(:first-child) { width: 22%; }
+.kpi-quarter-summary { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: #fff3eb; }
+.kpi-quarter-summary strong { color: var(--accent-strong); }
+.kpi-record { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+.kpi-record > div { display: grid; gap: 3px; }
+.kpi-record small { color: var(--muted); overflow-wrap: anywhere; }
+.kpi-record button { min-height: 32px; padding: 5px 8px; }
+@media (max-width: 1100px) {
+    .kpi-overview-cards { grid-template-columns: repeat(2, minmax(130px, 1fr)); }
+    .kpi-create-form { grid-template-columns: 1fr 1fr; }
+}
 .summary-salary-form { display: grid; gap: 5px; min-width: 112px; }
 .summary-salary-form input { width: 100%; min-height: 34px; padding: 5px; }
 .summary-salary-form button { min-height: 32px; padding: 5px 8px; }

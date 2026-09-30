@@ -34,8 +34,8 @@ public class BonusServiceImpl implements BonusService {
     @Transactional(readOnly = true)
     public List<Bonus> findMonth(YearMonth month) {
         return repository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(
-                        month.atDay(1).atStartOfDay(), month.plusMonths(1).atDay(1).atStartOfDay())
+                .findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                        month.atDay(1), month.plusMonths(1).atDay(1))
                 .stream()
                 .filter(bonus -> !bonus.isArchived())
                 .toList();
@@ -44,10 +44,8 @@ public class BonusServiceImpl implements BonusService {
     @Transactional(readOnly = true)
     public List<Bonus> findUserMonth(Long userId, YearMonth month) {
         return repository
-                .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-                        userId,
-                        month.atDay(1).atStartOfDay(),
-                        month.plusMonths(1).atDay(1).atStartOfDay())
+                .findByUserIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                        userId, month.atDay(1), month.plusMonths(1).atDay(1))
                 .stream()
                 .filter(bonus -> !bonus.isArchived())
                 .toList();
@@ -56,12 +54,21 @@ public class BonusServiceImpl implements BonusService {
     @Transactional(readOnly = true)
     public List<Bonus> findDivisionMonth(Long divisionId, YearMonth month) {
         return repository
-                .findByUserDivisionIdAndCreatedAtBetweenOrderByCreatedAtDesc(
-                        divisionId,
-                        month.atDay(1).atStartOfDay(),
-                        month.plusMonths(1).atDay(1).atStartOfDay())
+                .findByUserDivisionIdAndAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                        divisionId, month.atDay(1), month.plusMonths(1).atDay(1))
                 .stream()
                 .filter(bonus -> !bonus.isArchived())
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Bonus> findKpisForYear(int year) {
+        return repository
+                .findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                        YearMonth.of(year, 1).atDay(1), YearMonth.of(year + 1, 1).atDay(1))
+                .stream()
+                .filter(bonus -> bonus.getType() == BonusType.KPI && !bonus.isArchived())
                 .toList();
     }
 
@@ -127,9 +134,8 @@ public class BonusServiceImpl implements BonusService {
         bonus.setType(requestedType);
         bonus.setAmount(amount);
         bonus.setDescription(normalize(description));
-        if (accountingMonth != null) {
-            bonus.setCreatedAt(accountingMonth.atDay(1).atStartOfDay());
-        }
+        bonus.setAccountingMonth(
+                (accountingMonth == null ? YearMonth.now() : accountingMonth).atDay(1));
         if (requestedType == BonusType.KPI) bonus.setStatus(BonusStatus.APPROVED);
         return repository.save(bonus);
     }
@@ -141,7 +147,7 @@ public class BonusServiceImpl implements BonusService {
         if (bonus.getType() != BonusType.KPI) {
             throw new IllegalArgumentException("Переносити між місяцями можна лише KPI");
         }
-        bonus.setCreatedAt(accountingMonth.atDay(1).atStartOfDay());
+        bonus.setAccountingMonth(accountingMonth.atDay(1));
         bonus.setUpdatedAt(LocalDateTime.now());
         return repository.save(bonus);
     }
@@ -273,9 +279,10 @@ public class BonusServiceImpl implements BonusService {
     @Transactional(readOnly = true)
     public BigDecimal quarterlyPool(int year, int quarter) {
         validateQuarter(quarter);
-        LocalDateTime from = YearMonth.of(year, (quarter - 1) * 3 + 1).atDay(1).atStartOfDay();
+        YearMonth from = YearMonth.of(year, (quarter - 1) * 3 + 1);
         return repository
-                .findByCreatedAtBetweenOrderByCreatedAtDesc(from, from.plusMonths(3))
+                .findByAccountingMonthGreaterThanEqualAndAccountingMonthLessThanOrderByCreatedAtDesc(
+                        from.atDay(1), from.plusMonths(3).atDay(1))
                 .stream()
                 .filter(
                         bonus ->
@@ -401,15 +408,17 @@ public class BonusServiceImpl implements BonusService {
     }
 
     private void validateTypeAccess(BonusType type, User creator, User target) {
-        if (accessPolicy.isAbsolut(creator)) return;
+        boolean privilegedAdmin =
+                accessPolicy.isAbsolut(creator) || creator.getRoles().contains(Role.ADMIN);
         boolean targetProjectManager =
                 hasEffectiveTag(target, BusinessTag.PROJECT_MANAGER)
                         && !target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD);
         if (type == BonusType.KPI) {
-            if (!creator.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
+            if (!privilegedAdmin && !creator.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
                 throw new IllegalArgumentException("KPI може створювати лише PROJECT_MANAGER_LEAD");
             }
-            if (!creator.getDivision().getId().equals(target.getDivision().getId())) {
+            if (!privilegedAdmin
+                    && !creator.getDivision().getId().equals(target.getDivision().getId())) {
                 throw new IllegalArgumentException("PM Lead працює лише зі своїм відділом");
             }
             if (!targetProjectManager
@@ -419,7 +428,7 @@ public class BonusServiceImpl implements BonusService {
         } else if (type == BonusType.MONTHLY && targetProjectManager) {
             throw new IllegalArgumentException(
                     "PROJECT_MANAGER не отримує погоджений місячний бонус");
-        } else if (type == BonusType.QUARTERLY && !creator.getRoles().contains(Role.ADMIN)) {
+        } else if (type == BonusType.QUARTERLY && !privilegedAdmin) {
             throw new IllegalArgumentException("Квартальний бонус розподіляє лише ADMIN");
         }
     }
