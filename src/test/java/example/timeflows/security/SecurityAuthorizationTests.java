@@ -338,6 +338,28 @@ class SecurityAuthorizationTests {
     }
 
     @Test
+    void directorateManagerCanReachCreateOvertimeForUserEndpoint() throws Exception {
+        var employee = userService.findByEmail("andrii.employee@vyriy.com");
+
+        MvcResult result =
+                mockMvc.perform(
+                                post("/api/overtime/review/create-for-user")
+                                        .with(
+                                                user("it.manager@vyriy.com")
+                                                        .roles("DIRECTORATE_MANAGER", "EMPLOYEE"))
+                                        .with(csrf())
+                                        .param("employeeId", employee.getId().toString())
+                                        .param("workDate", "2026-08-20")
+                                        .param("hours", "2")
+                                        .param("description", "Directorate manager security test")
+                                        .param("year", "2026")
+                                        .param("month", "8"))
+                        .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isNotEqualTo(403);
+    }
+
+    @Test
     @org.springframework.transaction.annotation.Transactional
     void adminWithCurrentAbsolutTagCanArchiveApprovedBonus() throws Exception {
         var admin = userService.findByEmail("admin@vyriy.com");
