@@ -287,6 +287,15 @@ document.querySelectorAll("form[action*='/api/bonuses/']").forEach((form) => {
 const overtimeMatrixWrap = document.querySelector(".overtime-matrix-wrap");
 const overtimeMatrix = overtimeMatrixWrap?.querySelector(".overtime-matrix");
 const overtimeMatrixHeader = overtimeMatrix?.querySelector("thead");
+const employeeRowSelectors = overtimeMatrix?.querySelectorAll("[data-employee-row-selector]") || [];
+const updateEmployeeRowSelection = () => {
+    const hasSelection = Array.from(employeeRowSelectors).some((selector) => selector.checked);
+    overtimeMatrix?.classList.toggle("has-row-selection", hasSelection);
+    employeeRowSelectors.forEach((selector) => {
+        selector.closest("tr")?.classList.toggle("is-selected", selector.checked);
+    });
+};
+employeeRowSelectors.forEach((selector) => selector.addEventListener("change", updateEmployeeRowSelection));
 if (overtimeMatrixWrap && overtimeMatrix && overtimeMatrixHeader) {
     const stickyHeader = document.createElement("div");
     stickyHeader.className = "overtime-sticky-header";
@@ -327,7 +336,7 @@ if (overtimeMatrixWrap && overtimeMatrix && overtimeMatrixHeader) {
         stickyHeader.style.left = `${visibleLeft}px`;
         stickyHeader.style.width = `${visibleRight - visibleLeft}px`;
         stickyTable.style.transform = `translateX(${-overtimeMatrixWrap.scrollLeft}px)`;
-        stickyTable.querySelectorAll(".row-number-column, .employee-column")
+        stickyTable.querySelectorAll(".row-selection-column, .row-number-column, .employee-column")
             .forEach((cell) => cell.style.transform = `translateX(${overtimeMatrixWrap.scrollLeft}px)`);
     };
 
