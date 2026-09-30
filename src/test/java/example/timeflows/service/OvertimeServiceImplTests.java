@@ -132,6 +132,36 @@ class OvertimeServiceImplTests {
     }
 
     @Test
+    void fullManagementDirectorateManagerCanApproveCheckingRequestDirectly() {
+        Directorate directorate = new Directorate();
+        directorate.setId(30L);
+        Division managerDivision = new Division();
+        managerDivision.setDirectorate(directorate);
+        User directorateManager = user(Role.EMPLOYEE, Role.DIRECTORATE_MANAGER);
+        directorateManager.setId(1L);
+        directorateManager.setDivision(managerDivision);
+        directorateManager.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        directorate.setManager(directorateManager);
+
+        Division employeeDivision = new Division();
+        employeeDivision.setDirectorate(directorate);
+        User employee = user(Role.EMPLOYEE);
+        employee.setDivision(employeeDivision);
+        Overtime overtime = overtime(OvertimeStatus.CHECKING);
+        overtime.setUser(employee);
+        when(userService.findByEmail("directorate.manager@vyriy.com"))
+                .thenReturn(directorateManager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime result =
+                overtimeService.approve(1L, "Погоджено напряму", "directorate.manager@vyriy.com");
+
+        assertThat(result.getStatus()).isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+        assertThat(result.getManagerComment()).isEqualTo("Погоджено напряму");
+    }
+
+    @Test
     void approveRejectsAlreadyDecidedOvertime() {
         Overtime overtime = overtime(OvertimeStatus.APPROVED_ADMIN);
         when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
@@ -703,6 +733,56 @@ class OvertimeServiceImplTests {
         verify(overtimeRepository, never()).save(alreadyApproved);
         assertThat(olderApproved.getStatus()).isEqualTo(OvertimeStatus.APPROVED_ADMIN);
         verify(overtimeRepository).save(olderApproved);
+    }
+
+    @Test
+    void fullManagementDirectorateManagerBulkApprovesEveryStatusInOwnDirectorate() {
+        Directorate directorate = new Directorate();
+        directorate.setId(30L);
+        Division managerDivision = new Division();
+        managerDivision.setDirectorate(directorate);
+        User manager = user(Role.EMPLOYEE, Role.DIRECTORATE_MANAGER);
+        manager.setId(10L);
+        manager.setDivision(managerDivision);
+        manager.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        directorate.setManager(manager);
+
+        Division employeeDivision = new Division();
+        employeeDivision.setDirectorate(directorate);
+        User employee = user(Role.EMPLOYEE);
+        employee.setDivision(employeeDivision);
+        Overtime checking = overtime(OvertimeStatus.CHECKING);
+        checking.setId(1L);
+        checking.setUser(employee);
+        Overtime declined = overtime(OvertimeStatus.DECLINED);
+        declined.setId(2L);
+        declined.setUser(employee);
+        Overtime adminApproved = overtime(OvertimeStatus.APPROVED_ADMIN);
+        adminApproved.setId(3L);
+        adminApproved.setUser(employee);
+        when(userService.findByEmail("directorate.manager@vyriy.com")).thenReturn(manager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(checking));
+        when(overtimeRepository.findWithUserById(2L)).thenReturn(Optional.of(declined));
+        when(overtimeRepository.findWithUserById(3L)).thenReturn(Optional.of(adminApproved));
+
+        int approved =
+                overtimeService.approveAll(
+                        List.of(1L, 2L, 3L),
+                        "Погоджено керівником управління",
+                        "directorate.manager@vyriy.com");
+
+        assertThat(approved).isEqualTo(3);
+        assertThat(List.of(checking, declined, adminApproved))
+                .allSatisfy(
+                        overtime -> {
+                            assertThat(overtime.getStatus())
+                                    .isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+                            assertThat(overtime.getManagerComment())
+                                    .isEqualTo("Погоджено керівником управління");
+                        });
+        verify(overtimeRepository).save(checking);
+        verify(overtimeRepository).save(declined);
+        verify(overtimeRepository).save(adminApproved);
     }
 
     @Test
