@@ -1379,6 +1379,57 @@ textarea:focus {
 .overtime-matrix thead th.row-number-column,
 .overtime-matrix thead th.employee-column { z-index: 7; }
 
+.overtime-matrix { min-width: 1830px; }
+.overtime-matrix th.row-selection-column,
+.overtime-matrix td.row-selection-column {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    width: 36px;
+    min-width: 36px;
+    padding-inline: 5px;
+    text-align: center;
+    background: #fff;
+}
+.overtime-matrix th.row-number-column,
+.overtime-matrix td.row-number-column { left: 36px; }
+.overtime-matrix th.employee-column,
+.overtime-matrix td.employee-column { left: 80px; }
+.overtime-matrix thead th.row-selection-column { z-index: 8; }
+.employee-row-selector {
+    appearance: auto;
+    width: 17px;
+    height: 17px;
+    min-height: 17px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    box-shadow: none;
+    accent-color: var(--accent-strong);
+    cursor: pointer;
+}
+.employee-row-selector:focus {
+    outline: 2px solid rgba(255, 135, 84, .35);
+    outline-offset: 2px;
+}
+.overtime-matrix tbody tr > td {
+    transition: opacity .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+.overtime-matrix.has-row-selection tbody tr:not(.is-selected) > td {
+    opacity: .24;
+    filter: blur(.55px) grayscale(.55);
+}
+.overtime-matrix.has-row-selection tbody tr.is-selected > td {
+    box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent);
+}
+.overtime-matrix.has-row-selection tbody tr.is-selected > td.row-selection-column,
+.overtime-matrix.has-row-selection tbody tr.is-selected > td.row-number-column,
+.overtime-matrix.has-row-selection tbody tr.is-selected > td.employee-column {
+    background: #fff3eb;
+}
+
 /* Help messages always open to the right of their question mark. */
 .help-tip::after,
 .topbar .help-tip::after { top: 50%; left: calc(100% + 10px); right: auto; transform: translateY(-50%); }

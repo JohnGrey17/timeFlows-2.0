@@ -214,6 +214,7 @@
             <table class="data-table overtime-matrix">
                 <thead>
                 <tr>
+                    <th class="row-selection-column" aria-label="Вибір співробітника"></th>
                     <th class="row-number-column">№</th>
                     <th class="employee-column">Користувач</th>
                     <th th:each="header : ${dayHeaders}"><span th:text="${header.day()}">1</span><small class="weekday-label" th:text="${header.weekday()}">пн</small></th>
@@ -223,6 +224,10 @@
                 </thead>
                 <tbody>
                 <tr th:each="row,rowStat : ${divisionRows}">
+                    <td class="row-selection-column">
+                        <input type="checkbox" class="employee-row-selector" data-employee-row-selector
+                               th:aria-label="${'Виділити ' + (row.user().lastName ?: '') + ' ' + (row.user().firstName ?: '')}">
+                    </td>
                     <td class="row-number-column" th:text="${rowStat.count}">1</td>
                     <td class="employee-column">
                         <strong class="employee-short-name"><span th:text="${row.user().firstName ?: ''}">Ім'я</span><span th:text="${row.user().lastName ?: ''}">Прізвище</span></strong>

@@ -676,7 +676,12 @@ class SecurityAuthorizationTests {
                         content().string(org.hamcrest.Matchers.containsString("Співробітники = ")))
                 .andExpect(
                         content()
-                                .string(org.hamcrest.Matchers.containsString("row-number-column")));
+                                .string(org.hamcrest.Matchers.containsString("row-number-column")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-employee-row-selector")));
     }
 
     @Test
