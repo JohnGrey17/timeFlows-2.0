@@ -291,3 +291,64 @@ document.querySelectorAll("form[action*='/api/bonuses/']").forEach((form) => {
             form.appendChild(input);
         });
 });
+
+const overtimeMatrixWrap = document.querySelector(".overtime-matrix-wrap");
+const overtimeMatrix = overtimeMatrixWrap?.querySelector(".overtime-matrix");
+const overtimeMatrixHeader = overtimeMatrix?.querySelector("thead");
+if (overtimeMatrixWrap && overtimeMatrix && overtimeMatrixHeader) {
+    const stickyHeader = document.createElement("div");
+    stickyHeader.className = "overtime-sticky-header";
+    stickyHeader.hidden = true;
+    stickyHeader.setAttribute("aria-hidden", "true");
+
+    const stickyTable = document.createElement("table");
+    stickyTable.className = overtimeMatrix.className;
+    stickyTable.appendChild(overtimeMatrixHeader.cloneNode(true));
+    stickyHeader.appendChild(stickyTable);
+    document.body.appendChild(stickyHeader);
+
+    const synchronizeHeaderSize = () => {
+        const sourceCells = overtimeMatrixHeader.querySelectorAll("th");
+        const stickyCells = stickyTable.querySelectorAll("th");
+        sourceCells.forEach((cell, index) => {
+            const width = cell.getBoundingClientRect().width;
+            stickyCells[index].style.width = `${width}px`;
+            stickyCells[index].style.minWidth = `${width}px`;
+            stickyCells[index].style.maxWidth = `${width}px`;
+        });
+        stickyTable.style.width = `${overtimeMatrix.getBoundingClientRect().width}px`;
+        stickyHeader.style.height = `${overtimeMatrixHeader.getBoundingClientRect().height}px`;
+    };
+
+    let updatePending = false;
+    const updateStickyHeader = () => {
+        updatePending = false;
+        const wrapBounds = overtimeMatrixWrap.getBoundingClientRect();
+        const headerBounds = overtimeMatrixHeader.getBoundingClientRect();
+        const visibleLeft = Math.max(0, wrapBounds.left);
+        const visibleRight = Math.min(window.innerWidth, wrapBounds.right);
+        const shouldShow = headerBounds.top < 0 && wrapBounds.bottom > headerBounds.height;
+
+        stickyHeader.hidden = !shouldShow || visibleRight <= visibleLeft;
+        if (stickyHeader.hidden) return;
+
+        stickyHeader.style.left = `${visibleLeft}px`;
+        stickyHeader.style.width = `${visibleRight - visibleLeft}px`;
+        stickyTable.style.transform = `translateX(${-overtimeMatrixWrap.scrollLeft}px)`;
+    };
+
+    const requestStickyHeaderUpdate = () => {
+        if (updatePending) return;
+        updatePending = true;
+        window.requestAnimationFrame(updateStickyHeader);
+    };
+
+    synchronizeHeaderSize();
+    updateStickyHeader();
+    window.addEventListener("scroll", requestStickyHeaderUpdate, {passive: true});
+    overtimeMatrixWrap.addEventListener("scroll", requestStickyHeaderUpdate, {passive: true});
+    window.addEventListener("resize", () => {
+        synchronizeHeaderSize();
+        requestStickyHeaderUpdate();
+    });
+}
