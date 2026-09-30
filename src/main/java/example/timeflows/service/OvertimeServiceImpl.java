@@ -492,6 +492,8 @@ public class OvertimeServiceImpl implements OvertimeService {
         int approved = 0;
         for (Long id : ids.stream().distinct().toList()) {
             Overtime overtime = findById(id);
+            if (fullManagementDirectorateManager
+                    && overtime.getStatus() == OvertimeStatus.APPROVED_DIRECTORATE) continue;
             if (!fullManagementDirectorateManager && !canAdminApprove(overtime)) continue;
             assertCanReview(id, reviewerEmail);
             overtime.setStatus(

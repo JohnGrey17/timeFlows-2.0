@@ -8,6 +8,18 @@ import org.junit.jupiter.api.Test;
 class OvertimeReviewPageServiceImplTests {
 
     @Test
+    void alreadyDirectorateApprovedOvertimeIsNotBulkApprovable() {
+        assertThat(
+                        OvertimeReviewPageServiceImpl.isBulkApprovable(
+                                OvertimeStatus.APPROVED_DIRECTORATE))
+                .isFalse();
+        assertThat(OvertimeReviewPageServiceImpl.isBulkApprovable(OvertimeStatus.CHECKING))
+                .isTrue();
+        assertThat(OvertimeReviewPageServiceImpl.isBulkApprovable(OvertimeStatus.DECLINED))
+                .isTrue();
+    }
+
+    @Test
     void directorateManagerKeepsBulkApprovedRequestsVisible() {
         assertThat(
                         OvertimeReviewPageServiceImpl.isVisibleForReviewer(

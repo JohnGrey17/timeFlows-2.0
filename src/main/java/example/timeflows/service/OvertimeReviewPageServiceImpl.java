@@ -438,7 +438,9 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put(
                 "bulkApprovableCount",
                 directorateManager && fullManagement
-                        ? overtimes.size()
+                        ? overtimes.stream()
+                                .filter(overtime -> isBulkApprovable(overtime.getStatus()))
+                                .count()
                         : overtimes.stream().filter(overtimeService::canAdminApprove).count());
         Map<Long, Map<LocalDate, Overtime>> byUser =
                 overtimes.stream()
@@ -577,6 +579,10 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
                     || status == OvertimeStatus.REJECTED;
         }
         return true;
+    }
+
+    static boolean isBulkApprovable(OvertimeStatus status) {
+        return status != OvertimeStatus.APPROVED_DIRECTORATE;
     }
 
     private boolean isFinalApproved(OvertimeStatus status) {

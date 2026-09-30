@@ -760,14 +760,19 @@ class OvertimeServiceImplTests {
         Overtime adminApproved = overtime(OvertimeStatus.APPROVED_ADMIN);
         adminApproved.setId(3L);
         adminApproved.setUser(employee);
+        Overtime alreadyDirectorateApproved = overtime(OvertimeStatus.APPROVED_DIRECTORATE);
+        alreadyDirectorateApproved.setId(4L);
+        alreadyDirectorateApproved.setUser(employee);
         when(userService.findByEmail("directorate.manager@vyriy.com")).thenReturn(manager);
         when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(checking));
         when(overtimeRepository.findWithUserById(2L)).thenReturn(Optional.of(declined));
         when(overtimeRepository.findWithUserById(3L)).thenReturn(Optional.of(adminApproved));
+        when(overtimeRepository.findWithUserById(4L))
+                .thenReturn(Optional.of(alreadyDirectorateApproved));
 
         int approved =
                 overtimeService.approveAll(
-                        List.of(1L, 2L, 3L),
+                        List.of(1L, 2L, 3L, 4L),
                         "Погоджено керівником управління",
                         "directorate.manager@vyriy.com");
 
@@ -783,6 +788,9 @@ class OvertimeServiceImplTests {
         verify(overtimeRepository).save(checking);
         verify(overtimeRepository).save(declined);
         verify(overtimeRepository).save(adminApproved);
+        assertThat(alreadyDirectorateApproved.getStatus())
+                .isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+        verify(overtimeRepository, never()).save(alreadyDirectorateApproved);
     }
 
     @Test
