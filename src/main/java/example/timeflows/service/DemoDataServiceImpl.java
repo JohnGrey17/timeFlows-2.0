@@ -273,6 +273,14 @@ public class DemoDataServiceImpl implements DemoDataService {
                 "Тестовий",
                 demonstrationDivision,
                 demonstrationTeam);
+        for (int employeeNumber = 1; employeeNumber <= 20; employeeNumber++) {
+            demoUser(
+                    String.format("demo.scroll.employee%02d@vyriy.com", employeeNumber),
+                    "Тестовий",
+                    String.format("Працівник %02d", employeeNumber),
+                    demonstrationDivision,
+                    demonstrationTeam);
+        }
         User demonstrationOfficeManager =
                 demoUser(
                         "demo.office.manager@vyriy.com",

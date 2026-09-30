@@ -31,6 +31,33 @@ class SecurityAuthorizationTests {
     @Autowired private MockMvc mockMvc;
     @Autowired private example.timeflows.service.UserService userService;
     @Autowired private example.timeflows.repository.BonusRepository bonusRepository;
+    @Autowired private example.timeflows.repository.BonusCategoryRepository bonusCategoryRepository;
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void managerWithoutFullManagementCanCreateBonusForOwnEmployee() throws Exception {
+        var employee = userService.findByEmail("andrii.employee@vyriy.com");
+        var category = bonusCategoryRepository.findByActiveTrueOrderByTypeAscNameAsc().get(0);
+
+        mockMvc.perform(
+                        post("/api/bonuses")
+                                .with(user("it.manager@vyriy.com").roles("MANAGER"))
+                                .with(csrf())
+                                .param("userId", employee.getId().toString())
+                                .param("categoryId", category.getId().toString())
+                                .param("type", "MONTHLY")
+                                .param("amount", "125.50")
+                                .param("description", "Regression test bonus"))
+                .andExpect(status().is3xxRedirection());
+
+        assertThat(bonusRepository.findAll())
+                .anySatisfy(
+                        bonus -> {
+                            assertThat(bonus.getUser().getId()).isEqualTo(employee.getId());
+                            assertThat(bonus.getAmount()).isEqualByComparingTo("125.50");
+                            assertThat(bonus.getDescription()).isEqualTo("Regression test bonus");
+                        });
+    }
 
     @Test
     void loginPageContainsCsrfToken() throws Exception {
@@ -300,9 +327,7 @@ class SecurityAuthorizationTests {
 
     @Test
     void overtimeReviewPublishesCsrfMetadataForDynamicAbsolutForms() throws Exception {
-        mockMvc.perform(
-                        get("/api/overtime/review")
-                                .with(user("admin@vyriy.com").roles("ADMIN")))
+        mockMvc.perform(get("/api/overtime/review").with(user("admin@vyriy.com").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"_csrf\"")))
                 .andExpect(
@@ -317,8 +342,7 @@ class SecurityAuthorizationTests {
     void adminWithCurrentAbsolutTagCanArchiveApprovedBonus() throws Exception {
         var admin = userService.findByEmail("admin@vyriy.com");
         userService.updateTags(
-                admin.getId(),
-                java.util.Set.of(example.timeflows.model.BusinessTag.ABSOLUT));
+                admin.getId(), java.util.Set.of(example.timeflows.model.BusinessTag.ABSOLUT));
         var bonus = bonusRepository.findAll().stream().findFirst().orElseThrow();
         bonus.setStatus(example.timeflows.model.BonusStatus.APPROVED);
         bonusRepository.save(bonus);

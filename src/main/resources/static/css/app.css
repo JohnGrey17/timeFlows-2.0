@@ -1305,7 +1305,29 @@ textarea:focus {
 }
 
 /* The calendar matrix prioritizes readable cells; narrower screens scroll it horizontally. */
-.overtime-matrix-wrap { overflow-x: auto; overscroll-behavior-inline: contain; }
+.overtime-matrix-wrap {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+}
+.overtime-sticky-header {
+    position: fixed;
+    top: 0;
+    z-index: 90;
+    overflow: hidden;
+    pointer-events: none;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(28, 36, 48, .18);
+}
+.overtime-sticky-header[hidden] { display: none; }
+.overtime-sticky-header .overtime-matrix {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: 0;
+}
+.overtime-sticky-header th {
+    background: #fff;
+}
 .overtime-matrix { width: max-content; min-width: 1640px; table-layout: fixed; }
 .overtime-matrix th:first-child,
 .overtime-matrix td:first-child { width: 150px; min-width: 150px; }

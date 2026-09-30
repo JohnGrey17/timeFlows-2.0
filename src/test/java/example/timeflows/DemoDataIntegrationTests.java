@@ -37,7 +37,7 @@ class DemoDataIntegrationTests {
     @Test
     @Transactional
     void createsRichIdempotentPreProductionDataset() {
-        assertThat(users.count()).isEqualTo(29);
+        assertThat(users.count()).isEqualTo(49);
         assertThat(departments.count()).isEqualTo(3);
         assertThat(directorates.count()).isEqualTo(17);
         assertThat(divisions.count()).isEqualTo(57);
@@ -81,7 +81,19 @@ class DemoDataIntegrationTests {
                                                 user.getDivision()
                                                         .getName()
                                                         .equals("Демонстраційний відділ")))
-                .hasSize(10);
+                .hasSize(30);
+        assertThat(
+                        users.findAll().stream()
+                                .filter(user -> user.getEmail().startsWith("demo.scroll.employee")))
+                .hasSize(20)
+                .allSatisfy(
+                        user -> {
+                            assertThat(user.getDivision())
+                                    .isEqualTo(demonstrationManager.getDivision());
+                            assertThat(user.getSubdivision().getName())
+                                    .isEqualTo("Демонстраційна команда");
+                            assertThat(user.getRoles()).containsExactly(Role.EMPLOYEE);
+                        });
         assertThat(users.findAll())
                 .allSatisfy(
                         user -> {
@@ -96,7 +108,7 @@ class DemoDataIntegrationTests {
 
         demoDataService.initialize();
 
-        assertThat(users.count()).isEqualTo(29);
+        assertThat(users.count()).isEqualTo(49);
         assertThat(departments.count()).isEqualTo(3);
         assertThat(directorates.count()).isEqualTo(17);
         assertThat(divisions.count()).isEqualTo(57);

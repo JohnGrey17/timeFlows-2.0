@@ -274,7 +274,7 @@ public class BonusController {
             RedirectAttributes ra) {
         User current = userService.findByEmail(auth.getName());
         User target = userService.findById(userId);
-        assertCanFullyManageBonus(current, target);
+        accessService.assertCanManage(current, target);
         try {
             YearMonth accountingMonth =
                     year == null || month == null ? null : YearMonth.of(year, month);
