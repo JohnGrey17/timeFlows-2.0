@@ -1361,6 +1361,23 @@ textarea:focus {
 .overtime-matrix td.row-number-column { width: 44px; min-width: 44px; padding-inline: 4px; text-align: center; }
 .overtime-matrix th.employee-column,
 .overtime-matrix td.employee-column { width: 150px; min-width: 150px; padding-inline: 12px; font-size: 12px; text-align: left; }
+.overtime-matrix th.row-number-column,
+.overtime-matrix td.row-number-column {
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: #fff;
+}
+.overtime-matrix th.employee-column,
+.overtime-matrix td.employee-column {
+    position: sticky;
+    left: 44px;
+    z-index: 3;
+    background: #fff;
+    box-shadow: 2px 0 0 #1c2430;
+}
+.overtime-matrix thead th.row-number-column,
+.overtime-matrix thead th.employee-column { z-index: 7; }
 
 /* Help messages always open to the right of their question mark. */
 .help-tip::after,
@@ -1384,8 +1401,19 @@ textarea:focus {
 .kpi-quarter-table { min-width: 1250px; }
 .kpi-quarter-table th:not(:first-child),
 .kpi-quarter-table td:not(:first-child) { width: 22%; }
+.kpi-quarter-toggle { width: 100%; min-height: 34px; display: flex; justify-content: space-between; gap: 8px; padding: 6px 9px; color: var(--text); background: transparent; box-shadow: none; }
+.kpi-quarter-toggle:hover { color: var(--accent-strong); background: #fff3eb; }
+.kpi-quarter-table [data-kpi-quarter].quarter-collapsed { width: 54px !important; min-width: 54px !important; max-width: 54px !important; padding-inline: 5px; }
+.kpi-quarter-table td.quarter-collapsed .kpi-quarter-cell-content { display: none; }
+.kpi-quarter-table th.quarter-collapsed .kpi-quarter-toggle { justify-content: center; writing-mode: vertical-rl; }
 .kpi-quarter-summary { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding: 8px; border-radius: 8px; background: #fff3eb; }
 .kpi-quarter-summary strong { color: var(--accent-strong); }
+.kpi-quarter-actions { display: grid; gap: 7px; }
+.kpi-inline-create > summary { color: var(--accent-strong); font-weight: 800; cursor: pointer; }
+.kpi-inline-create form { display: grid; gap: 7px; margin-top: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 9px; background: #fffaf6; }
+.kpi-inline-create label { display: grid; gap: 4px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.kpi-inline-create input,
+.kpi-inline-create select { width: 100%; min-width: 0; }
 .kpi-record { display: flex; justify-content: space-between; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
 .kpi-record > div { display: grid; gap: 3px; }
 .kpi-record small { color: var(--muted); overflow-wrap: anywhere; }

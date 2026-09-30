@@ -368,7 +368,14 @@ class SecurityAuthorizationTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Керування KPI")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Q1")))
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("Q4")));
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Q4")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-kpi-quarter-toggle")))
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("kpi-create-form")));
 
         mockMvc.perform(get("/api/bonuses/kpi").with(user("it.manager@vyriy.com").roles("MANAGER")))
                 .andExpect(status().isForbidden());

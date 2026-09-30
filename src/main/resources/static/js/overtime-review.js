@@ -138,11 +138,15 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
     }
     const admin = reviewModal.dataset.admin === "true";
     const directorateManager = reviewModal.dataset.directorateManager === "true";
+    const fullManagement = document.body.dataset.fullManagement === "true";
     const officeManager = document.body.dataset.officeManager === "true";
     const divisionManager = document.body.dataset.divisionManager === "true";
     const awaitingFinal = ["APPROVED_MANAGER", "APPROVED_OFFICE_MANAGER"].includes(cell.dataset.status);
-    const canReview = admin || directorateManager
+    const awaitingReview = ["CHECKING", "PENDING", "APPROVED_MANAGER", "APPROVED_OFFICE_MANAGER"].includes(cell.dataset.status);
+    const canReview = admin
         ? awaitingFinal
+        : directorateManager
+            ? fullManagement ? awaitingReview : awaitingFinal
         : officeManager
             ? cell.dataset.status === "CHECKING"
             : cell.dataset.status === "CHECKING" || (divisionManager && cell.dataset.status === "APPROVED_OFFICE_MANAGER");
@@ -335,6 +339,8 @@ if (overtimeMatrixWrap && overtimeMatrix && overtimeMatrixHeader) {
         stickyHeader.style.left = `${visibleLeft}px`;
         stickyHeader.style.width = `${visibleRight - visibleLeft}px`;
         stickyTable.style.transform = `translateX(${-overtimeMatrixWrap.scrollLeft}px)`;
+        stickyTable.querySelectorAll(".row-number-column, .employee-column")
+            .forEach((cell) => cell.style.transform = `translateX(${overtimeMatrixWrap.scrollLeft}px)`);
     };
 
     const requestStickyHeaderUpdate = () => {

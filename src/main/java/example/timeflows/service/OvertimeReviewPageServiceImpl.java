@@ -437,7 +437,9 @@ public class OvertimeReviewPageServiceImpl implements OvertimeReviewPageService 
         data.put("filteredOvertimes", overtimes);
         data.put(
                 "bulkApprovableCount",
-                overtimes.stream().filter(overtimeService::canAdminApprove).count());
+                directorateManager && fullManagement
+                        ? overtimes.size()
+                        : overtimes.stream().filter(overtimeService::canAdminApprove).count());
         Map<Long, Map<LocalDate, Overtime>> byUser =
                 overtimes.stream()
                         .collect(

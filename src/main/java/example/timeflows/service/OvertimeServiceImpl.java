@@ -451,7 +451,10 @@ public class OvertimeServiceImpl implements OvertimeService {
             return overtimeRepository.save(overtime);
         }
         if (reviewer.getRoles().contains(Role.DIRECTORATE_MANAGER)) {
-            if (!isAwaitingFinalApproval(overtime.getStatus())) {
+            boolean fullManagement = reviewer.getTags().contains(BusinessTag.FULL_MANAGEMENT);
+            if (!(fullManagement
+                    ? isAwaitingReview(overtime.getStatus())
+                    : isAwaitingFinalApproval(overtime.getStatus()))) {
                 throw new OvertimeException(
                         "Керівник управління фінально погоджує лише заявку після погодження керівником");
             }
@@ -483,10 +486,13 @@ public class OvertimeServiceImpl implements OvertimeService {
             throw new OvertimeException(
                     "Масове фінальне погодження доступне керівнику управління або адміністратору");
         }
+        boolean fullManagementDirectorateManager =
+                reviewer.getRoles().contains(Role.DIRECTORATE_MANAGER)
+                        && reviewer.getTags().contains(BusinessTag.FULL_MANAGEMENT);
         int approved = 0;
         for (Long id : ids.stream().distinct().toList()) {
             Overtime overtime = findById(id);
-            if (!canAdminApprove(overtime)) continue;
+            if (!fullManagementDirectorateManager && !canAdminApprove(overtime)) continue;
             assertCanReview(id, reviewerEmail);
             overtime.setStatus(
                     reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer)
