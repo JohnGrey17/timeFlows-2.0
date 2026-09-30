@@ -193,7 +193,7 @@ public class OvertimeReviewController {
     }
 
     @PostMapping("/api/overtime/review/create-for-user")
-    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','ABSOLUT')")
+    @PreAuthorize("hasAnyRole('ADMIN','OFFICE_MANAGER','MANAGER','DIRECTORATE_MANAGER','ABSOLUT')")
     public String createForUser(
             @RequestParam Long employeeId,
             @Valid @ModelAttribute OvertimeRequest request,
