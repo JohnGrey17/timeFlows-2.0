@@ -373,6 +373,9 @@ class BonusServiceTests {
                 .extracting(Bonus::getAmount)
                 .containsExactly(
                         new BigDecimal("3.34"), new BigDecimal("3.33"), new BigDecimal("3.33"));
+        assertThat(result)
+                .extracting(Bonus::getAccountingMonth)
+                .containsOnly(LocalDate.of(2026, 9, 1));
         assertThat(result.stream().map(Bonus::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add))
                 .isEqualByComparingTo("10.00");
         assertThat(result).allMatch(bonus -> bonus.getStatus() == BonusStatus.APPROVED);

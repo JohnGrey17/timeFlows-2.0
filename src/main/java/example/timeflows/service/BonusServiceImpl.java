@@ -267,6 +267,7 @@ public class BonusServiceImpl implements BonusService {
             bonus.setType(BonusType.QUARTERLY);
             bonus.setQuarterYear(year);
             bonus.setQuarterNumber(quarter);
+            bonus.setAccountingMonth(YearMonth.of(year, quarter * 3).atDay(1));
             bonus.setAmount(index < remainderCents ? base.add(new BigDecimal("0.01")) : base);
             bonus.setDescription("Квартальний бонус Q" + quarter + " " + year);
             bonus.setStatus(BonusStatus.APPROVED);

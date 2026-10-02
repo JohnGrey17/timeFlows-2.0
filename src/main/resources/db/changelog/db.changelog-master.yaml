@@ -53,3 +53,5 @@ databaseChangeLog:
       file: db/changelog/changes/027-add-subdivision-manager.yaml
   - include:
       file: db/changelog/changes/028-add-bonus-accounting-month.yaml
+  - include:
+      file: db/changelog/changes/029-align-quarterly-bonus-accounting-month.yaml
