@@ -79,11 +79,14 @@ public class DemoDataServiceImpl implements DemoDataService {
         Directorate technical = directorate(scaling, "Технічне управління");
         Directorate commercial = directorate(scaling, "Комерційне управління");
         Directorate demonstration = directorate(scaling, "Управління для демонстрації");
+        Directorate pmTesting = directorate(scaling, "Тестове PM-управління");
         Division it = division(scaling, technical, "IT");
         Division data = division(scaling, technical, "Дані та автоматизація");
         Division sales = division(scaling, commercial, "Продажі");
         Division marketing = division(scaling, commercial, "Маркетинг");
         Division demonstrationDivision = division(scaling, demonstration, "Демонстраційний відділ");
+        Division pmLeadership = division(scaling, pmTesting, "PM Lead та координація");
+        Division pmDelivery = division(scaling, pmTesting, "PM-відділ");
         Subdivision platform = subdivision(it, "Платформа");
         Subdivision support = subdivision(it, "Підтримка");
         Subdivision analytics = subdivision(data, "Аналітика");
@@ -96,6 +99,8 @@ public class DemoDataServiceImpl implements DemoDataService {
                 subdivision(demonstrationDivision, "Демонстраційна команда");
         Subdivision secondDemonstrationTeam =
                 subdivision(demonstrationDivision, "Демонстраційна команда 2");
+        Subdivision pmLeadershipTeam = subdivision(pmLeadership, "Координація PM");
+        Subdivision pmDeliveryTeam = subdivision(pmDelivery, "Команда PM");
         removeUnusedSeedDivision(scaling, "Архітектори");
         removeUnusedSeedDivision(scaling, "Аналітики");
 
@@ -313,12 +318,60 @@ public class DemoDataServiceImpl implements DemoDataService {
                 "Без підвідділу",
                 demonstrationDivision,
                 null);
+        User pmDirector =
+                demoUser(
+                        "pm.test.director@vyriy.com",
+                        "Лідія",
+                        "Координатор",
+                        pmLeadership,
+                        pmLeadershipTeam,
+                        Role.MANAGER,
+                        Role.DIRECTORATE_MANAGER);
+        User pmDivisionManager =
+                demoUser(
+                        "pm.test.manager@vyriy.com",
+                        "Михайло",
+                        "Керівник",
+                        pmDelivery,
+                        pmDeliveryTeam,
+                        Role.MANAGER);
+        User pmCoordinator =
+                demoUser(
+                        "pm.test.coordinator@vyriy.com",
+                        "Анна",
+                        "Координатор",
+                        pmLeadership,
+                        pmLeadershipTeam);
+        User pmDeliveryManager =
+                demoUser(
+                        "pm.test.delivery@vyriy.com",
+                        "Петро",
+                        "Проєктний",
+                        pmDelivery,
+                        pmDeliveryTeam);
+        User pmEmployee =
+                demoUser(
+                        "pm.test.employee@vyriy.com",
+                        "Оксана",
+                        "Тестова",
+                        pmDelivery,
+                        pmDeliveryTeam);
 
         demonstrationDirector.getTags().add(BusinessTag.FULL_MANAGEMENT);
         demonstrationManager.getTags().add(BusinessTag.FULL_MANAGEMENT);
         demonstrationOfficeManager.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        pmDirector.getTags().add(BusinessTag.FULL_MANAGEMENT);
+        pmDirector.getTags().add(BusinessTag.PROJECT_MANAGER_LEAD);
+        pmCoordinator.getTags().add(BusinessTag.PROJECT_MANAGER);
+        pmDeliveryManager.getTags().add(BusinessTag.PROJECT_MANAGER);
         users.saveAll(
-                List.of(demonstrationDirector, demonstrationManager, demonstrationOfficeManager));
+                List.of(
+                        demonstrationDirector,
+                        demonstrationManager,
+                        demonstrationOfficeManager,
+                        pmDirector,
+                        pmCoordinator,
+                        pmDeliveryManager));
 
         manager(it, olena);
         manager(data, taras);
@@ -329,11 +382,14 @@ public class DemoDataServiceImpl implements DemoDataService {
         manager(hr, maksym);
         manager(administration, kateryna);
         manager(demonstrationDivision, demonstrationManager);
+        manager(pmLeadership, pmDirector);
+        manager(pmDelivery, pmDivisionManager);
         directorateManager(technical, olena);
         directorateManager(commercial, andrii);
         directorateManager(operations, nataliia);
         directorateManager(people, maksym);
         directorateManager(demonstration, demonstrationDirector);
+        directorateManager(pmTesting, pmDirector);
         officeManager(support, ihor);
         officeManager(officeManagerDemo, olha);
         officeManager(secondDemonstrationTeam, demonstrationOfficeManager);
@@ -349,6 +405,18 @@ public class DemoDataServiceImpl implements DemoDataService {
         overtime(pavlo, 7, 3.0, "Термінова закупівля матеріалів", OvertimeStatus.CHECKING);
         overtime(
                 pavlo, 14, 5.0, "Підготовка робочих місць", OvertimeStatus.APPROVED_OFFICE_MANAGER);
+        overtime(
+                pmDeliveryManager,
+                16,
+                3.0,
+                "Підготовка PM-звіту",
+                OvertimeStatus.APPROVED_DIRECTORATE);
+        overtime(
+                pmEmployee,
+                18,
+                4.0,
+                "Тестове перепрацювання для відхилення ADMIN",
+                OvertimeStatus.APPROVED_DIRECTORATE);
         retireLegacyAdmin(admin.getId());
     }
 
@@ -556,6 +624,7 @@ public class DemoDataServiceImpl implements DemoDataService {
         overtime.setDescription(description);
         overtime.setStatus(status);
         if (status == OvertimeStatus.APPROVED_ADMIN
+                || status == OvertimeStatus.APPROVED_DIRECTORATE
                 || status == OvertimeStatus.APPROVED_MANAGER
                 || status == OvertimeStatus.APPROVED_OFFICE_MANAGER)
             overtime.setManagerComment("Погоджено для демо");

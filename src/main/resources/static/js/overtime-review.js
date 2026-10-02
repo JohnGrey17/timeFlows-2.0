@@ -143,8 +143,9 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
     const divisionManager = document.body.dataset.divisionManager === "true";
     const awaitingFinal = ["APPROVED_MANAGER", "APPROVED_OFFICE_MANAGER"].includes(cell.dataset.status);
     const awaitingReview = ["CHECKING", "PENDING", "APPROVED_MANAGER", "APPROVED_OFFICE_MANAGER"].includes(cell.dataset.status);
+    const adminCanReject = cell.dataset.status === "APPROVED_DIRECTORATE";
     const canReview = admin
-        ? awaitingFinal
+        ? awaitingFinal || adminCanReject
         : directorateManager
             ? fullManagement ? awaitingReview : awaitingFinal
         : officeManager
@@ -155,10 +156,11 @@ document.querySelectorAll(".overtime-info-trigger[data-hours]:not([data-hours=''
     const approveForm = actions.querySelector("form[action$='/approve']");
     if (approveForm) {
         approveForm.hidden =
-            divisionManager
-            && !directorateManager
-            && !admin
-            && cell.dataset.status === "APPROVED_OFFICE_MANAGER";
+            adminCanReject
+            || (divisionManager
+                && !directorateManager
+                && !admin
+                && cell.dataset.status === "APPROVED_OFFICE_MANAGER");
     }
     reviewModal.hidden = false;
 }));

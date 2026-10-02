@@ -3,6 +3,7 @@ package example.timeflows;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import example.timeflows.model.BusinessTag;
+import example.timeflows.model.OvertimeStatus;
 import example.timeflows.model.Role;
 import example.timeflows.repository.BonusRepository;
 import example.timeflows.repository.DepartmentRepository;
@@ -37,12 +38,12 @@ class DemoDataIntegrationTests {
     @Test
     @Transactional
     void createsRichIdempotentPreProductionDataset() {
-        assertThat(users.count()).isEqualTo(49);
+        assertThat(users.count()).isEqualTo(54);
         assertThat(departments.count()).isEqualTo(3);
-        assertThat(directorates.count()).isEqualTo(17);
-        assertThat(divisions.count()).isEqualTo(57);
-        assertThat(subdivisions.count()).isEqualTo(163);
-        assertThat(overtimes.count()).isEqualTo(6);
+        assertThat(directorates.count()).isEqualTo(18);
+        assertThat(divisions.count()).isEqualTo(59);
+        assertThat(subdivisions.count()).isEqualTo(165);
+        assertThat(overtimes.count()).isEqualTo(8);
         assertThat(bonuses.count()).isZero();
 
         var admin = users.findByEmail("serhii.hainovskyi@vyriy.com").orElseThrow();
@@ -55,9 +56,9 @@ class DemoDataIntegrationTests {
         assertThat(
                         directorates.findAllByOrderByNameAsc().stream()
                                 .filter(directorate -> directorate.getManager() != null))
-                .hasSize(5);
+                .hasSize(6);
         assertThat(divisions.findAll().stream().filter(division -> division.getManager() != null))
-                .hasSize(9);
+                .hasSize(11);
         var demonstrationDirector = users.findByEmail("demo.director@vyriy.com").orElseThrow();
         var demonstrationManager = users.findByEmail("demo.manager@vyriy.com").orElseThrow();
         assertThat(demonstrationDirector.getRoles()).contains(Role.DIRECTORATE_MANAGER);
@@ -105,15 +106,44 @@ class DemoDataIntegrationTests {
                                 .map(user -> user.getEmail()))
                 .containsExactlyInAnyOrder(
                         "demo.no.subdivision1@vyriy.com", "demo.no.subdivision2@vyriy.com");
+        var pmDirector = users.findByEmail("pm.test.director@vyriy.com").orElseThrow();
+        var pmDivisionManager = users.findByEmail("pm.test.manager@vyriy.com").orElseThrow();
+        var pmCoordinator = users.findByEmail("pm.test.coordinator@vyriy.com").orElseThrow();
+        var pmDeliveryManager = users.findByEmail("pm.test.delivery@vyriy.com").orElseThrow();
+        assertThat(pmDirector.getRoles()).contains(Role.MANAGER, Role.DIRECTORATE_MANAGER);
+        assertThat(pmDirector.getTags())
+                .contains(BusinessTag.PROJECT_MANAGER_LEAD, BusinessTag.FULL_MANAGEMENT);
+        assertThat(pmDirector.getDivision().getDirectorate().getManager()).isEqualTo(pmDirector);
+        assertThat(pmDirector.getDivision().getManager()).isEqualTo(pmDirector);
+        assertThat(pmDivisionManager.getRoles()).contains(Role.MANAGER);
+        assertThat(pmDivisionManager.getDivision().getManager()).isEqualTo(pmDivisionManager);
+        assertThat(pmCoordinator.getTags()).contains(BusinessTag.PROJECT_MANAGER);
+        assertThat(pmDeliveryManager.getTags()).contains(BusinessTag.PROJECT_MANAGER);
+        assertThat(pmCoordinator.getDivision()).isNotEqualTo(pmDeliveryManager.getDivision());
+        assertThat(
+                        overtimes.findAll().stream()
+                                .filter(
+                                        overtime ->
+                                                overtime.getUser()
+                                                        .getEmail()
+                                                        .startsWith("pm.test.")))
+                .hasSize(2)
+                .allSatisfy(
+                        overtime -> {
+                            assertThat(overtime.getStatus())
+                                    .isEqualTo(OvertimeStatus.APPROVED_DIRECTORATE);
+                            assertThat(overtime.getManagerComment())
+                                    .isEqualTo("Погоджено для демо");
+                        });
 
         demoDataService.initialize();
 
-        assertThat(users.count()).isEqualTo(49);
+        assertThat(users.count()).isEqualTo(54);
         assertThat(departments.count()).isEqualTo(3);
-        assertThat(directorates.count()).isEqualTo(17);
-        assertThat(divisions.count()).isEqualTo(57);
-        assertThat(subdivisions.count()).isEqualTo(163);
-        assertThat(overtimes.count()).isEqualTo(6);
+        assertThat(directorates.count()).isEqualTo(18);
+        assertThat(divisions.count()).isEqualTo(59);
+        assertThat(subdivisions.count()).isEqualTo(165);
+        assertThat(overtimes.count()).isEqualTo(8);
         assertThat(bonuses.count()).isZero();
     }
 

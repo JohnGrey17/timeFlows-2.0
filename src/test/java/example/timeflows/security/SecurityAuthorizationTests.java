@@ -758,6 +758,32 @@ class SecurityAuthorizationTests {
                                                 "name=\"divisionId\"")))
                 .andExpect(
                         content().string(org.hamcrest.Matchers.containsString("name=\"status\"")));
+        mockMvc.perform(
+                        get("/api/bonuses")
+                                .with(user("admin@vyriy.com").roles("ADMIN", "EMPLOYEE")))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "Список бонусованих співробітників")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-quarter-add-selected")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-quarter-distribute")))
+                .andExpect(
+                        content()
+                                .string(
+                                        org.hamcrest.Matchers.containsString(
+                                                "data-quarter-per-person")))
+                .andExpect(
+                        content().string(org.hamcrest.Matchers.containsString("Сума на одного")));
     }
 
     @Test

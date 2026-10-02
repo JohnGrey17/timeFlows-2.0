@@ -193,6 +193,36 @@ class BonusServiceTests {
     }
 
     @Test
+    void projectManagerLeadCreatesKpiForProjectManagerInAnotherDivision() {
+        Division leadDivision = new Division();
+        leadDivision.setId(5L);
+        Division targetDivision = new Division();
+        targetDivision.setId(6L);
+        User lead = new User();
+        lead.setDivision(leadDivision);
+        lead.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER_LEAD)));
+        User target = new User();
+        target.setDivision(targetDivision);
+        target.setTags(new java.util.LinkedHashSet<>(Set.of(BusinessTag.PROJECT_MANAGER)));
+        when(userService.findById(1L)).thenReturn(target);
+        when(userService.findByEmail("lead@vyriy.com")).thenReturn(lead);
+        when(repository.save(any(Bonus.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Bonus result =
+                service.create(
+                        1L,
+                        null,
+                        BonusType.KPI,
+                        BigDecimal.TEN,
+                        "KPI іншого відділу",
+                        "lead@vyriy.com");
+
+        assertThat(result.getType()).isEqualTo(BonusType.KPI);
+        assertThat(result.getStatus()).isEqualTo(BonusStatus.APPROVED);
+        assertThat(result.getUser()).isSameAs(target);
+    }
+
+    @Test
     void createsKpiInSelectedAccountingMonth() {
         Division division = new Division();
         division.setId(5L);
