@@ -682,6 +682,41 @@ class OvertimeServiceImplTests {
     }
 
     @Test
+    void adminCanRejectDirectorateApprovedOvertime() {
+        User admin = user(Role.ADMIN);
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_DIRECTORATE);
+        when(userService.findByEmail("admin@vyriy.com")).thenReturn(admin);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+        when(overtimeRepository.save(overtime)).thenReturn(overtime);
+
+        Overtime result =
+                overtimeService.reject(1L, "Не погоджено адміністратором", "admin@vyriy.com");
+
+        assertThat(result.getStatus()).isEqualTo(OvertimeStatus.DECLINED);
+        assertThat(result.getManagerComment()).isEqualTo("Не погоджено адміністратором");
+    }
+
+    @Test
+    void managerCannotRejectDirectorateApprovedOvertime() {
+        Division division = new Division();
+        division.setId(5L);
+        User manager = user(Role.EMPLOYEE, Role.MANAGER);
+        manager.setId(10L);
+        manager.setDivision(division);
+        division.setManager(manager);
+        Overtime overtime = overtime(OvertimeStatus.APPROVED_DIRECTORATE);
+        overtime.getUser().setDivision(division);
+        when(userService.findByEmail("manager@vyriy.com")).thenReturn(manager);
+        when(overtimeRepository.findWithUserById(1L)).thenReturn(Optional.of(overtime));
+
+        assertThatThrownBy(
+                        () -> overtimeService.reject(1L, "Спроба скасування", "manager@vyriy.com"))
+                .isInstanceOf(OvertimeException.class)
+                .hasMessageContaining("лише заявку на погодженні");
+        verify(overtimeRepository, never()).save(overtime);
+    }
+
+    @Test
     void managerAndAdminApproveSeparateWorkflowStages() {
         Division division = new Division();
         division.setId(5L);

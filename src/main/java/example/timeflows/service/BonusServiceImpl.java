@@ -417,10 +417,6 @@ public class BonusServiceImpl implements BonusService {
             if (!privilegedAdmin && !creator.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
                 throw new IllegalArgumentException("KPI може створювати лише PROJECT_MANAGER_LEAD");
             }
-            if (!privilegedAdmin
-                    && !creator.getDivision().getId().equals(target.getDivision().getId())) {
-                throw new IllegalArgumentException("PM Lead працює лише зі своїм відділом");
-            }
             if (!targetProjectManager
                     || target.getTags().contains(BusinessTag.PROJECT_MANAGER_LEAD)) {
                 throw new IllegalArgumentException("KPI доступний лише PROJECT_MANAGER");

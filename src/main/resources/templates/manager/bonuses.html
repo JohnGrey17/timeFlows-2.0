@@ -34,7 +34,7 @@
         <h2>Розподіл квартального бонусу</h2>
         <span class="help-tip" tabindex="0" data-tooltip="Сума формується з усіх погоджених KPI за вибрані три місяці кварталу та ділиться порівну між відміченими активними співробітниками. Project Manager не бере участі; PM Lead отримує квартальний бонус на загальних умовах. Повторно розподілити бонус користувачу за той самий квартал не можна.">?</span>
     </div>
-    <p>Оберіть квартал, відфільтруйте співробітників і відмітьте отримувачів.</p>
+    <p>Оберіть квартал, відфільтруйте співробітників, відмітьте потрібних і додайте їх до списку бонусованих.</p>
     <form method="post" th:action="@{/api/bonuses/quarterly/distribute}" class="form-stack" data-quarterly-form>
         <div class="inline-form quarterly-period">
             <label>Рік<input type="number" name="year" th:value="${selectedMonth.year}" required data-quarter-year></label>
@@ -52,21 +52,42 @@
             <details class="quarterly-multi-filter"><summary>Підвідділи</summary><div><label th:each="item:${quarterlySubdivisions}"><span th:text="${item.name}"></span><input type="checkbox" th:value="${item.id}" data-quarter-filter="subdivision"></label></div></details>
         </div>
         <div class="quarterly-filter-summary" data-quarter-filter-summary><span>Організаційні фільтри не вибрані — показано всіх доступних співробітників.</span></div>
-        <label class="quarterly-select-all"><span>Обрати всіх у поточній вибірці</span><input type="checkbox" data-quarter-select-all></label>
+        <div class="quarterly-selection-actions">
+            <label class="quarterly-select-all"><span>Обрати всіх у поточній вибірці</span><input type="checkbox" data-quarter-select-all></label>
+            <button type="button" data-quarter-add-selected disabled>Додати обраних до списку</button>
+        </div>
         <div class="quarterly-recipient-list">
             <label th:each="user:${quarterlyRecipients}"
                    class="quarterly-recipient"
+                   th:data-user-id="${user.id}"
+                   th:data-user-name="${(user.lastName ?: '—')+' '+(user.firstName ?: '—')}"
+                   th:data-user-path="${user.division.department.name+' / '+(user.division.directorate == null ? 'Без управління' : user.division.directorate.name)+' / '+user.division.name+' / '+(user.subdivision == null ? 'Без підвідділу' : user.subdivision.name)}"
                    th:data-department-id="${user.division.department.id}"
                    th:data-directorate-id="${user.division.directorate == null ? '' : user.division.directorate.id}"
                    th:data-division-id="${user.division.id}"
                    th:data-subdivision-id="${user.subdivision == null ? '' : user.subdivision.id}">
                 <span class="quarterly-recipient-name"><strong th:text="${user.lastName ?: '—'}"></strong><span th:text="${user.firstName ?: '—'}"></span></span>
                 <span class="quarterly-recipient-path" th:text="${user.division.department.name+' / '+(user.division.directorate == null ? 'Без управління' : user.division.directorate.name)+' / '+user.division.name+' / '+(user.subdivision == null ? 'Без підвідділу' : user.subdivision.name)}"></span>
-                <input type="checkbox" name="userIds" th:value="${user.id}">
+                <input type="checkbox" th:value="${user.id}" data-quarter-candidate>
             </label>
             <p class="quarterly-empty" data-quarter-empty hidden>За вибраними фільтрами співробітників не знайдено.</p>
         </div>
-        <button type="submit">Розподілити квартальний бонус</button>
+        <section class="quarterly-bonus-list" data-quarter-bonus-list>
+            <div class="section-title-with-help">
+                <div><p class="eyebrow">Проміжний етап</p><h3>Список бонусованих співробітників</h3></div>
+                <strong class="quarterly-bonus-count" data-quarter-bonus-count>0</strong>
+            </div>
+            <div class="quarterly-bonus-calculation">
+                <article><span>Квартальний бонус</span><strong data-quarter-cart-pool>—</strong></article>
+                <span class="quarterly-calculation-sign">÷</span>
+                <article><span>Співробітників у списку</span><strong data-quarter-cart-count>0</strong></article>
+                <span class="quarterly-calculation-sign">=</span>
+                <article><span>Сума на одного</span><strong data-quarter-per-person>—</strong></article>
+            </div>
+            <p class="quarterly-bonus-empty" data-quarter-bonus-empty>Додайте співробітників із поточної вибірки.</p>
+            <div class="quarterly-bonus-employees" data-quarter-bonus-employees></div>
+        </section>
+        <button type="submit" data-quarter-distribute disabled>Розподілити квартальний бонус</button>
     </form>
 </section>
 

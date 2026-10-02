@@ -516,24 +516,32 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Override
     @Transactional
     public Overtime reject(Long id, String managerComment) {
+        return reject(id, managerComment, false);
+    }
+
+    private Overtime reject(Long id, String managerComment, boolean canRejectDirectorateApproved) {
         if (managerComment == null || managerComment.isBlank()) {
             throw new OvertimeException("Причина відхилення є обов'язковою");
         }
         Overtime overtime = findById(id);
-        if (!isAwaitingReview(overtime.getStatus())) {
+        if (!isAwaitingReview(overtime.getStatus())
+                && !(canRejectDirectorateApproved
+                        && overtime.getStatus() == OvertimeStatus.APPROVED_DIRECTORATE)) {
             throw new OvertimeException("Відхилити можна лише заявку на погодженні");
         }
         overtime.setStatus(OvertimeStatus.DECLINED);
         overtime.setManagerComment(managerComment);
-        overtime.setUpdatedAt(LocalDateTime.now());
+        overtime.setUpdatedAt(LocalDateTime.now(clock));
         return overtimeRepository.save(overtime);
     }
 
     @Override
     @Transactional
     public Overtime reject(Long id, String managerComment, String reviewerEmail) {
-        assertCanReview(id, reviewerEmail);
-        return reject(id, managerComment);
+        User reviewer = assertCanReview(id, reviewerEmail);
+        boolean canRejectDirectorateApproved =
+                reviewer.getRoles().contains(Role.ADMIN) || accessPolicy.isAbsolut(reviewer);
+        return reject(id, managerComment, canRejectDirectorateApproved);
     }
 
     private User assertCanReview(Long overtimeId, String reviewerEmail) {
