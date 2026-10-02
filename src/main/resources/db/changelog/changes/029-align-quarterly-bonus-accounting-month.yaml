@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 029-align-quarterly-bonus-accounting-month
+      author: codex
+      changes:
+        - update:
+            tableName: bonuses
+            columns:
+              - column:
+                  name: accounting_month
+                  valueComputed: >-
+                    CASE quarter_number
+                      WHEN 1 THEN CAST(CAST(quarter_year AS VARCHAR) || '-03-01' AS DATE)
+                      WHEN 2 THEN CAST(CAST(quarter_year AS VARCHAR) || '-06-01' AS DATE)
+                      WHEN 3 THEN CAST(CAST(quarter_year AS VARCHAR) || '-09-01' AS DATE)
+                      WHEN 4 THEN CAST(CAST(quarter_year AS VARCHAR) || '-12-01' AS DATE)
+                    END
+            where: type = 'QUARTERLY' AND quarter_year IS NOT NULL AND quarter_number BETWEEN 1 AND 4
