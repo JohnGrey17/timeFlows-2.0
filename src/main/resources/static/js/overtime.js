@@ -154,5 +154,5 @@ function mutationHeaders(includeJson = true) {
     }
     return headers;
 }
-document.querySelectorAll("form[data-calendar-filter] select[name='month'], form[data-calendar-filter] select[name='year']")
+document.querySelectorAll("form[data-calendar-filter] select[name='month'], form[data-calendar-filter] select[name='year'], form[data-calendar-filter] input[name='year']")
     .forEach((select) => select.addEventListener("change", () => select.form.requestSubmit()));
