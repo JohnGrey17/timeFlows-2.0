@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -602,7 +601,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     private void validateHours(OvertimeRequest request, User user) {
         if (!isWeekend(request)
                 && !hasUnrestrictedDivisionOvertimeAccess(user)
-                && !allowsCurrentWeekOvertime(user)
+                && !allowsAnyDateOvertime(user)
                 && !isAugust2026(request.getWorkDate())) {
             throw new OvertimeException("Перепрацювання дозволені лише у вихідні дні");
         }
@@ -639,23 +638,14 @@ public class OvertimeServiceImpl implements OvertimeService {
         if (isSubmissionDateAllowed(workDate, user)) {
             return;
         }
-        if (allowsCurrentWeekOvertime(user)) {
-            throw new OvertimeException(
-                    "З тегом ALLOW_OVER заявку можна створити лише в межах поточного тижня");
-        }
         throw new OvertimeException(
                 "Заявку можна подати на всі вихідні поточного місяця або на майбутні вихідні");
     }
 
     private boolean isSubmissionDateAllowed(LocalDate workDate, User user) {
         ZonedDateTime now = ZonedDateTime.now(clock);
-        if (isAugust2026(workDate)) {
+        if (allowsAnyDateOvertime(user) || isAugust2026(workDate)) {
             return true;
-        }
-        if (allowsCurrentWeekOvertime(user)) {
-            LocalDate weekStart =
-                    now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-            return !workDate.isBefore(weekStart) && !workDate.isAfter(weekStart.plusDays(6));
         }
         boolean weekend =
                 workDate.getDayOfWeek() == DayOfWeek.SATURDAY
@@ -675,7 +665,7 @@ public class OvertimeServiceImpl implements OvertimeService {
         if (hasUnrestrictedDivisionOvertimeAccess(manager)
                 || manager.getTags().contains(BusinessTag.FULL_MANAGEMENT)
                 || isAugust2026(workDate)
-                || allowsCurrentWeekOvertime(manager)) {
+                || allowsAnyDateOvertime(manager)) {
             return true;
         }
         ZonedDateTime now = ZonedDateTime.now(clock);
@@ -690,7 +680,7 @@ public class OvertimeServiceImpl implements OvertimeService {
         return YearMonth.from(date).equals(AUGUST_2026);
     }
 
-    private boolean allowsCurrentWeekOvertime(User user) {
+    private boolean allowsAnyDateOvertime(User user) {
         return user.getTags().contains(BusinessTag.ALLOW_OVER);
     }
 

@@ -346,7 +346,7 @@ class OvertimeServiceImplTests {
     }
 
     @Test
-    void allowOverTagStillAllowsAnyDayOnlyWithinCurrentWeekOutsideAugust() {
+    void allowOverTagAllowsPastAndFutureWeekdaysAndWeekends() {
         overtimeService = serviceAt("2026-09-14T08:00:00Z");
         User employee = user(Role.EMPLOYEE);
         employee.getTags().add(BusinessTag.ALLOW_OVER);
@@ -354,16 +354,40 @@ class OvertimeServiceImplTests {
         when(overtimeRepository.save(org.mockito.ArgumentMatchers.any(Overtime.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        OvertimeRequest weekday = validRequest();
-        weekday.setWorkDate(LocalDate.of(2026, 9, 16));
-        assertThat(overtimeService.create("employee@vyriy.com", weekday).getWorkDate())
-                .isEqualTo(LocalDate.of(2026, 9, 16));
+        for (LocalDate date :
+                List.of(
+                        LocalDate.of(2025, 2, 3),
+                        LocalDate.of(2026, 7, 26),
+                        LocalDate.of(2026, 9, 7),
+                        LocalDate.of(2026, 9, 14),
+                        LocalDate.of(2026, 9, 21),
+                        LocalDate.of(2027, 1, 4),
+                        LocalDate.of(2027, 1, 9))) {
+            OvertimeRequest request = validRequest();
+            request.setWorkDate(date);
+            assertThat(overtimeService.create("employee@vyriy.com", request).getWorkDate())
+                    .isEqualTo(date);
+        }
+    }
 
-        OvertimeRequest nextWeek = validRequest();
-        nextWeek.setWorkDate(LocalDate.of(2026, 9, 21));
-        assertThatThrownBy(() -> overtimeService.create("employee@vyriy.com", nextWeek))
-                .isInstanceOf(OvertimeException.class)
-                .hasMessageContaining("поточного тижня");
+    @Test
+    void allowOverTagAllowsUpdatingAndResubmittingPastOvertime() {
+        overtimeService = serviceAt("2026-09-14T08:00:00Z");
+        Overtime entry = overtime(OvertimeStatus.CHECKING);
+        entry.getUser().getTags().add(BusinessTag.ALLOW_OVER);
+        when(overtimeRepository.findByIdAndUserEmail(1L, "employee@vyriy.com"))
+                .thenReturn(Optional.of(entry));
+        when(overtimeRepository.save(entry)).thenReturn(entry);
+        OvertimeRequest request = validRequest();
+        request.setWorkDate(LocalDate.of(2025, 2, 3));
+
+        assertThat(overtimeService.update("employee@vyriy.com", 1L, request).getWorkDate())
+                .isEqualTo(request.getWorkDate());
+
+        entry.setStatus(OvertimeStatus.DECLINED);
+        request.setResubmissionReason("Updated details");
+        assertThat(overtimeService.resubmit("employee@vyriy.com", 1L, request).getStatus())
+                .isEqualTo(OvertimeStatus.CHECKING);
     }
 
     @Test
